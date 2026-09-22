@@ -101,7 +101,7 @@ source — these are the gaps Phase 2 still has to close.
 | **Statsig** | ✅ | ✅ | ✅ | **✅ daily, all customers** | ? | — | — | partial | — | — | — | — | ✅ | — |
 | **Microsoft ExP** | ✅ | ✅ | **✅ A-D uniformity** | ✅ | ? | — | — | — | — | — | — | — | ✅ | internal only |
 | **Meta GeoLift** | ✅ | ✅ | — | — | ✅ power sim | ✅ | partial | — | — | partial (CPIC) | — | — | — | OSS |
-| **Google Meridian GeoX** | ✅ | ? | — | — | ? | — | **✅ holdback/go-dark/heavy-up** | — | — | ? | — | — | — | *vendor-reported* publisher-agnostic |
+| **Google Meridian GeoX** | ✅ | **✅ MDE** | — | **✅ A/A placebo** | ? | **✅** | **✅ optimises + ranks designs within a user-set posture** | — | partial (`compare_designs`) | ? | — | — | — | *vendor-reported* publisher-agnostic |
 | **Google Trimmed Match** | ✅ | ✅ design | — | — | ✅ | — | ✅ pairing | — | — | — | — | — | — | OSS |
 | **Google Matched Markets / TBR** | ✅ | ✅ | — | — | ✅ | — | ✅ | — | — | — | — | — | — | OSS |
 | **Haus** | ✅ | ✅ | — | — | — | **✅ pre-launch placebo → holdout size** | ✅ | — | — | ✅ | — | — | ? | — |
@@ -110,11 +110,18 @@ source — these are the gaps Phase 2 still has to close.
 | **Recast (study)** | ✅ | — | — | — | ✅ | ✅ | — | — | **✅ published** | — | — | — | — | ✅ OSS study |
 
 **The answer to the brief's central landscape question — "does a mature
-product already do I–N?" — is: no single product does, but I is published, G
-is productised by Meridian GeoX and Haus, F is productised by Haus, D is
-productised by Statsig, and J is partially in GeoLift and Haus. What is
-unclaimed across the whole grid is K, L and a fitted, measured version of
-H+I.**
+product already do I–N?" — is: no single product does, but the grid is far
+more occupied than the brief assumed. I is published as a study (Recast), G
+is productised by Meridian GeoX and Haus, F by Haus and GeoX, D by Statsig at
+enormous scale, B and E by GeoLift and GeoX, and J partially by GeoLift and
+Haus. What is unclaimed across the entire grid is K (do-not-run), L (value of
+information), and a *fitted, per-business* version of H+I as opposed to a
+published comparison of methods in general.**
+
+Note the asymmetry that emerges from this: every occupied cell is a
+*statistical* capability, and both empty cells are *economic* ones. That is
+either a gap or a verdict, and §6 below reports the first attempt to tell
+which.
 
 ---
 
@@ -135,9 +142,9 @@ This is the least ambiguous prior art in the whole landscape. The generic idea
 it is already running is not small. That is good news about the pain being
 real and bad news about the idea being novel.
 
-That last figure is independent corroboration of the brief's §22 peeking
-torture test, from a vendor with production data. It also means the peeking
-result is *known*, not a discovery waiting to be made.
+The peeking figure is also independent corroboration of the brief's §22
+torture test, from a vendor with production data — which means that result is
+*known*, not a discovery waiting to be made.
 
 Sources: <https://docs.statsig.com/experiments/types/aa-test>,
 <https://www.statsig.com/blog/sequential-testing-on-statsig>
