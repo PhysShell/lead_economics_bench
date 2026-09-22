@@ -12,7 +12,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from leadbench.evaluation.aggregate import leaderboard, ok_rows, paired_comparisons
+from leadbench.evaluation.aggregate import (
+    leaderboard,
+    ok_rows,
+    oracle_share,
+    paired_comparisons,
+)
 from leadbench.evaluation.runner import CandidateSpec, dedupe_candidates
 
 
@@ -107,3 +112,59 @@ def test_paired_comparison_pairs_by_seed_not_by_position():
         b[b.candidate == "cand"].iloc[0].mean_diff
     )
     assert np.isfinite(a[a.candidate == "cand"].iloc[0].ci_low)
+
+
+def _share_frame(rows):
+    """rows: (regime, candidate, seed, incremental_value)."""
+    return pd.DataFrame(
+        [dict(regime=r, candidate=c, seed=s, incremental_net_value_per_1k=v,
+              status="ok") for r, c, s, v in rows]
+    )
+
+
+def test_oracle_share_is_stable_when_the_prize_is_tiny():
+    """The regression this metric exists for.
+
+    Under `concept_drift` the Oracle's own gain over doing nothing is roughly
+    3% of what it is elsewhere, so the per-seed ratio has a near-zero
+    denominator. Averaging those ratios reported 1,454% of Oracle for a
+    candidate whose raw incremental value is negative. A ratio of means cannot
+    do that: a candidate that destroys value scores below zero, and one that
+    captures three quarters of a tiny prize scores about 75%.
+    """
+    rows = []
+    for seed, oracle_gain in enumerate([10.0, 0.5, 40.0]):  # wildly uneven prize
+        rows.append(("drift", "oracle", seed, oracle_gain))
+        rows.append(("drift", "good", seed, 0.75 * oracle_gain))
+        rows.append(("drift", "harmful", seed, -0.05 * oracle_gain))
+    share = oracle_share(_share_frame(rows))
+
+    assert share.loc["good", "drift"] == pytest.approx(75.0)
+    assert share.loc["harmful", "drift"] == pytest.approx(-5.0)
+    # The naive mean-of-ratios is what this replaces; on a seed whose
+    # denominator is 0.5 it is unbounded, so assert we are nowhere near it.
+    assert share.loc["harmful", "drift"] < 0
+    assert 0 < share.loc["good", "drift"] < 100
+
+
+def test_oracle_share_matches_the_naive_ratio_when_the_prize_is_even():
+    """Where the denominator is stable the two agree, so switching metric does
+    not silently restate every other regime."""
+    rows = []
+    for seed in range(4):
+        rows.append(("easy", "oracle", seed, 100.0))
+        rows.append(("easy", "cand", seed, 60.0))
+    share = oracle_share(_share_frame(rows))
+    assert share.loc["cand", "easy"] == pytest.approx(60.0)
+
+
+def test_oracle_share_excludes_failed_cells():
+    rows = [("r", "oracle", 0, 100.0), ("r", "oracle", 1, 100.0),
+            ("r", "cand", 0, 50.0), ("r", "cand", 1, 50.0)]
+    frame = _share_frame(rows)
+    frame.loc[(frame.candidate == "cand") & (frame.seed == 1), "status"] = "error: boom"
+    frame.loc[(frame.candidate == "cand") & (frame.seed == 1),
+              "incremental_net_value_per_1k"] = np.nan
+    share = oracle_share(frame)
+    # One good cell of 50 against two oracle cells of 100 -> 25%, not NaN.
+    assert share.loc["cand", "r"] == pytest.approx(25.0)

@@ -34,6 +34,41 @@ def ok_rows(results: pd.DataFrame) -> pd.DataFrame:
     return results[results["status"] == "ok"]
 
 
+def oracle_share(
+    results: pd.DataFrame,
+    group_cols: Iterable[str] = ("regime",),
+    value_col: str = "incremental_net_value_per_1k",
+    oracle: str = "oracle",
+) -> pd.DataFrame:
+    """Share of the Oracle's achievable gain, as a **ratio of means**.
+
+    Deliberately not the mean of the per-row ``pct_of_oracle_incremental``.
+    That column divides by the Oracle's incremental gain *on that seed*, which
+    is only a safe denominator while the prize is comfortably large. It is not
+    always: under ``concept_drift`` the Oracle's gain over doing nothing is
+    about $3.0k per 1,000 leads against $109k-$208k in other regimes, because
+    drift leaves almost nothing on the table for anybody. Averaging the ratios
+    there reported 1,454% of Oracle for ``fifo``, whose raw incremental value
+    is *negative*, and 1,344% for ``dr_learner`` -- and those figures then
+    dominated the leaderboard mean and inverted it.
+
+    Summing numerator and denominator across seeds before dividing is stable
+    however small the prize, and ranks that same regime sensibly (76.5% for
+    ``propensity_ev_logit``, -1.2% for ``fifo``).
+    """
+    ok = ok_rows(results)
+    keys = [c for c in group_cols if c in ok.columns]
+    ref = ok[ok["candidate"] == oracle].groupby(keys)[value_col].sum()
+    num = ok[ok["candidate"] != oracle].groupby(["candidate", *keys])[value_col].sum()
+    if num.empty or ref.empty:
+        return pd.DataFrame()
+    den = num.index.droplevel("candidate").map(ref)
+    share = 100.0 * num.to_numpy() / np.asarray(den, dtype=float)
+    out = pd.Series(share, index=num.index, name="share").reset_index()
+    return out.pivot(index="candidate", columns=keys[0] if len(keys) == 1 else keys,
+                     values="share")
+
+
 @dataclass
 class Comparison:
     scenario: str

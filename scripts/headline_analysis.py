@@ -15,11 +15,15 @@ re-derived rather than trusted:
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy import stats
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from leadbench.evaluation.aggregate import oracle_share  # noqa: E402
 
 METRIC = "net_value_per_1k_leads"
 KEY = ["scenario", "seed"]
@@ -58,11 +62,25 @@ def verdict(res: dict) -> str:
     return "no meaningful difference"
 
 
-def leaderboard(d: pd.DataFrame) -> pd.DataFrame:
-    piv = d[d.candidate != "oracle"].pivot_table(
-        index="candidate", columns="regime",
-        values="pct_of_oracle_incremental", aggfunc="mean")
-    piv["MEAN"] = piv.mean(axis=1)
+def leaderboard(d: pd.DataFrame, common_only: bool = True) -> pd.DataFrame:
+    """Per-regime scores plus a mean over the regimes every candidate ran.
+
+    A candidate that crashed on one regime would otherwise be averaged over a
+    different, easier regime set than its competitors and appear to win on the
+    strength of the regime it could not attempt. `MEAN` is therefore computed
+    over the common set; `MEAN_all` keeps each candidate's own coverage, and
+    `n_regimes` says what that coverage was.
+    """
+    piv = oracle_share(d)
+    piv["MEAN_all"] = piv.mean(axis=1)
+    piv["n_regimes"] = piv.drop(columns=["MEAN_all"]).notna().sum(axis=1)
+    if common_only:
+        complete = piv.drop(columns=["MEAN_all", "n_regimes"]).dropna(axis=1, how="any")
+        piv["MEAN"] = complete.mean(axis=1) if complete.shape[1] else np.nan
+        piv.attrs["common_regimes"] = list(complete.columns)
+    else:
+        piv["MEAN"] = piv["MEAN_all"]
+        piv.attrs["common_regimes"] = list(piv.columns)
     return piv.sort_values("MEAN", ascending=False)
 
 
@@ -83,19 +101,24 @@ def metric_agreement(d: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("mean_rho", ascending=False)
 
 
-def top_of_table_check(d: pd.DataFrame) -> pd.DataFrame:
+def top_of_table_check(d: pd.DataFrame, share: pd.Series) -> pd.DataFrame:
     """A metric can correlate well overall and still misrank the top, which is
-    the only part of the table a decision-maker reads."""
+    the only part of the table a decision-maker reads.
+
+    Money rank comes from the stable ratio-of-means share, not from averaging
+    the per-row ratio.
+    """
     agg = d[d.candidate != "oracle"].groupby("candidate")[
-        ["uplift_qini_auc", "pred_auroc", "pct_of_oracle_incremental"]].mean()
+        ["uplift_qini_auc", "pred_auroc"]].mean()
+    agg["oracle_share"] = share
     agg = agg.dropna()
     agg["qini_rank"] = agg.uplift_qini_auc.rank(ascending=False)
     agg["auroc_rank"] = agg.pred_auroc.rank(ascending=False)
-    agg["money_rank"] = agg.pct_of_oracle_incremental.rank(ascending=False)
+    agg["money_rank"] = agg.oracle_share.rank(ascending=False)
     return agg.sort_values("qini_rank")
 
 
-def compute_cost(d: pd.DataFrame) -> pd.DataFrame:
+def compute_cost(d: pd.DataFrame, share: pd.Series) -> pd.DataFrame:
     cost = d.groupby("candidate").agg(
         fit_s=("fit_seconds", "mean"),
         predict_s=("predict_seconds", "mean"),
@@ -103,8 +126,7 @@ def compute_cost(d: pd.DataFrame) -> pd.DataFrame:
         peak_rss_mb=("peak_rss_delta_mb", "max"),
     )
     cost["share_of_total_pct"] = 100 * cost.total_fit_s / cost.total_fit_s.sum()
-    money = d.groupby("candidate")["pct_of_oracle_incremental"].mean()
-    cost["pct_of_oracle"] = money
+    cost["pct_of_oracle"] = share
     return cost.sort_values("fit_s", ascending=False)
 
 
@@ -146,7 +168,14 @@ def main() -> None:
     print("=" * 78)
     print("LEADERBOARD — % of the Oracle's achievable gain")
     print("=" * 78)
-    print(leaderboard(d).round(1).to_string())
+    board = leaderboard(d)
+    common = board.attrs.get("common_regimes", [])
+    print(f"MEAN is over the {len(common)} regimes EVERY candidate completed; "
+          "MEAN_all uses each candidate's own coverage.")
+    dropped = [r for r in regimes if r not in common]
+    if dropped:
+        print(f"excluded from MEAN (some candidate failed there): {dropped}")
+    print(board.round(1).to_string())
 
     # Do not take the chosen analytics reference on trust: a falsification
     # study that quietly compares against a weak baseline proves nothing.
@@ -213,12 +242,12 @@ def main() -> None:
     print("=" * 78)
     print(metric_agreement(d[d.candidate != "oracle"]).round(3).to_string(index=False))
     print("\nTop-of-table check (rank 1 on the metric vs rank on realised money):")
-    print(top_of_table_check(d).round(3).to_string())
+    print(top_of_table_check(d, board["MEAN"]).round(3).to_string())
 
     print("\n" + "=" * 78)
     print("COMPUTE COST")
     print("=" * 78)
-    print(compute_cost(d).round(2).to_string())
+    print(compute_cost(d, board["MEAN"]).round(2).to_string())
 
 
 if __name__ == "__main__":

@@ -33,6 +33,7 @@ import pandas as pd  # noqa: E402
 from leadbench.evaluation.aggregate import (  # noqa: E402
     leaderboard,
     ok_rows,
+    oracle_share,
     paired_comparisons,
     pareto_frontier,
     summarise_failures,
@@ -89,6 +90,12 @@ def main() -> int:
         pct = leaderboard(lead, "pct_of_oracle_incremental")
         pct.to_csv(out / "leaderboard_pct_of_oracle.csv", index=False)
 
+        # The stable version of the same quantity. `pct_of_oracle_incremental`
+        # is a per-seed ratio and averaging it explodes wherever the Oracle's
+        # own gain is small (see aggregate.oracle_share).
+        share = oracle_share(lead)
+        share.to_csv(out / "oracle_share_by_regime.csv")
+
         comps = []
         for ref in REFERENCES:
             c = paired_comparisons(lead, ref, PRIMARY, PRACTICAL_PCT)
@@ -108,13 +115,20 @@ def main() -> int:
         # `do_nothing` dominates everything on cost (zero seconds, and a net
         # value that still contains the whole do-nothing floor), which makes
         # the frontier meaningless.
+        # Restricted to the main lead sweep. `lead` also carries the ablation
+        # and bayes suites, which run at a different dataset size and over a
+        # different regime set, and averaging those into one frontier compares
+        # candidates that never met. Scored on the regimes every candidate
+        # completed, so one that crashed is not credited with an easier average.
+        main = suites["lead"] if len(suites["lead"]) else lead
+        main_share = oracle_share(main)
+        common = main_share.dropna(axis=1, how="any")
         pcost = (
-            lead[lead["status"] == "ok"]
-            .groupby("candidate")[["pct_of_oracle_incremental", "fit_seconds",
-                                   "predict_seconds"]]
+            ok_rows(main)
+            .groupby("candidate")[["fit_seconds", "predict_seconds"]]
             .mean()
+            .assign(mean=common.mean(axis=1) if common.shape[1] else float("nan"))
             .reset_index()
-            .rename(columns={"pct_of_oracle_incremental": "mean"})
         )
         pcost = pcost[~pcost["candidate"].isin(["oracle", "do_nothing"])]
         pf = pareto_frontier(pcost, "mean", "fit_seconds")
