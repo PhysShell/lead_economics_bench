@@ -366,3 +366,35 @@ PIE beats last-touch ROAS on *level* accuracy by ~30% and improves with more
 measured campaigns. It loses to a ridge on the same features — but in this
 variant the truth is additive in the logged features, so the ridge is
 correctly specified and this is its best case. See the interaction variant.
+
+### Where the causal advantage comes from — decomposition (8 seeds each)
+
+% of Oracle's achievable gain, three regimes that isolate one kind of
+heterogeneity each:
+
+| candidate | agent_time_het (effort varies) | value_het (deal value varies) | capacity_value_het (all three, incl. response) |
+|---|---|---|---|
+| x_learner | 58.1 | 51.7 | **64.9** |
+| causal_forest | 52.5 | 41.8 | 64.4 |
+| s_learner | 60.2 | 56.2 | 64.3 |
+| dr_learner | 51.6 | — | 62.8 |
+| t_learner | 53.5 | 50.3 | 59.5 |
+| **propensity_ev_logit** | **61.3** | **56.4** | 44.4 |
+| propensity_ev_gbm | 57.9 | 53.8 | 49.6 |
+| lead_score_gbm | — | 51.7 | — |
+
+Read across the row for `propensity_ev_logit`: explicit economics handles
+heterogeneous **effort** and heterogeneous **deal value** on its own — it is
+the best candidate in both of those regimes, ahead of every causal learner.
+It collapses (61 → 44) only when heterogeneous **treatment response** is added.
+
+So the decomposition is:
+
+- heterogeneous deal value -> solved by multiplying by predicted value;
+- heterogeneous handle time -> solved by dividing by predicted effort;
+- heterogeneous **treatment response** -> the only thing that needs a causal
+  model, and worth ~15 points of Oracle gain when present.
+
+That is a sharper claim than "uplift modelling helps", and it is falsifiable:
+if a partner's leads differ mainly in value and cost-to-serve rather than in
+how they respond to being called, the causal machinery is not what they need.
