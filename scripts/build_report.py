@@ -32,6 +32,7 @@ import pandas as pd  # noqa: E402
 
 from leadbench.evaluation.aggregate import (  # noqa: E402
     leaderboard,
+    ok_rows,
     paired_comparisons,
     pareto_frontier,
     summarise_failures,
@@ -199,7 +200,7 @@ def main() -> int:
     # ---------------- PIE campaign-level track ------------------------
     if len(suites["pie"]):
         pie = suites["pie"]
-        pie = pie[pie.get("status", "ok") == "ok"]
+        pie = ok_rows(pie)
         cols = [c for c in ["rmse", "mae", "spearman", "pct_of_oracle_selection"]
                 if c in pie.columns]
         if len(pie) and cols:

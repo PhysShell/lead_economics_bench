@@ -20,6 +20,20 @@ import numpy as np
 import pandas as pd
 
 
+def ok_rows(results: pd.DataFrame) -> pd.DataFrame:
+    """The rows whose candidate ran successfully.
+
+    Not ``results[results.get("status", "ok") == "ok"]``: ``DataFrame.get``
+    returns the *default scalar* when the column is absent, so that expression
+    collapses to ``results[True]`` and raises ``KeyError: True``. Suites that
+    never record a failure (the online track) have no ``status`` column at all,
+    so the missing-column path is the normal one, not an edge case.
+    """
+    if "status" not in results.columns:
+        return results
+    return results[results["status"] == "ok"]
+
+
 @dataclass
 class Comparison:
     scenario: str
@@ -58,7 +72,7 @@ def leaderboard(
     seed_col: str = "seed",
 ) -> pd.DataFrame:
     """Mean of ``metric`` per candidate with a bootstrap interval over seeds."""
-    ok = results[results.get("status", "ok") == "ok"].copy()
+    ok = ok_rows(results).copy()
     group_cols = [c for c in group_cols if c in ok.columns]
     rows = []
     for key, g in ok.groupby(list(group_cols), dropna=False):
@@ -112,8 +126,16 @@ def paired_comparisons(
     ``practical_threshold_pct`` is expressed relative to the *reference's*
     absolute level of the metric, and must be preregistered.
     """
-    ok = results[results.get("status", "ok") == "ok"]
+    ok = ok_rows(results)
     scenario_cols = [c for c in scenario_cols if c in ok.columns]
+    # A cell must hold at most one row per (scenario, candidate, seed). If a
+    # suite ever writes two -- a candidate registered by two registry groups,
+    # or two run artefacts concatenated -- then `.loc[common]` below returns
+    # more rows than the reference has and the paired difference is computed
+    # against misaligned seeds, or raises. Collapse them here so the aggregation
+    # cannot be corrupted by an upstream duplicate.
+    ok = ok.drop_duplicates(subset=[*scenario_cols, "candidate", seed_col],
+                            keep="first")
     out: list[Comparison] = []
     for key, g in ok.groupby(list(scenario_cols), dropna=False):
         ref = g[g["candidate"] == reference]
@@ -190,7 +212,8 @@ def pareto_frontier(
 
 def summarise_failures(results: pd.DataFrame) -> pd.DataFrame:
     """Every candidate that errored, with the reason. Failures are results."""
-    bad = results[results.get("status", "ok") != "ok"]
+    bad = (results[results["status"] != "ok"]
+           if "status" in results.columns else results.iloc[:0])
     if bad.empty:
         return pd.DataFrame(columns=["candidate", "scenario", "status", "count"])
     cols = [c for c in ("candidate", "scenario", "regime", "status") if c in bad.columns]

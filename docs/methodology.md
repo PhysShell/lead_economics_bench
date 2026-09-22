@@ -136,8 +136,29 @@ build, and because §66 requires failures to be visible.
    to `normalize=True`. Assuming the former rescaled every channel's curve by
    a different factor. Now read from the fitted object.
 
+6. **A candidate registered twice, fitted twice, compared wrongly.**
+   `bayes_hierarchical` is both an uncertainty candidate and the control that
+   `abl_bayes_no_hierarchy` is ablated against, so the bayes suite registered
+   it from two registry groups. It was therefore fitted twice — 45 seconds a
+   time for a PyMC candidate — and wrote two identical rows per cell. Pairing
+   by seed then indexes a duplicated index, so `.loc[common]` returns more rows
+   than the reference has: it raised `operands could not be broadcast together
+   with shapes (8,) (4,)` here, and with a *partial* overlap it would have
+   silently differenced mismatched seeds instead. Fixed at the runner
+   (`dedupe_candidates`, first registration wins) and defensively in the
+   aggregation, with regression tests in `tests/test_aggregation.py`.
+
+7. **`DataFrame.get("status", "ok") == "ok"` is not a row mask.** When the
+   column is absent, `.get` returns the *default scalar*, the comparison
+   evaluates to the bool `True`, and `results[True]` raises `KeyError: True`.
+   The online track records no failures and so has no `status` column at all,
+   which meant the report builder crashed on it — after every suite had already
+   run. Replaced by an explicit `ok_rows` helper at all four call sites.
+
 None of these would have produced an obviously broken result. All of them
-would have produced a *confidently wrong* one.
+would have produced a *confidently wrong* one — or, in the case of the last
+two, a crash at exactly the moment when hours of compute were already spent
+and the temptation to work around it rather than fix it is strongest.
 
 ## 9. Blockers and things not done
 

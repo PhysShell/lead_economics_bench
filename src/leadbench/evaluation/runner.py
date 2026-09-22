@@ -101,11 +101,34 @@ def _peak_rss_mb() -> float:
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
 
 
+def dedupe_candidates(candidates: list[CandidateSpec]) -> list[CandidateSpec]:
+    """First registration of each name wins.
+
+    Suites assemble their candidate list from several registry functions, and
+    an ablation's control is often the same model another group already
+    contributes — `bayes_hierarchical` is both an uncertainty candidate and the
+    reference `abl_bayes_no_hierarchy` is ablated against. Registering it twice
+    fits it twice (45 seconds a time for the PyMC candidates) and writes two
+    identical rows per cell, which then silently misaligns any comparison
+    paired by seed: `.loc[common]` on a duplicated index returns more rows than
+    the reference has.
+    """
+    seen: set[str] = set()
+    out: list[CandidateSpec] = []
+    for c in candidates:
+        if c.name in seen:
+            continue
+        seen.add(c.name)
+        out.append(c)
+    return out
+
+
 def run_scenario(
     spec: ScenarioSpec,
     candidates: list[CandidateSpec],
     verbose: bool = True,
 ) -> pd.DataFrame:
+    candidates = dedupe_candidates(candidates)
     rows: list[dict[str, Any]] = []
     for seed in spec.seeds:
         ds = generate(spec.config(seed))

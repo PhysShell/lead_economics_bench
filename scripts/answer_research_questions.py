@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from leadbench.evaluation.aggregate import _paired_bootstrap  # noqa: E402
+from leadbench.evaluation.aggregate import _paired_bootstrap, ok_rows  # noqa: E402
 
 # The preregistered primary metric and decision rule (docs/benchmark-spec.md).
 # A candidate beats a reference only if the paired 95% interval on the
@@ -43,8 +43,7 @@ def load(runs: Path, suite: str) -> pd.DataFrame:
     p = runs / suite / "results.csv"
     if not p.exists():
         return pd.DataFrame()
-    d = pd.read_csv(p)
-    return d[d.get("status", "ok") == "ok"]
+    return ok_rows(pd.read_csv(p))
 
 
 def paired(df: pd.DataFrame, a: str, b: str, metric: str = PRIMARY,
@@ -56,6 +55,11 @@ def paired(df: pd.DataFrame, a: str, b: str, metric: str = PRIMARY,
     """
     rows = []
     keys = [k for k in by if k in df.columns]
+    # One row per (group, candidate, seed). A duplicate -- the same candidate
+    # contributed by two registry groups, or two run artefacts concatenated --
+    # makes `.loc[common]` return more rows than the other side has, and the
+    # difference is then taken against misaligned seeds.
+    df = df.drop_duplicates(subset=[*keys, "candidate", "seed"], keep="first")
     for key, g in df.groupby(list(keys), dropna=False):
         ga = g[g["candidate"] == a].set_index("seed")
         gb = g[g["candidate"] == b].set_index("seed")
