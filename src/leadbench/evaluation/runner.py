@@ -80,6 +80,13 @@ class CandidateSpec:
     factory: CandidateFactory
     policy: Policy | None = None  # None -> chosen from candidate.allocation_mode
     tags: tuple[str, ...] = ()
+    #: Extra policies to apply to the SAME fitted model, as
+    #: ``{row_name: policy}``. Risk attitude is a property of the decision
+    #: rule, not of the model, so refitting an expensive posterior once per
+    #: risk setting wastes compute and makes the comparison unpaired. Sharing
+    #: one fit makes "mean EV vs lower credible bound" an exact within-model
+    #: contrast.
+    extra_policies: dict[str, Policy] = field(default_factory=dict)
 
 
 def _policy_for(candidate: Candidate, override: Policy | None) -> Policy:
@@ -149,7 +156,7 @@ def run_scenario(
         )
 
         for cs in candidates:
-            row: dict[str, Any] = {
+            base_row: dict[str, Any] = {
                 "scenario": spec.name,
                 "regime": spec.regime,
                 "n_leads": spec.n_leads,
@@ -166,45 +173,55 @@ def run_scenario(
                     cand.set_truth(test.truth)
                 cand.fit(fit_ctx)
                 est = cand.estimate(pred_ctx)
-                policy = _policy_for(cand, cs.policy)
-                dec = policy.decide(est, constraints)
-                actions, cap_info = enforce_true_capacity(
-                    true_minutes, dec.actions, dec.priority, constraints
-                )
-                outcome = realized_net_value(test, actions)
+                rss = max(_peak_rss_mb() - rss0, 0.0)
 
-                row.update(cand.describe())
-                row["candidate"] = cs.name
-                row["policy"] = policy.name
-                row.update(
-                    economic_summary(
-                        outcome,
-                        floor,
-                        oracle_value=oracle_value,
-                        capacity_minutes=capacity,
+                variants: list[tuple[str, Policy]] = [
+                    (cs.name, _policy_for(cand, cs.policy))
+                ]
+                variants += list(cs.extra_policies.items())
+
+                for row_name, policy in variants:
+                    row = dict(base_row)
+                    dec = policy.decide(est, constraints)
+                    actions, cap_info = enforce_true_capacity(
+                        true_minutes, dec.actions, dec.priority, constraints
                     )
-                )
-                row.update(_quality_metrics(est, test, actions))
-                row["fit_seconds"] = cand.fit_seconds
-                row["predict_seconds"] = cand.predict_seconds
-                row["peak_rss_delta_mb"] = max(_peak_rss_mb() - rss0, 0.0)
-                row["planned_minutes"] = dec.planned_minutes
-                row.update({f"cap_{k}": v for k, v in cap_info.items()})
-                row["status"] = "ok"
+                    outcome = realized_net_value(test, actions)
+
+                    row.update(cand.describe())
+                    row["candidate"] = row_name
+                    row["base_model"] = cs.name
+                    row["policy"] = policy.name
+                    row.update(
+                        economic_summary(
+                            outcome,
+                            floor,
+                            oracle_value=oracle_value,
+                            capacity_minutes=capacity,
+                        )
+                    )
+                    row.update(_quality_metrics(est, test, actions))
+                    row["fit_seconds"] = cand.fit_seconds
+                    row["predict_seconds"] = cand.predict_seconds
+                    row["peak_rss_delta_mb"] = rss
+                    row["planned_minutes"] = dec.planned_minutes
+                    row.update({f"cap_{k}": v for k, v in cap_info.items()})
+                    row["status"] = "ok"
+                    rows.append(row)
+                    if verbose:
+                        print(
+                            f"  {spec.name} seed={seed} {row_name:34s} "
+                            f"net/1k={row.get('net_value_per_1k_leads', float('nan')):9.1f} "
+                            f"%oracle={row.get('pct_of_oracle_incremental', float('nan')):6.1f}"
+                        )
                 del cand, est
                 gc.collect()
             except Exception as exc:  # noqa: BLE001 - failures are results too
-                row["status"] = f"error: {type(exc).__name__}: {exc}"
-                row["traceback"] = traceback.format_exc()[-1200:]
+                base_row["status"] = f"error: {type(exc).__name__}: {exc}"
+                base_row["traceback"] = traceback.format_exc()[-1200:]
+                rows.append(base_row)
                 if verbose:
                     print(f"  !! {cs.name} failed: {type(exc).__name__}: {exc}")
-            rows.append(row)
-            if verbose and row.get("status") == "ok":
-                print(
-                    f"  {spec.name} seed={seed} {cs.name:34s} "
-                    f"net/1k={row.get('net_value_per_1k_leads', float('nan')):9.1f} "
-                    f"%oracle={row.get('pct_of_oracle_incremental', float('nan')):6.1f}"
-                )
     return pd.DataFrame(rows)
 
 

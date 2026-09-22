@@ -45,8 +45,29 @@ GBM_KW = dict(n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weigh
 CAUSAL_FOREST_KW = dict(n_trees=200, cv=2)
 
 
-def _spec(name: str, factory: Callable, *tags: str, policy=None) -> CandidateSpec:
-    return CandidateSpec(name=name, factory=factory, policy=policy, tags=tags)
+def _spec(
+    name: str, factory: Callable, *tags: str, policy=None, extra_policies=None
+) -> CandidateSpec:
+    return CandidateSpec(
+        name=name,
+        factory=factory,
+        policy=policy,
+        tags=tags,
+        extra_policies=extra_policies or {},
+    )
+
+
+#: Risk attitudes applied to the same fitted model. Preregistered in
+#: docs/benchmark-spec.md; they are decision rules, not models, so they share
+#: one fit and the contrast between them is exact rather than confounded by
+#: refitting.
+def _risk_variants(name: str) -> dict:
+    return {
+        f"{name}_lcb10": LowerBoundEVPolicy(0.10),
+        f"{name}_lcb25": LowerBoundEVPolicy(0.25),
+        f"{name}_abstain50": AbstentionPolicy(0.50),
+        f"{name}_abstain25": AbstentionPolicy(0.25),
+    }
 
 
 def naive_candidates() -> list[CandidateSpec]:
@@ -128,7 +149,12 @@ def causal_candidates(binary_only: bool = True) -> list[CandidateSpec]:
 
 
 def uncertainty_candidates() -> list[CandidateSpec]:
-    """Candidates whose point of existence is an interval (RQ5)."""
+    """Candidates whose point of existence is an interval (RQ5, section 26).
+
+    Each is fitted once and scored under every preregistered risk attitude, so
+    "posterior mean vs lower credible bound vs abstain" is a within-model
+    contrast rather than a comparison of separately refitted models.
+    """
     out = [
         _spec(
             "propensity_ev_gbm_bootstrap",
@@ -141,6 +167,7 @@ def uncertainty_candidates() -> list[CandidateSpec]:
             ),
             "economic",
             "uncertainty",
+            extra_policies=_risk_variants("propensity_ev_gbm_bootstrap"),
         ),
     ]
     try:
@@ -152,6 +179,7 @@ def uncertainty_candidates() -> list[CandidateSpec]:
                 partial(HierarchicalBayesianFunnel, "bayes_hierarchical"),
                 "bayesian",
                 "uncertainty",
+                extra_policies=_risk_variants("bayes_hierarchical"),
             )
         )
     except Exception:
@@ -160,50 +188,8 @@ def uncertainty_candidates() -> list[CandidateSpec]:
 
 
 def risk_policy_variants() -> list[CandidateSpec]:
-    """Same beliefs, different attitude to risk (RQ5 / section 26)."""
-    out: list[CandidateSpec] = []
-    try:
-        from .bayesian import HierarchicalBayesianFunnel
-
-        out.append(
-            _spec(
-                "bayes_hierarchical_lcb10",
-                partial(HierarchicalBayesianFunnel, "bayes_hierarchical_lcb10"),
-                "bayesian",
-                "uncertainty",
-                "risk_averse",
-                policy=LowerBoundEVPolicy(0.10),
-            )
-        )
-        out.append(
-            _spec(
-                "bayes_hierarchical_abstain50",
-                partial(HierarchicalBayesianFunnel, "bayes_hierarchical_abstain50"),
-                "bayesian",
-                "uncertainty",
-                "abstention",
-                policy=AbstentionPolicy(0.5),
-            )
-        )
-    except Exception:
-        pass
-    out.append(
-        _spec(
-            "propensity_ev_gbm_bootstrap_lcb10",
-            partial(
-                BootstrapPropensityEV,
-                "propensity_ev_gbm_bootstrap_lcb10",
-                kind="xgboost",
-                n_bootstrap=16,
-                **GBM_KW,
-            ),
-            "economic",
-            "uncertainty",
-            "risk_averse",
-            policy=LowerBoundEVPolicy(0.10),
-        )
-    )
-    return out
+    """Kept for compatibility: risk variants now ride along with their model."""
+    return []
 
 
 def bayes_ablation_candidates() -> list[CandidateSpec]:
