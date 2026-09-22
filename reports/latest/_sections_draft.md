@@ -234,3 +234,135 @@ claim, in its own track.
 4. **Eight seeds separate large effects from noise, not small ones.** That is
    why the decision rule requires clearing a preregistered practical threshold
    rather than merely achieving significance.
+
+---
+
+## FINAL TABLES (suites complete; transcribe into report.md)
+
+### Online track (RQ7) — 4 regimes x 3 seeds, 20k leads, 8 periods, 25% capacity
+
+% of Oracle's achievable gain:
+
+| competitor | concept_drift | easy_randomized | policy_feedback_loop | propensity_not_uplift | MEAN |
+|---|---|---|---|---|---|
+| retrained_propensity_ev | 59.1 | 58.1 | 58.3 | 29.7 | **51.3** |
+| static_propensity_ev | 60.1 | 57.5 | 57.4 | 29.4 | **51.1** |
+| bandit_thompson | 53.7 | 55.8 | 57.0 | 35.0 | 50.4 |
+| bandit_greedy_online (no exploration) | 51.4 | 53.9 | 57.1 | 38.8 | 50.3 |
+| bandit_linucb | 50.6 | 52.8 | 57.3 | 38.2 | 49.7 |
+| bandit_epsilon_greedy | 47.1 | 49.3 | 53.0 | 33.7 | 45.8 |
+| random | 22.5 | 25.7 | 25.7 | 24.1 | 24.5 |
+
+Paired differences vs the frozen offline model: thompson −0.7, greedy −0.8,
+linucb −1.4, epsilon-greedy −5.3, periodic retraining **+0.2**.
+
+Three independent readings, all pointing the same way:
+- **online updating of a strong learner buys nothing**: retrained vs frozen = +0.2;
+- **exploration buys nothing**: linucb/thompson/epsilon vs greedy_online (same
+  linear learner, only the exploration rule differs) = −0.6 / +0.1 / −4.5;
+- **learner capacity beats online-ness**: the linear bandits lose to a boosted
+  offline model even under concept drift (−6 to −13).
+
+The one place bandits win is `propensity_not_uplift` (+4 to +9), where the
+offline Propensity-EV is *structurally* biased (it values the control arm at
+zero) and the bandit, learning arm-specific outcomes from feedback, does not
+inherit that bias.
+
+**Confound to state plainly**: the bandits are linear and the offline models
+are gradient-boosted. The clean within-learner comparison is greedy_online vs
+the exploring bandits, and the clean within-model comparison is frozen vs
+retrained. Both say the same thing as the cross-family one.
+
+### MMM track — 5 regimes x 4 seeds (6th regime pending)
+
+% of the Oracle's gain **over an equal budget split** (0 = equal split, 100 = Oracle):
+
+| candidate | high_collinearity | low_signal | smb_short | standard | very_short | MEAN |
+|---|---|---|---|---|---|---|
+| pymc_marketing_mmm **calibrated** | 44.6 | 73.3 | 90.0 | 44.0 | 78.2 | **+66.0** |
+| ridge_adstock_saturation | 39.2 | −4.8 | 3.8 | 56.3 | 67.0 | +32.3 |
+| equal_allocation | 0 | 0 | 0 | 0 | 0 | 0 |
+| pymc_marketing_mmm (uncalibrated) | 36.8 | −2.6 | 18.0 | **−149.4** | −1.3 | **−19.7** |
+| naive_ols | −1276 | −1264 | −1333 | −1264 | −1228 | −1273 |
+| reported_roas (the dashboard) | −1413 | −1399 | −1417 | −1399 | −1423 | **−1410** |
+
+Per-channel ROI error (MAPE, 1.00 = 100% wrong): calibrated MMM **0.26**,
+reported_roas 0.60, ridge 0.88, **uncalibrated MMM 1.83**.
+
+Channel **rank** correlation with true ROI: reported_roas **0.70** (best
+non-oracle), calibrated MMM 0.36, ridge −0.10, **uncalibrated MMM −0.43**.
+(`equal_allocation`'s value here is an artefact — it does not estimate ROI at
+all — and should be ignored.)
+
+The two findings that matter:
+
+1. **Following your ROAS dashboard destroys value.** It is ~14x worse than the
+   entire achievable gain over an equal split, because it treats returns as
+   linear and pours budget into whichever channel over-claims last-touch
+   credit. Note it has the *best* channel rank correlation: ranks are not
+   marginal returns, and allocation depends on marginal returns.
+2. **Experiment calibration is what makes MMM work.** The same PyMC-Marketing
+   model goes from −19.7 (worse than an equal split, with an *inverted* channel
+   ranking and 183% ROI error) to +66.0 with lift-test calibration. An
+   uncalibrated MMM on 156 weeks of data was worse than splitting evenly.
+
+### Data-size curve (RQ9) — % of Oracle gain, 3 regimes x 5 seeds, 25% capacity
+
+| regime | candidate | 2k | 5k | 10k | 25k | 50k | 100k |
+|---|---|---|---|---|---|---|---|
+| capacity_value_het | dr_learner | 31.5 | 45.3 | 50.3 | 52.1 | 62.4 | **70.1** |
+| | t_learner | 26.1 | 48.7 | 44.3 | 53.7 | 60.8 | 69.2 |
+| | propensity_ev_gbm | **39.2** | 49.1 | 46.2 | 44.7 | 42.1 | 49.8 |
+| | hist_profit_per_agent_hour | 21.1 | 26.7 | 25.4 | 37.5 | 29.4 | 27.6 |
+| | lead_score_gbm | 20.7 | 32.6 | 25.6 | 27.0 | 20.3 | 28.1 |
+| propensity_not_uplift | t_learner | 32.6 | 38.5 | 36.8 | 46.9 | 43.7 | **54.2** |
+| | propensity_ev_gbm | 33.9 | 45.3 | 35.0 | 39.1 | 37.6 | 41.5 |
+| | hist_profit_per_agent_hour | **43.5** | 33.2 | 34.1 | 52.1 | 41.2 | 35.7 |
+| sparse | propensity_ev_gbm | **48.4** | 55.0 | 57.6 | 58.7 | 64.9 | **66.0** |
+| | t_learner | 29.3 | 49.3 | 52.3 | 52.6 | 63.1 | 62.9 |
+| | lead_score_gbm | 48.2 | 50.0 | 51.7 | 54.3 | 59.9 | 60.0 |
+| | hist_profit_per_agent_hour | 44.3 | 40.1 | 42.0 | 42.1 | 44.5 | 46.0 |
+
+Crossover: below ~5–10k resolved leads the simple economic model is as good or
+better than anything causal; above ~25k the causal learners pull ahead **in the
+heterogeneous-response regimes only**. Analytics baselines are flat in N — more
+data does not help a campaign-level average.
+
+### Capacity curve (RQ4b / §35) — the single most important product chart
+
+% of Oracle gain, `capacity_value_heterogeneity`:
+
+| candidate | 5% | 10% | 25% | 50% | 100% |
+|---|---|---|---|---|---|
+| dr_learner | **35.5** | 41.0 | 65.4 | 82.2 | 87.8 |
+| t_learner | 33.1 | 40.9 | 61.9 | 80.0 | 84.7 |
+| propensity_ev_gbm | 26.1 | 34.1 | 48.9 | 67.8 | 84.6 |
+| hist_profit_per_agent_hour | 7.4 | 14.3 | 30.8 | 47.5 | 87.2 |
+| lead_score_gbm | 4.9 | 9.8 | 23.6 | 52.3 | 87.7 |
+| random | 6.8 | 10.7 | 22.0 | 43.2 | 86.1 |
+
+**The entire value of the decision engine lives in scarce capacity.** At 5%
+capacity a causal model captures 5–7x what lead scoring or an analytics
+baseline does; at 100% capacity every method converges to ~85–88% and the
+model is worth nothing on total profit. At full capacity the advantage shows
+up instead in *efficiency*: $4,930 net per agent-hour for dr_learner vs $3,693
+for random (+33%), because the model declines to spend time on negative-uplift
+leads.
+
+### PIE campaign-level track (§17) — additive-truth variant, 3 shares x 3 seeds
+
+RMSE against true campaign incrementality (lower better) / % of oracle in a
+top-quartile selection:
+
+| candidate | 15% measured | 35% measured | 60% measured |
+|---|---|---|---|
+| ridge_on_features | **0.291** / 94.5 | **0.274** / 88.9 | **0.196** / 95.9 |
+| pie_bart | 0.340 / 89.5 | 0.316 / 90.0 | 0.273 / 92.6 |
+| gbm_on_features | 0.493 / 61.0 | 0.430 / 82.1 | 0.374 / 83.5 |
+| reported_roas | 0.473 / 90.2 | 0.479 / 90.7 | 0.498 / 90.1 |
+| global_mean_measured | 0.511 / 38.9 | 0.506 / 36.2 | 0.509 / 37.4 |
+
+PIE beats last-touch ROAS on *level* accuracy by ~30% and improves with more
+measured campaigns. It loses to a ridge on the same features — but in this
+variant the truth is additive in the logged features, so the ridge is
+correctly specified and this is its best case. See the interaction variant.
