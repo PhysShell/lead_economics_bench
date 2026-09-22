@@ -156,10 +156,29 @@ capacity beat online-ness even under drift. The one place bandits won
 (`propensity_not_uplift`, +4 to +9) is where the offline model is
 *structurally* biased, not where the bandit is adaptive.
 
-**6. "Bayesian uncertainty will pay for itself in decisions."** Not supported
-at the sizes tested; see §5 and §8. Interval coverage is informative and the
-posterior is honest, but risk-averse lower-bound policies did not beat the
-plain EV policy by the practical threshold, at 10–100× the compute.
+**6. "Bayesian uncertainty will pay for itself in decisions."** Half false, and
+the half that survives is not the half expected. The two things bundled under
+"Bayesian" come apart cleanly *(2 of 4 bayes regimes complete, n=5,000)*:
+
+- **The posterior is worth nothing.** Risk-averse lower-bound policies scored
+  58.1 (lcb25) and 57.4 (lcb10) against the plain EV policy's 58.0 — a swing of
+  ±0.6 points, far inside the threshold. Bootstrap intervals on
+  `propensity_ev_gbm` changed its result by **exactly zero** (48.4 vs 48.4).
+  And the intervals are not even honest at the per-lead level: 80% nominal
+  coverage delivers **22%** actual (Bayesian) and **33%** (bootstrap).
+- **The hierarchical structure is worth a great deal.**
+  `bayes_hierarchical` scored **58.0** against `propensity_ev_gbm`'s 48.4 —
+  **+9.6 points** — and the no-pooling ablation isolates why:
+  `abl_bayes_no_hierarchy` scored **46.4**, so partial pooling alone is worth
+  **+11.6 points**, and without it the Bayesian model is *worse* than the
+  gradient-boosted baseline it is supposed to beat.
+
+So the original assumption was wrong about the mechanism. The value is in
+**partial pooling across sparse segments**, not in quantified uncertainty — and
+partial pooling does not require MCMC. Mixed-effects or empirical-Bayes
+shrinkage should be tried before 45 seconds per fit is accepted as the price;
+that test was not run here and is the clearest piece of unfinished work in this
+study.
 
 **7. "An MMM is a sensible day-one feature."** False, and dangerously so. An
 *uncalibrated* PyMC-Marketing MMM has 14.9% mean budget-allocation regret
@@ -713,6 +732,43 @@ effort model together account for the majority of the gap between lead scoring
 is the difference between EV mode and rank mode, which grows as capacity
 tightens.
 
+### 8.1 Uncertainty ablations (RQ5, RQ6) — complete for 2 of 4 regimes, n=5,000
+
+% of Oracle gain, mean over `sparse` and `propensity_not_uplift`, 4 seeds:
+
+| candidate | % of Oracle | fit (s) | 80% interval coverage | what it isolates |
+|---|---|---|---|---|
+| `bayes_hierarchical_lcb25` | 58.1 | 45.8 | 0.222 | risk aversion at 25% |
+| **`bayes_hierarchical`** | **58.0** | 45.0 | 0.222 | the full model |
+| `bayes_hierarchical_lcb10` | 57.4 | 45.8 | 0.222 | risk aversion at 10% |
+| `propensity_ev_gbm` | 48.4 | 0.9 | — | the non-Bayesian reference |
+| `propensity_ev_gbm_bootstrap` | 48.4 | 5.9 | 0.331 | bootstrap uncertainty |
+| **`abl_bayes_no_hierarchy`** | **46.4** | 20.8 | 0.103 | **pooling removed** |
+| `bayes_hierarchical_abstain50` | 45.1 | 45.8 | 0.222 | abstain on the thinnest 50% |
+| `propensity_ev_gbm_bootstrap_lcb25` | 43.7 | 5.9 | 0.331 | risk aversion, frequentist |
+| `propensity_ev_gbm_bootstrap_abstain50` | 33.8 | 5.9 | 0.331 | abstention, frequentist |
+| `propensity_ev_gbm_bootstrap_abstain25` | 17.5 | 5.9 | 0.331 | abstain on the thinnest 25% |
+| `bayes_hierarchical_abstain25` | **12.9** | 45.8 | 0.222 | abstain on the thinnest 25% |
+
+Four readings:
+
+1. **Partial pooling is the whole Bayesian advantage.** 58.0 → 46.4 when it is
+   removed, which is larger than the model's entire margin over the
+   gradient-boosted baseline. Without pooling the Bayesian model *loses* to it.
+2. **The posterior changes no decisions.** lcb10 / lcb25 move the result by
+   −0.6 / +0.1. Bootstrap intervals move `propensity_ev_gbm` by exactly 0.0.
+3. **Intervals do not cover.** 80% nominal delivers 22% (Bayesian) and 33%
+   (bootstrap) against per-lead truth. This is a harsh standard — the posterior
+   covers parameter uncertainty, not misspecification, nor the point-estimated
+   value and effort nuisances feeding the EV — but a product must not present
+   these as calibrated 80% intervals, because they are not.
+4. **Abstention is expensive as scored.** Declining the thinnest 25% costs
+   45 points (58.0 → 12.9). The mechanism is documented and deliberate:
+   declined leads take the control action and the freed capacity is **not**
+   reallocated, so this is a lower bound on abstention's value, not a
+   measurement of it (§16.7 in the methodology). It measures the cost of
+   refusing to act, not the value of deferring to a human.
+
 ---
 
 ## 9. Failure modes
@@ -830,7 +886,7 @@ Agreed in advance in [`docs/benchmark-spec.md`](../../docs/benchmark-spec.md) §
 
 | # | Criterion | Trigger | Status |
 |---|---|---|---|
-| K1 | Kill Bayesian complexity | Bayesian within 2% of best non-Bayesian at >10× compute | **likely TRIGGERED** — pending bayes suite |
+| K1 | Kill Bayesian complexity | Bayesian within 2% of best non-Bayesian at >10× compute | **NOT triggered** *(2 of 4 regimes)* — `bayes_hierarchical` 58.0 vs `propensity_ev_gbm` 48.4 at n=5,000 in sparse regimes, well outside 2%, at 51× compute. But the win is **partial pooling**, not the posterior (§2.6), and the cheap-pooling alternative was not tested |
 | K2 | Kill uplift | Causal fails to beat `propensity_ev_gbm` by >2% **on randomized data** | **TRIGGERED, twice** — synthetic `easy_randomized`: s_learner +1.3% (n.s.), x_learner −0.7%, t_learner −1.7%, dr_learner −3.5%. **Real** randomized data (§4.2): 15 of 16 comparisons show no meaningful difference and the 16th favours the propensity ranking |
 | K3 | Kill lead-level decisioning | `hist_profit_per_agent_hour` reaches ≥80% of Oracle | **NOT triggered** — it reaches 36.6% |
 | K4 | Kill MMM for SMB | MMM allocation regret >10% at SMB sizes | **NOT triggered at SMB sizes** — calibrated MMM 0.61% regret on `smb_short` (52 weeks) and 1.25% on `very_short` (30 weeks), both well under 10%. **But it fails the criterion at 260 weeks** (25.1%), which is the opposite of the expected direction and is treated as an open failure in §9 |
@@ -871,12 +927,17 @@ by the rung below it failing.
 | **1** | **`propensity_ev_logit`** — calibrated P(convert) × predicted value ÷ predicted minutes, under a capacity constraint | ~1–5k resolved leads, effort logging | lead scoring by +5.0%, analytics by +10.7% | §5 |
 | **2** | Randomised holdout (5–10%) with logged propensity, permanently | product decision, not a model | makes everything above measurable | §15 |
 | **3** | **`s_learner`** — one GBM with treatment as a feature | ~25k resolved leads **and** a measured response-heterogeneity signal | rung 1 by +2.9%, and only in the right regime | §5, §7.1 |
-| **4** | Uncertainty surfacing / abstention | posterior or bootstrap intervals | not demonstrated — see §2.6, §2.9 | — |
+| **3b** | **Partial pooling across segments** — try mixed-effects or empirical-Bayes shrinkage first, PyMC only if they fall short | many small segments (campaigns, sources, regions) with thin data each | `propensity_ev_gbm` by +9.6 points in sparse regimes | §8.1 |
+| **4** | Uncertainty surfacing / abstention | posterior or bootstrap intervals | **not demonstrated** — see §2.6, §2.9, §8.1 | — |
 | **5** | Budget allocation: ridge with adstock+saturation first, calibrated MMM only with monitoring | a running lift-test programme | equal split, 3.98% vs 6.16% regret | §4.4 |
 
-Rung 4 has no evidence behind it in this study and should not be built until it
-does. Rung 5 should not be built before a partner is running lift tests, because
-without them the MMM is worse than an equal split.
+Rung 3b is where the largest un-banked gain in this study sits, and also its
+largest open question: partial pooling was worth +11.6 points but was only
+tested via 45-second MCMC fits, and the cheap alternatives were never
+benchmarked. Rung 4 has no evidence behind it and should not be built until it
+does — the intervals measured here do not even cover (22% actual against 80%
+nominal). Rung 5 should not be built before a partner is running lift tests,
+because without them the MMM is worse than an equal split.
 
 ### 11.4 Day-one value, before any model has data
 
@@ -891,11 +952,21 @@ architecture in [`docs/product-rollout.md`](../../docs/product-rollout.md) §6.
 A model that says **"INSUFFICIENT EVIDENCE"** where support is missing is more
 valuable than one that always answers — but this study did not demonstrate that
 it *earns money*, so it is a trust feature, not a value feature, and should be
-sold as one. Concretely: never a fabricated "AI Score 87/100"; show the
-interval, show the number of comparable historical leads behind the estimate,
-and decline where logged propensity support is absent. The positivity
-diagnostics that flag 51% violations under `policy_feedback_loop` are the
-mechanism.
+sold as one. Concretely: never a fabricated "AI Score 87/100"; show the number
+of comparable historical leads behind the estimate, and decline where logged
+propensity support is absent. The positivity diagnostics that flag 51%
+violations under `policy_feedback_loop` are the mechanism for that last one,
+and they are the part of this with real evidence behind it.
+
+**One thing this study explicitly does not license: presenting the model's
+intervals as calibrated.** Measured against per-lead truth, 80% nominal
+intervals achieved **22%** coverage (Bayesian) and **33%** (bootstrap) — see
+§8.1. That standard is harsh, because the posterior covers parameter
+uncertainty and not misspecification or the point-estimated nuisances, but a
+product does not get to make that distinction on the customer's behalf. Show
+evidence counts and support diagnostics, which are honest; do not print
+"80% confidence interval" next to a number whose interval covers 22% of the
+time.
 
 ---
 
@@ -1115,12 +1186,20 @@ against 26.1% for the economics wrapper. Ranking by P(convert) under scarcity
 selects the leads who would have converted anyway.
 
 **3. Is a Bayesian approach needed at all?**
-**On this evidence, no.** Kill criterion K1 is written for exactly this and is
-expected to fire. The posterior is honest and the coverage diagnostics are
-informative, but risk-averse lower-bound policies did not beat the plain EV
-policy by the practical threshold, at 10–100× the compute of a logistic
-regression. Hierarchical pooling is the one place worth a second look (RQ6,
-sparse segments), and it is a research question, not a shipping decision.
+**The posterior, no. The hierarchy, yes — but probably not via MCMC.** These
+must be separated, and separating them reverses the expected answer. Quantified
+uncertainty changed decisions by ±0.6 points (risk-averse lower-bound policies
+58.1 / 57.4 vs the plain EV policy's 58.0) and by *exactly zero* for bootstrap
+intervals, while under-covering badly — 80% nominal intervals achieve 22%
+actual coverage against per-lead truth. But the **hierarchical** model beat
+`propensity_ev_gbm` by **+9.6 points** in sparse regimes at n=5,000, and the
+no-pooling ablation shows **+11.6 of those points are partial pooling alone**;
+strip the hierarchy out and the Bayesian model is *worse* than the baseline.
+So kill criterion K1 does not fire — but the thing that earns its keep is
+pooling across sparse segments, which mixed-effects or empirical-Bayes
+shrinkage can also provide at a fraction of 45 seconds per fit. **That cheaper
+comparison was not run, and until it is, "we need PyMC" is not established —
+only "we need pooling" is.**
 
 **4. Where is causal uplift genuinely more useful than propensity?**
 **Only where treatment response is heterogeneous.** Decomposed: heterogeneous
@@ -1264,13 +1343,26 @@ scoring, intervals nowhere near zero) and it is buildable with a logistic
 regression in a few hundred lines.
 
 Do **not** continue as proposed if the plan is a Bayesian-causal decision
-platform. That plan is falsified by its own benchmark: kill criterion K2 fired
-on randomized data, the doubly-robust learner finished 10th of 21, the causal
-forest spent 51% of the compute to land below a logistic regression, bandits
-bought nothing, and the Bayesian layer is expected to fire K1. The causal
+platform sold as a general answer. Most of that plan is falsified by its own
+benchmark: kill criterion K2 fired twice — on synthetic randomized data and
+again on the real Hillstrom experiment — the doubly-robust learner finished
+10th of 21, the causal forest spent 51% of the compute to land below a logistic
+regression, bandits bought nothing, and quantified uncertainty changed
+decisions by ±0.6 points while its 80% intervals covered 22%. The causal
 upgrade is real but conditional, worth +2.9% on average, carried entirely by
 three regimes, and it should be gated behind a measured test for response
 heterogeneity rather than shipped by default.
+
+**One piece of the ambitious plan survived and deserves a second look**:
+hierarchical partial pooling, worth +9.6 points over the gradient-boosted
+baseline in sparse regimes, of which +11.6 is the pooling itself. That is the
+one result pointing *toward* more statistical machinery rather than less. It
+is also the least finished: it was only ever tested as 45-second MCMC, and the
+cheap alternatives — mixed effects, empirical-Bayes shrinkage — were never
+benchmarked against it. Run that comparison before concluding anything about
+PyMC. If shrinkage captures most of the +11.6, the answer to this whole
+question is a logistic regression with pooled segment effects, and the platform
+was never needed.
 
 And if the partner's sales team has capacity to call everyone: **stop.** At 100%
 capacity every method in this study converges to 85–88% of Oracle, and the most
