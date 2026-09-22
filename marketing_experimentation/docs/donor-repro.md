@@ -48,7 +48,7 @@ characteristic mistake, and it is available to us too, so it is written down
 here as *not sufficient* before the harder levels are attempted.
 
 **All three now pass**, which is the result §4d reports. Worth noting what
-that cost: twelve packaging defects had to be worked through first, two of
+that cost: thirteen packaging defects had to be worked through first, two of
 them blocking. Anyone who had stopped at R0 would have reached the same
 conclusion about the donor's numbers for none of the work and none of the
 entitlement to it.
@@ -117,7 +117,7 @@ Only after G4 does an effect-size sweep begin.
 | M1 | decision-theory invariants (`0 ≤ EVSI ≤ EVPI`, free info never hurts) | **PASS** |
 | M2 | significance-gate bug isolated and relabelled | **PASS** |
 | M3 | information ladder on two-point θ | **PASS**, conclusion limited to S0→S1 |
-| M4a | pristine-clone audit (defects D1–D12 below) | **PASS** |
+| M4a | pristine-clone audit (defects D1–D13 below) | **PASS** |
 | M4b | version-matched runtime (R 4.5.1, Py 3.12.8) | **PASS** — 99/99 R packages, 83/83 Python pins, `renv::status()` clean |
 | M4c | upstream `make smoke` in the matched lane | **PASS** — exits 0, all four adapters complete |
 | M4d | host-drift smoke in the robustness lane | deferred; its library was rolled back (D8) |
@@ -551,6 +551,38 @@ estimate, and the S1/S2 results are unaffected.
 observation in §4a — that three of four tools are deterministic — verifiable
 at full precision instead of censored.
 
+### D13 — crash recovery duplicates rows when the config gains an option
+
+`run_tools.py` scans an existing `results.jsonl` and skips work already
+done — sensible for a study whose full run takes hours. The CausalPy branch
+decides at tool granularity:
+
+```python
+run_tools.py:224   cp_keys = [(scenario, effect_label, iteration, f"causalpy_{pt}")
+                              for pt in cp_config["posteriors"]]
+run_tools.py:232   need_cp = any(k not in completed for k in cp_keys)
+```
+
+If **any** posterior type is missing it re-runs CausalPy, and the adapter
+writes **all** configured types. So enabling a second posterior type on an
+existing results file appends a fresh copy of the one already present. The
+file ends with doubled rows, no warning, and a schema that still validates.
+
+Observed exactly: 640 rows from the previous run, plus 320 appended
+(`y_hat` + `mu` for 160 cells) = 960, with `y_hat` at twice the expected
+count while the other three tools were skipped entirely.
+
+**Attribution, honestly.** The trigger was ours — the F8 script omitted
+`make clean`, which `make smoke` would have run. But `make all` has the same
+shape, and the failure mode is silent duplication rather than an error, which
+is what makes it worth a number. Low severity, narrow trigger, and a
+disproportionate consequence: any downstream join on the run identity pairs
+arbitrary rows. It did, in our own probe — recorded as **F12**.
+
+**Fix upstream:** make the recovery key `(tool, posterior_type)` for the
+write as well as the read, or refuse to append to a file whose configured
+posteriors differ from those already in it.
+
 ### Audit summary
 
 | | issue | severity | our workaround | upstream would need to change? |
@@ -567,12 +599,13 @@ at full precision instead of censored.
 | D10 | `make panels` aborts on a `png()` failure after writing every panel correctly | low — but total where it fires | `options(bitmapType="cairo")` in our R build; cause was ours, not the donor's | yes — `tryCatch`, or move the figure to the `figures` target |
 | D11 | `RSCRIPT` governs only `make panels`; two adapters hardcode `"Rscript"` | low with one R, **total with two** | set `PATH` for the whole run and print the resolved interpreter | yes — thread the interpreter through, or read it from config |
 | D12 | two of four tools publish at 4 dp because `jsonlite::toJSON` defaults to `digits = 4` | low for the donor's own claims, **blocking for anyone measuring determinism** | censor the tolerance at 5e-5 and say so | yes — one argument, `digits = NA` |
+| D13 | crash recovery re-runs CausalPy and appends **all** posterior types, duplicating existing rows | low, narrow trigger, **silent** | `make clean` before a config change; refuse duplicated join keys | yes — key the recovery on `(tool, posterior_type)` |
 
-Ten of the twelve are one-line or one-file fixes. That is the characteristic
+Eleven of the thirteen are one-line or one-file fixes. That is the characteristic
 shape of reproducibility failure in this field: not deep methodological
 error, but a handful of unguarded lines that make a correct study hard to
 re-run. Worth stating plainly — **the donor's statistics have survived every
-one of these intact. All twelve are about packaging**, and one of them,
+one of these intact. All thirteen are about packaging**, and one of them,
 D10, turned out on inspection to be ours rather than the donor's.
 
 The two that are not one-line are the two that matter most, and they are the

@@ -178,6 +178,62 @@ specific test attached — M5b runs both posterior types — rather than as a
 mechanism. The A4 result (3.2% on the short panel, 30 pre-period days) is
 coherent with the story and is explicitly not counted as evidence for it.
 
+### F8.1 — the third mechanism is refuted too
+
+The test ran. `config/tools.yaml` lists `posteriors: [y_hat]`; adding `mu`
+enables a code path the donor already ships. Both were run on identical
+panels, 20 iterations, and the determinism identity applied to each:
+
+| | A1 | A4 |
+|---|---|---|
+| `causalpy[mu]` — parameter uncertainty only | **1.1372%** | **3.1046%** |
+| `causalpy[y_hat]` — posterior predictive | 1.1241% | 3.1384% |
+
+**They are the same.** Removing the posterior predictive's simulated
+observation noise does not remove the Monte Carlo noise in the point
+estimate. The third candidate joins the first two.
+
+So the honest position after three attempts: **CausalPy's published point
+estimate carries ~1.3% noise and we do not know why.** What has been ruled
+out is the seed, standardisation drift, and the posterior type. What remains
+is that NUTS's trajectory depends on the data and not only on the seed, so
+two panels differing in the post-period can produce different draws under an
+identical seed — but that is a fourth hypothesis, not a conclusion, and it is
+labelled as such rather than offered as the answer.
+
+Three refutations in a row is the useful outcome here. The temptation each
+time was to stop at a plausible story; each story was checkable, and each one
+was wrong.
+
+## F12. A probe that computed on misaligned rows instead of refusing
+
+**What was wrong.** `determinism_probe.py` joined the two arms on a run
+identity without checking that the identity was unique. The F8 run produced
+doubled `y_hat` rows, and the probe reported `n=40` where 20 was correct —
+silently pairing rows positionally against rows that were not their
+counterparts.
+
+**Why the duplicates existed** is a separate finding, **D13**: my F8 script
+omitted `make clean`, and the donor's crash recovery (`run_tools.py:232`)
+re-runs CausalPy whenever *any* of its posterior keys is missing, appending
+**both** types and duplicating the one that was already there.
+
+**What it would have changed.** As it happens, nothing: the clean `mu`
+measurement (n=20, no duplicates) gives 1.1372% and agrees with both the
+duplicated `y_hat` figure and the published 1.2975%, so the F8.1 conclusion
+stands on rows that were never misaligned. But that is luck for the second
+time today, and the same luck as F11.
+
+**How it is prevented now.** The probe refuses on a duplicated identity and
+names the likely cause. `replay_check.py` already did this — the guard
+existed, in the other file, and was not carried across. Verified in both
+directions: the published data still produces identical numbers, and an
+injected duplicate is rejected.
+
+**The rule, which is F11's rule again:** a property the analysis depends on
+is asserted by the analysis, every run. Uniqueness of a join key is such a
+property.
+
 ## F9. An M5a design that assumed artefacts the donor never shipped
 
 **What was wrong.** The plan for R1 was to hash each regenerated panel and

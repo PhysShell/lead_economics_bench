@@ -72,8 +72,27 @@ def residuals(d: pd.DataFrame, scenario: str) -> pd.DataFrame:
         d = d.assign(posterior_type="")
     d = d[d.scenario == scenario]
 
-    eff = d[d.effect_label == "effect"].set_index(keys)
-    nul = d[d.effect_label == "null"].set_index(keys)
+    # Non-null arm by effect size, not by the literal label "effect": that is
+    # the name of one particular theta (D7, and our own version of it).
+    eff = d[d.effect_pct.astype(float) != 0.0].set_index(keys)
+    nul = d[d.effect_pct.astype(float) == 0.0].set_index(keys)
+
+    # A duplicated run identity would make `.loc[common]` align rows
+    # positionally against rows that are not their counterparts, and the
+    # function would return a number rather than an error. It happened: a run
+    # that added a posterior type to the config without `make clean` first
+    # left doubled y_hat rows, and this probe reported n=40 where n should
+    # have been 20. `replay_check.py` already refuses on this; so does this.
+    for name, frame in (("effect-arm", eff), ("null-arm", nul)):
+        if frame.index.duplicated().any():
+            dup = frame.index[frame.index.duplicated()][:3].tolist()
+            raise SystemExit(
+                f"duplicate run identities in the {name} "
+                f"({int(frame.index.duplicated().sum())} rows, e.g. {dup}).\n"
+                f"The identity is not unique, so any comparison on it would "
+                f"pair arbitrary rows.\nMost likely cause: results.jsonl was "
+                f"appended to rather than regenerated -- see D13.")
+
     common = eff.index.intersection(nul.index)
     eff, nul = eff.loc[common], nul.loc[common]
 
