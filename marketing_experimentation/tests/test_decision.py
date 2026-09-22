@@ -142,3 +142,111 @@ def test_prior_must_be_normalised():
     with pytest.raises(ValueError):
         DecisionProblem(np.array([0.0, 1.0]), np.array([0.5, 0.9]),
                         np.zeros((2, 2)), ("a", "b"))
+
+
+# ---------------------------------------------------------------------------
+# The five-action budget problem. Two actions can only answer "which side of
+# a threshold"; a real team asks "how much", and that changes what an
+# experiment is worth.
+# ---------------------------------------------------------------------------
+
+from leadbench_mx.decision import (  # noqa: E402
+    DEFAULT_ACTIONS, DEFAULT_MULTIPLIERS, budget_problem, spike_slab_prior,
+    theta_grid,
+)
+
+
+def _default_problem():
+    th = theta_grid()
+    return th, budget_problem(th, spike_slab_prior(th))
+
+
+def test_optimal_action_is_monotone_in_the_truth():
+    """Bigger true lift must never call for less spend. A payoff that failed
+    this would be modelling something other than a budget."""
+    th, p = _default_problem()
+    opt = p.utility.argmax(axis=0)
+    assert np.all(np.diff(opt) >= 0), f"not monotone: {opt}"
+
+
+def test_every_action_is_optimal_somewhere():
+    """An action that is never right for any truth is not part of the
+    decision, and would silently inflate the action count without changing
+    the problem."""
+    _, p = _default_problem()
+    assert set(p.utility.argmax(axis=0)) == set(range(len(DEFAULT_ACTIONS)))
+
+
+def test_hold_is_the_prior_optimal_action():
+    """With a spike-and-slab prior centred near breakeven, doing nothing is
+    the right default. If it were not, the problem would be begging the
+    question the experiment is meant to answer."""
+    _, p = _default_problem()
+    assert p.best_action_no_experiment() == "hold"
+
+
+def test_adjustment_cost_is_what_makes_the_action_set_matter():
+    """Without a quadratic adjustment cost the optimum is always the most
+    extreme action available, and every intermediate option is dead weight."""
+    th = theta_grid()
+    pr = spike_slab_prior(th)
+    flat = budget_problem(th, pr, adjust_cost=0.0)
+    opt = set(flat.utility.argmax(axis=0))
+    assert opt <= {0, len(DEFAULT_MULTIPLIERS) - 1}, (
+        f"with no adjustment cost only the extremes should ever win, got {opt}")
+
+
+def test_richer_nested_action_set_raises_evpi():
+    """Adding options to an existing set can only make knowing theta more
+    valuable, because the no-information baseline is unchanged."""
+    th = theta_grid()
+    pr = spike_slab_prior(th)
+    nested = [
+        (("hold", "increase"), (1.0, 1.25)),
+        (("hold", "increase", "increase hard"), (1.0, 1.25, 1.6)),
+        (("cut", "hold", "increase", "increase hard"), (0.8, 1.0, 1.25, 1.6)),
+        (DEFAULT_ACTIONS, DEFAULT_MULTIPLIERS),
+    ]
+    evpis = [budget_problem(th, pr, multipliers=m, action_names=n).evpi()
+             for n, m in nested]
+    assert all(b >= a - 1e-9 for a, b in zip(evpis, evpis[1:])), evpis
+    assert evpis[-1] > evpis[0], "the full set should be strictly better"
+
+
+def test_non_nested_action_set_can_lower_evpi():
+    """The guard on the test above. 'Richer action set raises VOI' is true
+    for sets you ADD to, and false for sets you REPLACE. Dropping the hedge
+    wrecks the no-information baseline and inflates EVPI, which looks like
+    information becoming more valuable and is not.
+    """
+    th = theta_grid()
+    pr = spike_slab_prior(th)
+    extremes = budget_problem(th, pr, multipliers=(0.5, 1.6),
+                              action_names=("cut hard", "increase hard"))
+    full = budget_problem(th, pr)
+    assert extremes.evpi() > full.evpi()
+    assert extremes.value_no_experiment() < full.value_no_experiment()
+
+
+def test_cutting_is_worth_more_information_than_raising():
+    """The largest EVPI gain comes from being able to cut, not to raise --
+    because a quarter of the prior mass sits below zero. This is the
+    decision-theoretic reason the theta = -5% sign mutation (M6b) matters."""
+    th = theta_grid()
+    pr = spike_slab_prior(th)
+    base = budget_problem(th, pr, multipliers=(1.0, 1.25),
+                          action_names=("hold", "increase"))
+    add_up = budget_problem(th, pr, multipliers=(1.0, 1.25, 1.6),
+                            action_names=("hold", "increase", "increase hard"))
+    add_down = budget_problem(th, pr, multipliers=(0.8, 1.0, 1.25),
+                              action_names=("cut", "hold", "increase"))
+    assert add_down.evpi() - base.evpi() > add_up.evpi() - base.evpi()
+
+
+def test_prior_has_real_mass_on_a_channel_that_destroys_money():
+    """A prior with no negative mass cannot represent the question a business
+    most needs answered, and would make the sign mutation untestable."""
+    th = theta_grid()
+    pr = spike_slab_prior(th)
+    assert pr[th < 0].sum() > 0.15
+    assert np.isclose(pr.sum(), 1.0)

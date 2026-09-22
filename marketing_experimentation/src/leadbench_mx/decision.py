@@ -220,3 +220,98 @@ def two_point_problem(
         [-c_fp, 0.0],   # scale: costly if dud, fine if winner
     ])
     return DecisionProblem(theta, prior, utility, ("hold", "scale"))
+
+
+# ---------------------------------------------------------------------------
+# A budget decision with more than two answers.
+#
+# `two_point_problem` asks "act or don't". A marketing team does not face that
+# question; it faces "how much". With two actions an experiment only has to
+# say which side of a threshold theta falls on, so most of its precision is
+# wasted. With five, the answer has to be located, and information is worth
+# more. That is a prediction this module makes and `scripts/` measures.
+# ---------------------------------------------------------------------------
+
+#: Spend multipliers for the default action set. Deliberately asymmetric:
+#: cutting is cheap and reversible, raising hard commits inventory and
+#: headcount, and real teams do not treat those as mirror images.
+DEFAULT_MULTIPLIERS: tuple[float, ...] = (0.5, 0.8, 1.0, 1.25, 1.6)
+DEFAULT_ACTIONS: tuple[str, ...] = (
+    "cut hard", "cut", "hold", "increase", "increase hard",
+)
+
+
+def budget_problem(
+    theta: np.ndarray,
+    prior: np.ndarray,
+    spend: float = 1_000_000.0,
+    breakeven: float = 0.03,
+    adjust_cost: float = 0.35,
+    profit_per_lift: float = 4.0,
+    multipliers: tuple[float, ...] = DEFAULT_MULTIPLIERS,
+    action_names: tuple[str, ...] = DEFAULT_ACTIONS,
+) -> DecisionProblem:
+    """A five-action budget decision over a grid of true lifts.
+
+    The payoff for moving spend by a fraction ``d = m - 1`` when the true
+    lift is ``theta``::
+
+        U(m, theta) = spend * d * profit_per_lift * (theta - breakeven)
+                      - spend * adjust_cost * d**2
+
+    The first term is the obvious one: spending more into a channel whose
+    true lift clears breakeven earns money, and spending more into one that
+    does not loses it, in proportion to how far off breakeven it is. The
+    second is the part that makes the problem interesting -- a **quadratic
+    adjustment cost**, so the optimal move is finite rather than "all in"
+    whenever theta > breakeven. Without it the optimum is always the most
+    extreme available action and the action set adds nothing.
+
+    That makes the optimal action a monotone, non-degenerate function of
+    theta, which is exactly what a two-point / two-action problem cannot
+    represent: there, knowing *whether* theta clears a threshold is
+    sufficient, so a significance bit is nearly a sufficient statistic. Here
+    it is not, and the gap between S0 and S1 should widen.
+
+    ``breakeven`` is where the economics live. A channel is not worth more
+    money because its lift is "significant"; it is worth more money because
+    its lift exceeds what the spend costs. Those are different questions and
+    the whole track is about the distance between them.
+    """
+    theta = np.asarray(theta, dtype=float)
+    prior = np.asarray(prior, dtype=float)
+    if len(multipliers) != len(action_names):
+        raise ValueError(
+            f"{len(multipliers)} multipliers but {len(action_names)} names")
+
+    d = np.asarray(multipliers, dtype=float) - 1.0
+    gain = spend * profit_per_lift * np.outer(d, theta - breakeven)
+    cost = (spend * adjust_cost * d**2)[:, None]
+    return DecisionProblem(theta, prior, gain - cost, tuple(action_names))
+
+
+def theta_grid(lo: float = -0.15, hi: float = 0.25, n: int = 81) -> np.ndarray:
+    """A grid of true lifts, from a channel that destroys money to one that
+    works very well. The negative half is not decoration: the question a
+    business most needs answered is often whether to stop."""
+    return np.linspace(lo, hi, n)
+
+
+def spike_slab_prior(
+    theta: np.ndarray, p_null: float = 0.45, mu: float = 0.04,
+    sigma: float = 0.06, null_width: float = 0.005,
+) -> np.ndarray:
+    """Most channels do roughly nothing; the rest are spread around a modest
+    positive lift with a real negative tail.
+
+    A point mass at exactly zero cannot be represented on a grid, so the
+    "spike" is a narrow normal of width ``null_width``. ``p_null`` is the
+    share of prior mass on it.
+    """
+    theta = np.asarray(theta, dtype=float)
+    spike = np.exp(-0.5 * (theta / null_width) ** 2)
+    slab = np.exp(-0.5 * ((theta - mu) / sigma) ** 2)
+    spike = spike / spike.sum()
+    slab = slab / slab.sum()
+    p = p_null * spike + (1.0 - p_null) * slab
+    return p / p.sum()
