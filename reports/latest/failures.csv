@@ -1,0 +1,6 @@
+candidate,scenario,regime,status,count
+causal_forest,lead_noisy_crm,noisy_crm,error: ValueError: Input contains NaN.,8
+dr_learner,lead_noisy_crm,noisy_crm,error: ValueError: Input contains NaN.,8
+s_learner,lead_noisy_crm,noisy_crm,error: ValueError: Input X contains NaN.,8
+t_learner,lead_noisy_crm,noisy_crm,error: ValueError: Input X contains NaN.,8
+x_learner,lead_noisy_crm,noisy_crm,error: ValueError: Input X contains NaN.,8

@@ -28,8 +28,11 @@ if pgrep -f "$RUNNING" > /dev/null; then
 fi
 
 echo "==> incumbent policy replay"
-$PY scripts/add_incumbent_baseline.py --runs reports/runs/lead || true
-$PY scripts/add_incumbent_baseline.py --runs reports/runs/rq4 || true
+# --n-leads must match what the suite was invoked with: the `n_leads` column
+# in results.csv holds the test-fold size, so deriving the size from it would
+# replay the incumbent on a dataset a quarter of the size everyone else saw.
+$PY scripts/add_incumbent_baseline.py --runs reports/runs/lead --n-leads 30000 --replace || true
+$PY scripts/add_incumbent_baseline.py --runs reports/runs/rq4 --n-leads 30000 --replace || true
 
 echo "==> report artefacts"
 $PY scripts/build_report.py --runs reports/runs --out reports/latest

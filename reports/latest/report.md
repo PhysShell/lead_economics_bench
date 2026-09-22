@@ -894,27 +894,65 @@ they need.
 ## 8. Ablations
 
 <!-- ABLATIONS_START -->
-*(ablation suite in flight; this section is completed from
-`reports/runs/ablation/results.csv` on completion. The design is fixed and
-preregistered: each ablation removes exactly one component and holds everything
-else identical.)*
+Each ablation removes exactly one component and holds everything else
+identical: the same seeds, the same data, the same capacity, the same shared
+optimiser. 5 regimes × 6 seeds × 30,000 leads.
 
-| Ablation | Removes | What it isolates |
-|---|---|---|
-| `abl_*_no_value_model` | predicted deal value → global mean | the contribution of value modelling |
-| `abl_*_no_effort_model` | predicted handle time → global mean | the contribution of effort modelling (RQ4) |
-| `abl_*_no_optimizer` | EV-mode allocation → rank mode | the contribution of the constrained optimiser (RQ4) |
-| `abl_bayes_no_hierarchy` | hierarchical pooling → pooled model | the contribution of partial pooling (RQ6) |
-| `*_lcb10` / `*_lcb25` | EV policy → risk-averse lower bound | whether uncertainty changes decisions (RQ5) |
-| `*_abstain` | always decide → decline on thin evidence | the price of abstention (§12) |
+% of the Oracle's achievable gain:
+
+| candidate | agent_time_het | capacity_value_het | propensity_not_uplift | sparse | value_het | **MEAN** |
+|---|---|---|---|---|---|---|
+| `t_learner` | 53.9 | 63.7 | 49.8 | 53.6 | 50.9 | **54.4** |
+| `abl_t_learner_no_value_model` | 51.9 | **68.9** | 48.5 | 50.4 | 48.7 | 53.7 |
+| `propensity_ev_gbm` | 58.2 | 50.8 | 37.2 | 60.0 | 52.5 | **51.7** |
+| `abl_t_learner_no_effort_model` | 49.7 | 51.9 | 49.1 | 53.2 | 50.5 | 50.9 |
+| `abl_t_learner_no_optimizer` | 48.6 | 52.8 | 49.1 | 53.0 | 50.5 | 50.8 |
+| `abl_propensity_ev_no_value_model` | 50.3 | **61.7** | 31.7 | 56.0 | 49.3 | 49.8 |
+| `abl_propensity_ev_no_effort_model` | 45.0 | 36.4 | 36.9 | 60.5 | 52.7 | 46.3 |
+| `abl_propensity_ev_no_optimizer` | 43.8 | 36.2 | 36.8 | 60.6 | 52.8 | 46.1 |
+| `hist_profit_per_agent_hour` | 38.8 | 30.2 | 37.6 | 43.4 | 35.4 | 37.1 |
+
+Paired against the un-ablated model, on the primary metric:
+
+| what was removed | Δ % net value | 95% CI | verdict |
+|---|---|---|---|
+| **the constrained optimiser** (EV mode → rank mode) | **−2.8%** | [−4.5, −1.3] | **LOSS** |
+| **the effort model** (predicted minutes → global mean) | **−2.7%** | [−4.3, −1.2] | **LOSS** |
+| the value model (predicted margin → global mean) | −0.1% | [−1.8, +1.9] | no meaningful difference |
+| optimiser, from `t_learner` | −1.9% | [−3.1, −0.9] | below threshold |
+| effort model, from `t_learner` | −1.9% | [−3.3, −0.9] | below threshold |
+| value model, from `t_learner` | −0.0% | [−1.0, +1.1] | no meaningful difference |
+
+**This is the answer to RQ4, and it is not the one the project assumed.**
+
+1. **Capacity-awareness is the component that pays.** Removing the constrained
+   optimiser costs 2.8% of net value with the interval clear of zero. Removing
+   the effort model costs 2.7%. Those two are nearly the same intervention:
+   strip the effort model and EV mode has nothing meaningful to divide by, so
+   it degenerates into the rank mode the optimiser ablation imposes directly.
+   The evidence that *scarce time* is the thing being modelled is that these
+   two ablations land within 0.1% of each other.
+2. **The value model earns nothing measurable** — −0.1% [−1.8, +1.9]. This is
+   the component the original product framing leaned on hardest ("we know what
+   each deal is worth"), and on this benchmark it is the least valuable of the
+   three. It matters in the regimes where it should (`propensity_not_uplift`:
+   37.2 → 31.7 without it) and is neutral or harmful elsewhere.
+3. **A genuine surprise, reported rather than smoothed over.** On
+   `capacity_value_heterogeneity` removing the value model **improves** both
+   models — `t_learner` 63.7 → **68.9**, `propensity_ev_gbm` 50.8 → **61.7**.
+   A predicted-value multiplier amplifies whatever error is in the response
+   estimate, and it amplifies it most on exactly the high-value leads that
+   dominate the objective; a global mean is worse-specified and more robust.
+   We did not predict this, it is the largest single ablation effect in the
+   table, and it argues for shrinking the value model toward its mean rather
+   than trusting it per-lead. It was not investigated further and should be.
 <!-- ABLATIONS_END -->
 
-What is already established from the decomposition in §7.4 and the capacity
-curve in §7.3, independent of the ablation suite: the value model and the
-effort model together account for the majority of the gap between lead scoring
-(50–52%) and the economics wrapper (57–58%), and the optimiser's contribution
-is the difference between EV mode and rank mode, which grows as capacity
-tightens.
+This lines up with the capacity curve in §7.3 from the other direction. There,
+the entire advantage of any model collapses as capacity stops binding; here,
+the components that encode the capacity constraint — the optimiser and the
+effort model — are the two that carry measurable value. The product is a
+time-allocation engine, not a deal-value predictor.
 
 ### 8.1 Uncertainty ablations (RQ5, RQ6) — 4 regimes × 4 seeds, n=5,000
 

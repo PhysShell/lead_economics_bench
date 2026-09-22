@@ -1,0 +1,892 @@
+{
+  "lead": {
+    "experiment_id": "lead-20260922T154324Z",
+    "description": "Main lead-track sweep: every candidate family across all regimes at a 25% agent-capacity constraint.",
+    "primary_metric": "net_value_per_1k_leads",
+    "secondary_metrics": [
+      "incremental_net_value_per_1k",
+      "net_value_per_agent_hour",
+      "pct_of_oracle_incremental",
+      "regret_per_1k",
+      "pred_ece",
+      "pred_log_loss",
+      "uplift_qini_auc",
+      "causal_pehe",
+      "coverage_80",
+      "fit_seconds"
+    ],
+    "decision_rule": "A candidate is declared better than a reference only if the paired difference in the primary metric has a 95% interval excluding zero AND the point estimate exceeds the preregistered practical threshold.",
+    "kill_criteria": {
+      "min_practical_uplift_pct": 2.0,
+      "bayes_min_uplift_pct": 2.0,
+      "max_compute_multiple": 10.0,
+      "causal_min_uplift_pct": 2.0,
+      "analytics_sufficient_pct_of_oracle": 80.0,
+      "mmm_max_acceptable_regret_pct": 10.0
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "risk_policies": [
+      "ev",
+      "ev_lcb10",
+      "ev_lcb25"
+    ],
+    "abstention_coverages": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "scenarios": [
+      "lead_easy_randomized",
+      "lead_propensity_not_uplift",
+      "lead_sparse",
+      "lead_rare_outcome",
+      "lead_very_rare_outcome",
+      "lead_strong_heterogeneity",
+      "lead_agent_time_heterogeneity",
+      "lead_value_heterogeneity",
+      "lead_capacity_value_heterogeneity",
+      "lead_observed_confounding",
+      "lead_hidden_confounding",
+      "lead_selection_bias",
+      "lead_policy_feedback_loop",
+      "lead_noisy_crm",
+      "lead_misleading_attribution",
+      "lead_concept_drift",
+      "lead_delayed_censored",
+      "lead_seasonality_trend",
+      "lead_negative_control_null_effect"
+    ],
+    "dataset_hashes": {},
+    "economics": {
+      "agent_cost_per_hour": 38.0,
+      "sms_direct_cost": 0.03,
+      "call_direct_cost": 0.06,
+      "sms_minutes": 0.25,
+      "default_net_contribution": 1000.0
+    },
+    "constraints": {
+      "capacity_ratio_default": 0.25
+    },
+    "hyperparameter_budget": "Every gradient-boosted learner in every family uses the identical configuration (n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5). No per-family tuning, no test-set selection. Bayesian candidates get a fixed sampler budget recorded in the results.",
+    "git_commit": "fe33f619b182293ab01391253b1cd2f2ef449dde",
+    "git_dirty": true,
+    "libraries": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "pandas": "3.0.6",
+      "scipy": "1.17.1",
+      "sklearn": "1.9.1",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "econml": "0.17.0",
+      "sklift": "0.5.1",
+      "pymc": "5.28.5",
+      "pytensor": "2.38.3",
+      "arviz": "0.23.4",
+      "pymc_marketing": "0.19.2",
+      "statsmodels": "0.15.0",
+      "pulp": "3.3.2"
+    },
+    "hardware": {
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "mem_total_kb": 16481980
+    },
+    "created_utc": "2026-09-22T15:43:26.497878+00:00",
+    "supersedes": null,
+    "supersede_reason": null,
+    "frozen_hash": "2d6fcb4e86f2c2dd"
+  },
+  "curves": {
+    "experiment_id": "curves-20260922T154704Z",
+    "description": "Data-size, capacity and rare-outcome curves",
+    "primary_metric": "net_value_per_1k_leads",
+    "secondary_metrics": [
+      "incremental_net_value_per_1k",
+      "net_value_per_agent_hour",
+      "pct_of_oracle_incremental",
+      "regret_per_1k",
+      "pred_ece",
+      "pred_log_loss",
+      "uplift_qini_auc",
+      "causal_pehe",
+      "coverage_80",
+      "fit_seconds"
+    ],
+    "decision_rule": "A candidate is declared better than a reference only if the paired difference in the primary metric has a 95% interval excluding zero AND the point estimate exceeds the preregistered practical threshold.",
+    "kill_criteria": {
+      "min_practical_uplift_pct": 2.0,
+      "bayes_min_uplift_pct": 2.0,
+      "max_compute_multiple": 10.0,
+      "causal_min_uplift_pct": 2.0,
+      "analytics_sufficient_pct_of_oracle": 80.0,
+      "mmm_max_acceptable_regret_pct": 10.0
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "risk_policies": [
+      "ev",
+      "ev_lcb10",
+      "ev_lcb25"
+    ],
+    "abstention_coverages": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "scenarios": [
+      "size_propensity_not_uplift_n2000",
+      "size_propensity_not_uplift_n5000",
+      "size_propensity_not_uplift_n10000",
+      "size_propensity_not_uplift_n25000",
+      "size_propensity_not_uplift_n50000",
+      "size_propensity_not_uplift_n100000",
+      "size_capacity_value_heterogeneity_n2000",
+      "size_capacity_value_heterogeneity_n5000",
+      "size_capacity_value_heterogeneity_n10000",
+      "size_capacity_value_heterogeneity_n25000",
+      "size_capacity_value_heterogeneity_n50000",
+      "size_capacity_value_heterogeneity_n100000",
+      "size_sparse_n2000",
+      "size_sparse_n5000",
+      "size_sparse_n10000",
+      "size_sparse_n25000",
+      "size_sparse_n50000",
+      "size_sparse_n100000",
+      "capacity_capacity_value_heterogeneity_c0.05",
+      "capacity_capacity_value_heterogeneity_c0.1",
+      "capacity_capacity_value_heterogeneity_c0.25",
+      "capacity_capacity_value_heterogeneity_c0.5",
+      "capacity_capacity_value_heterogeneity_c1.0",
+      "capacity_propensity_not_uplift_c0.05",
+      "capacity_propensity_not_uplift_c0.1",
+      "capacity_propensity_not_uplift_c0.25",
+      "capacity_propensity_not_uplift_c0.5",
+      "capacity_propensity_not_uplift_c1.0"
+    ],
+    "dataset_hashes": {},
+    "economics": {
+      "agent_cost_per_hour": 38.0,
+      "sms_direct_cost": 0.03,
+      "call_direct_cost": 0.06,
+      "sms_minutes": 0.25,
+      "default_net_contribution": 1000.0
+    },
+    "constraints": {
+      "capacity_ratio_default": 0.25
+    },
+    "hyperparameter_budget": "Every gradient-boosted learner in every family uses the identical configuration (n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5). No per-family tuning, no test-set selection. Bayesian candidates get a fixed sampler budget recorded in the results.",
+    "git_commit": "baf77ce7c911e6628744d75642d08259373f4624",
+    "git_dirty": true,
+    "libraries": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "pandas": "3.0.6",
+      "scipy": "1.17.1",
+      "sklearn": "1.9.1",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "econml": "0.17.0",
+      "sklift": "0.5.1",
+      "pymc": "5.28.5",
+      "pytensor": "2.38.3",
+      "arviz": "0.23.4",
+      "pymc_marketing": "0.19.2",
+      "statsmodels": "0.15.0",
+      "pulp": "3.3.2"
+    },
+    "hardware": {
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "mem_total_kb": 16481980
+    },
+    "created_utc": "2026-09-22T15:47:07.101832+00:00",
+    "supersedes": null,
+    "supersede_reason": null,
+    "frozen_hash": "4c233052b389fa75"
+  },
+  "ablation": {
+    "experiment_id": "ablation-20260922T180312Z",
+    "description": "Where does the advantage come from? (section 37)",
+    "primary_metric": "net_value_per_1k_leads",
+    "secondary_metrics": [
+      "incremental_net_value_per_1k",
+      "net_value_per_agent_hour",
+      "pct_of_oracle_incremental",
+      "regret_per_1k",
+      "pred_ece",
+      "pred_log_loss",
+      "uplift_qini_auc",
+      "causal_pehe",
+      "coverage_80",
+      "fit_seconds"
+    ],
+    "decision_rule": "A candidate is declared better than a reference only if the paired difference in the primary metric has a 95% interval excluding zero AND the point estimate exceeds the preregistered practical threshold.",
+    "kill_criteria": {
+      "min_practical_uplift_pct": 2.0,
+      "bayes_min_uplift_pct": 2.0,
+      "max_compute_multiple": 10.0,
+      "causal_min_uplift_pct": 2.0,
+      "analytics_sufficient_pct_of_oracle": 80.0,
+      "mmm_max_acceptable_regret_pct": 10.0
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "risk_policies": [
+      "ev",
+      "ev_lcb10",
+      "ev_lcb25"
+    ],
+    "abstention_coverages": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "scenarios": [
+      "abl_propensity_not_uplift",
+      "abl_capacity_value_heterogeneity",
+      "abl_sparse",
+      "abl_agent_time_heterogeneity",
+      "abl_value_heterogeneity"
+    ],
+    "dataset_hashes": {},
+    "economics": {
+      "agent_cost_per_hour": 38.0,
+      "sms_direct_cost": 0.03,
+      "call_direct_cost": 0.06,
+      "sms_minutes": 0.25,
+      "default_net_contribution": 1000.0
+    },
+    "constraints": {
+      "capacity_ratio_default": 0.25
+    },
+    "hyperparameter_budget": "Every gradient-boosted learner in every family uses the identical configuration (n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5). No per-family tuning, no test-set selection. Bayesian candidates get a fixed sampler budget recorded in the results.",
+    "git_commit": "cdbd5e3ced8c1355d3a61283c801dd183be3ba0d",
+    "git_dirty": false,
+    "libraries": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "pandas": "3.0.6",
+      "scipy": "1.17.1",
+      "sklearn": "1.9.1",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "econml": "0.17.0",
+      "sklift": "0.5.1",
+      "pymc": "5.28.5",
+      "pytensor": "2.38.3",
+      "arviz": "0.23.4",
+      "pymc_marketing": "0.19.2",
+      "statsmodels": "0.15.0",
+      "pulp": "3.3.2"
+    },
+    "hardware": {
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "mem_total_kb": 16481980
+    },
+    "created_utc": "2026-09-22T18:03:14.349259+00:00",
+    "supersedes": null,
+    "supersede_reason": null,
+    "frozen_hash": "a7b2153d8bc9315e"
+  },
+  "bayes": {
+    "experiment_id": "bayes-20260922T170154Z",
+    "description": "Bayesian / uncertainty candidates (RQ5, RQ6)",
+    "primary_metric": "net_value_per_1k_leads",
+    "secondary_metrics": [
+      "incremental_net_value_per_1k",
+      "net_value_per_agent_hour",
+      "pct_of_oracle_incremental",
+      "regret_per_1k",
+      "pred_ece",
+      "pred_log_loss",
+      "uplift_qini_auc",
+      "causal_pehe",
+      "coverage_80",
+      "fit_seconds"
+    ],
+    "decision_rule": "A candidate is declared better than a reference only if the paired difference in the primary metric has a 95% interval excluding zero AND the point estimate exceeds the preregistered practical threshold.",
+    "kill_criteria": {
+      "min_practical_uplift_pct": 2.0,
+      "bayes_min_uplift_pct": 2.0,
+      "max_compute_multiple": 10.0,
+      "causal_min_uplift_pct": 2.0,
+      "analytics_sufficient_pct_of_oracle": 80.0,
+      "mmm_max_acceptable_regret_pct": 10.0
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "risk_policies": [
+      "ev",
+      "ev_lcb10",
+      "ev_lcb25"
+    ],
+    "abstention_coverages": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "scenarios": [
+      "bayes_sparse_n5000",
+      "bayes_propensity_not_uplift_n5000",
+      "bayes_very_rare_outcome_n5000",
+      "bayes_hidden_confounding_n5000"
+    ],
+    "dataset_hashes": {},
+    "economics": {
+      "agent_cost_per_hour": 38.0,
+      "sms_direct_cost": 0.03,
+      "call_direct_cost": 0.06,
+      "sms_minutes": 0.25,
+      "default_net_contribution": 1000.0
+    },
+    "constraints": {
+      "capacity_ratio_default": 0.25
+    },
+    "hyperparameter_budget": "Every gradient-boosted learner in every family uses the identical configuration (n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5). No per-family tuning, no test-set selection. Bayesian candidates get a fixed sampler budget recorded in the results.",
+    "git_commit": "8127eb58d210ad0a91cd37b8c94997aaed7cf04c",
+    "git_dirty": true,
+    "libraries": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "pandas": "3.0.6",
+      "scipy": "1.17.1",
+      "sklearn": "1.9.1",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "econml": "0.17.0",
+      "sklift": "0.5.1",
+      "pymc": "5.28.5",
+      "pytensor": "2.38.3",
+      "arviz": "0.23.4",
+      "pymc_marketing": "0.19.2",
+      "statsmodels": "0.15.0",
+      "pulp": "3.3.2"
+    },
+    "hardware": {
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "mem_total_kb": 16481980
+    },
+    "created_utc": "2026-09-22T17:01:57.131423+00:00",
+    "supersedes": null,
+    "supersede_reason": null,
+    "frozen_hash": "02e637b8c63bd1e2"
+  },
+  "online": {
+    "experiment_id": "online-20260922T164944Z",
+    "description": "Bandits vs frozen vs retrained offline models (RQ7)",
+    "primary_metric": "net_value_per_1k_leads",
+    "secondary_metrics": [
+      "incremental_net_value_per_1k",
+      "net_value_per_agent_hour",
+      "pct_of_oracle_incremental",
+      "regret_per_1k",
+      "pred_ece",
+      "pred_log_loss",
+      "uplift_qini_auc",
+      "causal_pehe",
+      "coverage_80",
+      "fit_seconds"
+    ],
+    "decision_rule": "A candidate is declared better than a reference only if the paired difference in the primary metric has a 95% interval excluding zero AND the point estimate exceeds the preregistered practical threshold.",
+    "kill_criteria": {
+      "min_practical_uplift_pct": 2.0,
+      "bayes_min_uplift_pct": 2.0,
+      "max_compute_multiple": 10.0,
+      "causal_min_uplift_pct": 2.0,
+      "analytics_sufficient_pct_of_oracle": 80.0,
+      "mmm_max_acceptable_regret_pct": 10.0
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "risk_policies": [
+      "ev",
+      "ev_lcb10",
+      "ev_lcb25"
+    ],
+    "abstention_coverages": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "scenarios": [
+      "online_easy_randomized",
+      "online_concept_drift",
+      "online_propensity_not_uplift",
+      "online_policy_feedback_loop"
+    ],
+    "dataset_hashes": {},
+    "economics": {
+      "agent_cost_per_hour": 38.0,
+      "sms_direct_cost": 0.03,
+      "call_direct_cost": 0.06,
+      "sms_minutes": 0.25,
+      "default_net_contribution": 1000.0
+    },
+    "constraints": {
+      "capacity_ratio_default": 0.25
+    },
+    "hyperparameter_budget": "Every gradient-boosted learner in every family uses the identical configuration (n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5). No per-family tuning, no test-set selection. Bayesian candidates get a fixed sampler budget recorded in the results.",
+    "git_commit": "2c1a4b03c04145d37c0d15dcac20878c505ed253",
+    "git_dirty": true,
+    "libraries": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "pandas": "3.0.6",
+      "scipy": "1.17.1",
+      "sklearn": "1.9.1",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "econml": "0.17.0",
+      "sklift": "0.5.1",
+      "pymc": "5.28.5",
+      "pytensor": "2.38.3",
+      "arviz": "0.23.4",
+      "pymc_marketing": "0.19.2",
+      "statsmodels": "0.15.0",
+      "pulp": "3.3.2"
+    },
+    "hardware": {
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "mem_total_kb": 16481980
+    },
+    "created_utc": "2026-09-22T16:49:48.913448+00:00",
+    "supersedes": null,
+    "supersede_reason": null,
+    "frozen_hash": "9b015674b797eded"
+  },
+  "real": {
+    "experiment_id": "real-20260922T174405Z",
+    "description": "Real randomized experiments scored by OPE",
+    "primary_metric": "net_value_per_1k_leads",
+    "secondary_metrics": [
+      "incremental_net_value_per_1k",
+      "net_value_per_agent_hour",
+      "pct_of_oracle_incremental",
+      "regret_per_1k",
+      "pred_ece",
+      "pred_log_loss",
+      "uplift_qini_auc",
+      "causal_pehe",
+      "coverage_80",
+      "fit_seconds"
+    ],
+    "decision_rule": "A candidate is declared better than a reference only if the paired difference in the primary metric has a 95% interval excluding zero AND the point estimate exceeds the preregistered practical threshold.",
+    "kill_criteria": {
+      "min_practical_uplift_pct": 2.0,
+      "bayes_min_uplift_pct": 2.0,
+      "max_compute_multiple": 10.0,
+      "causal_min_uplift_pct": 2.0,
+      "analytics_sufficient_pct_of_oracle": 80.0,
+      "mmm_max_acceptable_regret_pct": 10.0
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "risk_policies": [
+      "ev",
+      "ev_lcb10",
+      "ev_lcb25"
+    ],
+    "abstention_coverages": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "scenarios": [
+      "hillstrom_any_email_visit",
+      "hillstrom_any_email_conversion",
+      "hillstrom_mens_visit",
+      "hillstrom_mens_conversion",
+      "hillstrom_womens_visit",
+      "hillstrom_womens_conversion",
+      "criteo_visit_n250000",
+      "criteo_conversion_n250000"
+    ],
+    "dataset_hashes": {
+      "hillstrom": "0e5893329d8b93cefecc571777672028290ab69865718020c78c7284f291aece",
+      "criteo": "2716e1bf0fd157a93b5bf86924d9088419dfbac2022c6cd90030220634f616dc"
+    },
+    "economics": {
+      "agent_cost_per_hour": 38.0,
+      "sms_direct_cost": 0.03,
+      "call_direct_cost": 0.06,
+      "sms_minutes": 0.25,
+      "default_net_contribution": 1000.0
+    },
+    "constraints": {
+      "capacity_ratio_default": 0.25
+    },
+    "hyperparameter_budget": "Every gradient-boosted learner in every family uses the identical configuration (n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5). No per-family tuning, no test-set selection. Bayesian candidates get a fixed sampler budget recorded in the results.",
+    "git_commit": "c2ef01aa01ddc180e666abe9754cd5a39d8a3470",
+    "git_dirty": false,
+    "libraries": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "pandas": "3.0.6",
+      "scipy": "1.17.1",
+      "sklearn": "1.9.1",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "econml": "0.17.0",
+      "sklift": "0.5.1",
+      "pymc": "5.28.5",
+      "pytensor": "2.38.3",
+      "arviz": "0.23.4",
+      "pymc_marketing": "0.19.2",
+      "statsmodels": "0.15.0",
+      "pulp": "3.3.2"
+    },
+    "hardware": {
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "mem_total_kb": 16481980
+    },
+    "created_utc": "2026-09-22T17:44:05.455890+00:00",
+    "supersedes": null,
+    "supersede_reason": null,
+    "frozen_hash": "978f1f906bc058bf"
+  },
+  "mmm": {
+    "experiment_id": "mmm-20260922T150657Z",
+    "description": "Marketing-mix track: ROI recovery and budget-allocation regret",
+    "primary_metric": "net_value_per_1k_leads",
+    "secondary_metrics": [
+      "incremental_net_value_per_1k",
+      "net_value_per_agent_hour",
+      "pct_of_oracle_incremental",
+      "regret_per_1k",
+      "pred_ece",
+      "pred_log_loss",
+      "uplift_qini_auc",
+      "causal_pehe",
+      "coverage_80",
+      "fit_seconds"
+    ],
+    "decision_rule": "A candidate is declared better than a reference only if the paired difference in the primary metric has a 95% interval excluding zero AND the point estimate exceeds the preregistered practical threshold.",
+    "kill_criteria": {
+      "min_practical_uplift_pct": 2.0,
+      "bayes_min_uplift_pct": 2.0,
+      "max_compute_multiple": 10.0,
+      "causal_min_uplift_pct": 2.0,
+      "analytics_sufficient_pct_of_oracle": 80.0,
+      "mmm_max_acceptable_regret_pct": 10.0
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "risk_policies": [
+      "ev",
+      "ev_lcb10",
+      "ev_lcb25"
+    ],
+    "abstention_coverages": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "scenarios": [
+      "mmm_mmm_standard",
+      "mmm_mmm_smb_short_history",
+      "mmm_mmm_very_short_history",
+      "mmm_mmm_high_collinearity",
+      "mmm_mmm_low_signal",
+      "mmm_mmm_long_history"
+    ],
+    "dataset_hashes": {},
+    "economics": {
+      "agent_cost_per_hour": 38.0,
+      "sms_direct_cost": 0.03,
+      "call_direct_cost": 0.06,
+      "sms_minutes": 0.25,
+      "default_net_contribution": 1000.0
+    },
+    "constraints": {
+      "capacity_ratio_default": 0.25
+    },
+    "hyperparameter_budget": "Every gradient-boosted learner in every family uses the identical configuration (n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5). No per-family tuning, no test-set selection. Bayesian candidates get a fixed sampler budget recorded in the results.",
+    "git_commit": "fe33f619b182293ab01391253b1cd2f2ef449dde",
+    "git_dirty": true,
+    "libraries": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "pandas": "3.0.6",
+      "scipy": "1.17.1",
+      "sklearn": "1.9.1",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "econml": "0.17.0",
+      "sklift": "0.5.1",
+      "pymc": "5.28.5",
+      "pytensor": "2.38.3",
+      "arviz": "0.23.4",
+      "pymc_marketing": "0.19.2",
+      "statsmodels": "0.15.0",
+      "pulp": "3.3.2"
+    },
+    "hardware": {
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "mem_total_kb": 16481980
+    },
+    "created_utc": "2026-09-22T15:07:00.198683+00:00",
+    "supersedes": null,
+    "supersede_reason": null,
+    "frozen_hash": "9ab15f43506f2d7a"
+  },
+  "smoke": {
+    "experiment_id": "smoke-20260922T150619Z",
+    "description": "CI smoke suite: end-to-end on two regimes",
+    "primary_metric": "net_value_per_1k_leads",
+    "secondary_metrics": [
+      "incremental_net_value_per_1k",
+      "net_value_per_agent_hour",
+      "pct_of_oracle_incremental",
+      "regret_per_1k",
+      "pred_ece",
+      "pred_log_loss",
+      "uplift_qini_auc",
+      "causal_pehe",
+      "coverage_80",
+      "fit_seconds"
+    ],
+    "decision_rule": "A candidate is declared better than a reference only if the paired difference in the primary metric has a 95% interval excluding zero AND the point estimate exceeds the preregistered practical threshold.",
+    "kill_criteria": {
+      "min_practical_uplift_pct": 2.0,
+      "bayes_min_uplift_pct": 2.0,
+      "max_compute_multiple": 10.0,
+      "causal_min_uplift_pct": 2.0,
+      "analytics_sufficient_pct_of_oracle": 80.0,
+      "mmm_max_acceptable_regret_pct": 10.0
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "risk_policies": [
+      "ev",
+      "ev_lcb10",
+      "ev_lcb25"
+    ],
+    "abstention_coverages": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "scenarios": [
+      "smoke_easy_randomized",
+      "smoke_propensity_not_uplift"
+    ],
+    "dataset_hashes": {},
+    "economics": {
+      "agent_cost_per_hour": 38.0,
+      "sms_direct_cost": 0.03,
+      "call_direct_cost": 0.06,
+      "sms_minutes": 0.25,
+      "default_net_contribution": 1000.0
+    },
+    "constraints": {
+      "capacity_ratio_default": 0.25
+    },
+    "hyperparameter_budget": "Every gradient-boosted learner in every family uses the identical configuration (n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5). No per-family tuning, no test-set selection. Bayesian candidates get a fixed sampler budget recorded in the results.",
+    "git_commit": "fe33f619b182293ab01391253b1cd2f2ef449dde",
+    "git_dirty": true,
+    "libraries": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "pandas": "3.0.6",
+      "scipy": "1.17.1",
+      "sklearn": "1.9.1",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "econml": "0.17.0",
+      "sklift": "0.5.1",
+      "pymc": "5.28.5",
+      "pytensor": "2.38.3",
+      "arviz": "0.23.4",
+      "pymc_marketing": "0.19.2",
+      "statsmodels": "0.15.0",
+      "pulp": "3.3.2"
+    },
+    "hardware": {
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "mem_total_kb": 16481980
+    },
+    "created_utc": "2026-09-22T15:06:21.454405+00:00",
+    "supersedes": null,
+    "supersede_reason": null,
+    "frozen_hash": "04040f541dc8b493"
+  },
+  "rq4": {
+    "experiment_id": "lead-20260922T181259Z",
+    "description": "Main lead-track sweep: every candidate family across all regimes at a 25% agent-capacity constraint.",
+    "primary_metric": "net_value_per_1k_leads",
+    "secondary_metrics": [
+      "incremental_net_value_per_1k",
+      "net_value_per_agent_hour",
+      "pct_of_oracle_incremental",
+      "regret_per_1k",
+      "pred_ece",
+      "pred_log_loss",
+      "uplift_qini_auc",
+      "causal_pehe",
+      "coverage_80",
+      "fit_seconds"
+    ],
+    "decision_rule": "A candidate is declared better than a reference only if the paired difference in the primary metric has a 95% interval excluding zero AND the point estimate exceeds the preregistered practical threshold.",
+    "kill_criteria": {
+      "min_practical_uplift_pct": 2.0,
+      "bayes_min_uplift_pct": 2.0,
+      "max_compute_multiple": 10.0,
+      "causal_min_uplift_pct": 2.0,
+      "analytics_sufficient_pct_of_oracle": 80.0,
+      "mmm_max_acceptable_regret_pct": 10.0
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "risk_policies": [
+      "ev",
+      "ev_lcb10",
+      "ev_lcb25"
+    ],
+    "abstention_coverages": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "scenarios": [
+      "lead_campaign_effort_heterogeneity"
+    ],
+    "dataset_hashes": {},
+    "economics": {
+      "agent_cost_per_hour": 38.0,
+      "sms_direct_cost": 0.03,
+      "call_direct_cost": 0.06,
+      "sms_minutes": 0.25,
+      "default_net_contribution": 1000.0
+    },
+    "constraints": {
+      "capacity_ratio_default": 0.25
+    },
+    "hyperparameter_budget": "Every gradient-boosted learner in every family uses the identical configuration (n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5). No per-family tuning, no test-set selection. Bayesian candidates get a fixed sampler budget recorded in the results.",
+    "git_commit": "ed909f2c78191580af523b58c004b0e545fd9b91",
+    "git_dirty": false,
+    "libraries": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "pandas": "3.0.6",
+      "scipy": "1.17.1",
+      "sklearn": "1.9.1",
+      "xgboost": "3.2.0",
+      "lightgbm": "4.7.0",
+      "econml": "0.17.0",
+      "sklift": "0.5.1",
+      "pymc": "5.28.5",
+      "pytensor": "2.38.3",
+      "arviz": "0.23.4",
+      "pymc_marketing": "0.19.2",
+      "statsmodels": "0.15.0",
+      "pulp": "3.3.2"
+    },
+    "hardware": {
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "mem_total_kb": 16481980
+    },
+    "created_utc": "2026-09-22T18:13:02.291749+00:00",
+    "supersedes": null,
+    "supersede_reason": null,
+    "frozen_hash": "4120a9de4eba32d6"
+  }
+}

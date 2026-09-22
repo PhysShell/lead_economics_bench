@@ -333,15 +333,23 @@ def _regime_map(lead: pd.DataFrame) -> str:
         m = g.groupby("candidate")[[SECONDARY, PRIMARY]].mean()
         if m.empty:
             continue
-        best = m[SECONDARY].idxmax()
-        base_pool = m[m.index.isin(analytics)]
-        base = base_pool[SECONDARY].idxmax() if len(base_pool) else None
+        # `negative_control_null_effect` is built so the Oracle gains nothing,
+        # which leaves the Oracle-share column all-NA for that regime. Rank on
+        # realised money there rather than calling idxmax on an empty column,
+        # which raises "Encountered all NA values".
+        rank_col = SECONDARY if m[SECONDARY].notna().any() else PRIMARY
+        if m[rank_col].isna().all():
+            continue
+        best = m[rank_col].idxmax()
+        base_pool = m[m.index.isin(analytics)].dropna(subset=[rank_col])
+        base = base_pool[rank_col].idxmax() if len(base_pool) else None
         cmp_df = paired(g, best, base) if base else pd.DataFrame()
         verdict = cmp_df["verdict"].iloc[0] if len(cmp_df) else "n/a"
         rows.append({
             "regime": regime,
             "winner": best,
-            "winner_oracle%": round(float(m.loc[best, SECONDARY]), 1),
+            "winner_oracle%": (round(float(m.loc[best, SECONDARY]), 1)
+                               if pd.notna(m.loc[best, SECONDARY]) else float("nan")),
             "best_analytics": base,
             "analytics_oracle%": round(float(m.loc[base, SECONDARY]), 1) if base else np.nan,
             "gap_pts": round(float(m.loc[best, SECONDARY] - m.loc[base, SECONDARY]), 1) if base else np.nan,

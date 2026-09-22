@@ -119,25 +119,60 @@ def _campaign_profit_priority(train: pd.DataFrame, test) -> np.ndarray:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--runs", default="reports/runs/lead")
+    ap.add_argument(
+        "--n-leads", type=int, default=None,
+        help="Configured dataset size the suite was run with. REQUIRED for a "
+             "like-for-like replay: the `n_leads` column in results.csv holds "
+             "the *test-fold* size for rows written before the n_test_leads "
+             "rename, so regenerating from it builds a dataset four times too "
+             "small and scores the incumbent on a different problem than every "
+             "other candidate. Falls back to n_train+n_valid+n_test.",
+    )
+    ap.add_argument(
+        "--replace", action="store_true",
+        help="Drop any existing incumbent rows and recompute them.",
+    )
     args = ap.parse_args()
     path = Path(args.runs) / "results.csv"
     if not path.exists():
         print(f"no results at {path}")
         return 1
     df = pd.read_csv(path)
-    have = set(df.loc[df["candidate"].astype(str).str.startswith("existing_policy"), "scenario"])
+    is_incumbent = df["candidate"].astype(str).str.startswith("existing_policy")
+    if args.replace:
+        df = df[~is_incumbent].copy()
+        is_incumbent = pd.Series(False, index=df.index)
+    have = set(df.loc[is_incumbent, "scenario"])
+
+    # The cell key must not include n_leads. A failed candidate keeps the
+    # configured size from its base row while successful ones carry the
+    # test-fold size, so a regime with any failure yields two tuples per seed
+    # and the incumbent gets computed -- and written -- twice for it.
+    other = df[~is_incumbent]
     cells = (
-        df[["regime", "n_leads", "capacity_ratio", "seed"]]
+        other[["regime", "capacity_ratio", "seed"]]
         .drop_duplicates()
         .to_dict("records")
     )
+
+    def _size_for(regime: str, seed: int) -> int | None:
+        if args.n_leads:
+            return args.n_leads
+        sel = other[(other.regime == regime) & (other.seed == seed)]
+        tot = (sel["n_train"] + sel["n_valid"] + sel["n_test"]).dropna()
+        return int(tot.iloc[0]) if len(tot) else None
+
     rows = []
     for c in cells:
         if f"lead_{c['regime']}" in have:
             continue
+        n = _size_for(c["regime"], int(c["seed"]))
+        if not n:
+            print(f"  !! {c}: cannot determine dataset size; pass --n-leads")
+            continue
         try:
             rows += incumbent_rows(
-                c["regime"], int(c["n_leads"]),
+                c["regime"], n,
                 None if pd.isna(c["capacity_ratio"]) else float(c["capacity_ratio"]),
                 int(c["seed"]),
             )
