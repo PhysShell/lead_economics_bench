@@ -53,9 +53,24 @@ ATTRIBUTION_BIAS = {
 
 
 def generate_campaign_corpus(
-    n_campaigns: int = 400, share_measured: float = 0.35, seed: int = 0
+    n_campaigns: int = 400,
+    share_measured: float = 0.35,
+    seed: int = 0,
+    interactions: bool = False,
 ) -> pd.DataFrame:
-    """A corpus of campaigns, a minority of which ran an incrementality test."""
+    """A corpus of campaigns, a minority of which ran an incrementality test.
+
+    ``interactions=False`` makes true incrementality additive in the (logged)
+    campaign features. That is a **best case for a linear model**: a ridge on
+    log-budget, log-audience, creative age and one-hot categoricals is then
+    correctly specified, and beating it says little about BART.
+
+    ``interactions=True`` adds channel x vertical interactions, a non-monotone
+    effect of creative age, and a budget x exposure interaction, so the
+    incrementality surface is genuinely non-additive and a tree ensemble has
+    something to find. Both variants are reported, because the honest question
+    is not "does BART win?" but "under what shape of truth does it win?".
+    """
     rng = np.random.default_rng(seed)
     vertical = rng.choice(VERTICALS, n_campaigns)
     objective = rng.choice(OBJECTIVES, n_campaigns, p=[0.5, 0.3, 0.2])
@@ -80,8 +95,27 @@ def generate_campaign_corpus(
     saturation = -0.22 * (np.log(budget) - np.log(30_000))
     fatigue = -0.0012 * creative_age_days
     reach = 0.30 * (exposure_rate - 0.4)
+    extra = np.zeros(n_campaigns)
+    if interactions:
+        # Prospecting works in lending and insurance but not in legal;
+        # retargeting decays much faster with creative age; big budgets only
+        # pay off when exposure is high.
+        pair = pd.Series(list(zip(objective, vertical))).map(
+            lambda p: 0.45 if p == ("prospecting", "lending")
+            else 0.35 if p == ("prospecting", "insurance")
+            else -0.40 if p == ("prospecting", "legal")
+            else -0.25 if p == ("retargeting", "solar")
+            else 0.0
+        ).to_numpy()
+        age_kink = np.where(
+            (pd.Series(channel) == "retargeting").to_numpy(),
+            -0.004 * np.maximum(creative_age_days - 30, 0),
+            0.0,
+        )
+        budget_x_reach = 0.55 * (np.log(budget) - np.log(30_000)) * (exposure_rate - 0.4)
+        extra = pair + age_kink + budget_x_reach
     true_iroas = np.maximum(
-        base + obj + vert + saturation + fatigue + reach
+        base + obj + vert + saturation + fatigue + reach + extra
         + rng.normal(0, 0.12, n_campaigns),
         0.01,
     )
@@ -174,8 +208,8 @@ def _metrics(name: str, pred: np.ndarray, truth: np.ndarray, budget: np.ndarray)
 
 
 def run_once(seed: int, n_campaigns: int, share_measured: float,
-             draws: int, tune: int) -> pd.DataFrame:
-    df = generate_campaign_corpus(n_campaigns, share_measured, seed)
+             draws: int, tune: int, interactions: bool = False) -> pd.DataFrame:
+    df = generate_campaign_corpus(n_campaigns, share_measured, seed, interactions)
     train = df[df["measured"]].reset_index(drop=True)
     test = df[~df["measured"]].reset_index(drop=True)
     if len(train) < 30 or len(test) < 30:
@@ -226,6 +260,7 @@ def run_once(seed: int, n_campaigns: int, share_measured: float,
     out["seed"] = seed
     out["n_campaigns"] = n_campaigns
     out["share_measured"] = share_measured
+    out["interactions"] = interactions
     out["n_train"] = len(train)
     out["n_test"] = len(test)
     return out
@@ -239,13 +274,16 @@ def main() -> int:
     ap.add_argument("--shares", default="0.15,0.35,0.60")
     ap.add_argument("--draws", type=int, default=300)
     ap.add_argument("--tune", type=int, default=300)
+    ap.add_argument("--interactions", action="store_true",
+                    help="non-additive incrementality surface, so BART has something to find")
     args = ap.parse_args()
 
     frames = []
     for share in [float(s) for s in args.shares.split(",")]:
         for seed in range(args.seeds):
             try:
-                r = run_once(seed, args.n_campaigns, share, args.draws, args.tune)
+                r = run_once(seed, args.n_campaigns, share, args.draws, args.tune,
+                             args.interactions)
                 r["status"] = "ok"
                 frames.append(r)
                 best = r.sort_values("rmse").iloc[0]
