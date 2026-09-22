@@ -113,14 +113,14 @@ already passed and they are the reason the gate exists: reproducing
 | M1 | decision-theory invariants (`0 ≤ EVSI ≤ EVPI`, free info never hurts) | **PASS** |
 | M2 | significance-gate bug isolated and relabelled | **PASS** |
 | M3 | information ladder on two-point θ | **PASS**, conclusion limited to S0→S1 |
-| M4a | pristine-clone audit (defects D1–D5 below) | **PASS** |
-| M4b | version-matched runtime assembled (R 4.5.1, Py 3.12.8) | R **built and verified**; renv + pip restoring |
-| M4c | upstream smoke in the matched lane | blocked on M4b |
+| M4a | pristine-clone audit (defects D1–D7 below) | **PASS** |
+| M4b | version-matched runtime (R 4.5.1, Py 3.12.8) | Python **PASS**, 83/83 pins exact; R built and verified, renv restoring |
+| M4c | upstream smoke in the matched lane | queued behind M4b |
 | M4d | host-drift smoke in the robustness lane | R 4.6.1 restore running |
-| M5a | R1 — DGP panel hashes reproduced | blocked on M4b |
-| M5b | R2 — golden estimator replay against published rows | blocked on M5a |
-| M6a | θ mutation +2% (six PASS criteria, §5) | static audit **done**, §5a |
-| M6b | θ mutation −5% (sign mutation) | blocked on M6a |
+| M5a | R1 — DGP reproduced via `true_att_level` | checker **written and validated**, awaits M4c |
+| M5b | R2 — golden estimator replay against published rows | same checker, same block |
+| M6a | θ mutation +2% (six PASS criteria, §5) | static audit **done** (§5a), patch **written and tested** |
+| M6b | θ mutation −5% (sign mutation) | patch covers it; blocked on M6a |
 | M7 | coarse θ likelihood atlas | blocked on M6b |
 | M8 | continuous prior + richer action set | blocked on M7 |
 | M9 | business VOI / RUN–DON'T-RUN | blocked on M8 |
@@ -128,11 +128,13 @@ already passed and they are the reason the gate exists: reproducing
 
 ## 2. G0 — environment, recorded rather than assumed
 
-| component | donor (`VERSIONS.md`, `renv.lock`) | here | deviation |
+| component | donor (`VERSIONS.md`, `renv.lock`) | version-matched lane | robustness lane |
 |---|---|---|---|
-| OS / arch | macOS ARM64 (Darwin) | **Linux x86_64** 6.18.44 | **platform differs** |
-| Python | 3.12.8 | **3.11.15** | minor version |
-| R | **4.5.1** (`renv.lock`) | **4.6.1** (CRAN apt, installed for this gate) | **minor-series gap**; distro apt offered only 4.3.3, CRAN apt serves current 4.6.1 — 4.5.1 is not available from either |
+| OS / arch | macOS ARM64 (Darwin) | **Linux x86_64** 6.18.44 | same — **platform differs in both** |
+| Python | 3.12.8 | **3.12.8** ✓ (uv, `--seed`) | 3.11.15 (host) |
+| R | **4.5.1** (`renv.lock`) | **4.5.1** ✓ (source build, sha256 `b42a7921…`) | 4.6.1 (CRAN apt) |
+| Python deps | `requirements.txt`, 83 pins | **83/83 exact**, 0 drift ✓ | same manifest, different interpreter |
+| R deps | `renv.lock`, 99 packages | rebuilt from source on 4.5.1 | rebuilt on 4.6.1 |
 | Make | GNU Make | GNU Make 4.3 | ok |
 | C compiler | — | gcc 13.3.0 | recorded |
 | CRAN reachable | — | yes (HTTP 200) | ok |
@@ -147,11 +149,17 @@ not be obtained". That was wrong: it checked two *package* sources and
 declared the search exhausted. R 4.5.1 is available from at least two ordinary
 routes — the official source tarball
 `https://cran.r-project.org/src/base/R-4/R-4.5.1.tar.gz` (released 13 June
-2025, confirmed reachable here, HTTP 200), and `rocker/r-ver:4.5.1`, which
-publishes a linux/amd64 image (digest `sha256:55be3ae296dd…`).
+2025) and `rocker/r-ver:4.5.1` (linux/amd64, digest `sha256:55be3ae296dd…`).
+
+**It has since been built from that tarball and verified here**, so this is
+no longer a claim about availability but a fact about the running system:
+R 4.5.1 (2025-06-13) "Great Square Root", gcc 13.3.0, reference BLAS,
+configure line recorded in `repro/recast/build-r-451.sh`. Logged as **F5** in
+`failures.md`, because the original claim had already been used to justify
+accepting a different runtime.
 
 So 4.6.1 is **not** accepted as the reproduction environment. It becomes the
-robustness lane instead — see §2a.
+robustness lane instead.
 
 A second correction, to a claim that was too strong: "4.5 → 4.6 is a new minor
 series and R packages are not binary-compatible across it". The accurate
@@ -165,6 +173,15 @@ it is the most likely explanation for any numerical disagreement at G3 — and
 because attributing a real disagreement to "probably the platform" without
 having written the platform down first is how reproducibility studies quietly
 fail.
+
+The specific suspect is named rather than left as "the platform": **BLAS**.
+The donor almost certainly ran Apple Accelerate on ARM64; this build links
+reference BLAS. The two do not accumulate floating-point sums in the same
+order, and all four estimators go through a matrix decomposition. So
+last-digit differences are a *prediction made in advance*, recorded in
+`repro/recast/README.md` alongside the build provenance. A disagreement at
+the size of the `google_mm` tolerance (1e-9 relative) is consistent with it;
+a disagreement larger than that is not, and must not be excused by it.
 
 ## 3. Donor defects found before running anything
 
