@@ -406,4 +406,13 @@ def value_shrinkage_candidates(
                     kind="logistic", value_shrink=w),
             "economic", "value_shrinkage",
         ))
+        # The ablation's surprise was on the *boosted* model, so the shrinkage
+        # curve has to be measured there too or it answers a different
+        # question than the one that was asked.
+        out.append(_spec(
+            f"propensity_ev_gbm_vshrink{tag}",
+            partial(PropensityEV, f"propensity_ev_gbm_vshrink{tag}",
+                    kind="xgboost", value_shrink=w, **GBM_KW),
+            "economic", "value_shrinkage",
+        ))
     return out
