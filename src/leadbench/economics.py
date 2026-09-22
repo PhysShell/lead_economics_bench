@@ -96,6 +96,10 @@ class RealizedOutcome:
         return self.net_value / hours
 
     def to_dict(self) -> dict[str, float]:
+        # NB: the key is `n_test_leads`, not `n_leads`. The scenario row
+        # already carries the *configured* dataset size under `n_leads`, and
+        # emitting the same key here silently overwrote it with the test-fold
+        # size -- which scrambled every data-size curve until it was caught.
         return {
             "net_value": self.net_value,
             "net_value_per_1k_leads": self.net_value_per_1k_leads,
@@ -104,7 +108,7 @@ class RealizedOutcome:
             "action_cost": self.action_cost,
             "agent_hours_used": self.agent_minutes / 60.0,
             "conversions": self.conversions,
-            "n_leads": float(self.n_leads),
+            "n_test_leads": float(self.n_leads),
             **{f"n_action_{k}": float(v) for k, v in self.action_counts.items()},
         }
 

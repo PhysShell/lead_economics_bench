@@ -266,10 +266,17 @@ def _identification_table(lead: pd.DataFrame) -> str:
 
 
 def _size_table(curves: pd.DataFrame) -> str:
-    d = curves[curves["scenario"].astype(str).str.startswith("size_")]
+    d = curves[curves["scenario"].astype(str).str.startswith("size_")].copy()
     if d.empty:
         return "  (no data)\n"
-    t = d.pivot_table(index=["regime", "candidate"], columns="n_leads",
+    # The configured dataset size is recovered from the scenario name. Runs
+    # produced before the `n_leads` key collision was fixed carry the test-fold
+    # size in that column instead, and the scenario name is authoritative.
+    d["n_config"] = (
+        d["scenario"].astype(str).str.extract(r"_n(\d+)$")[0].astype(float)
+    )
+    d["n_config"] = d["n_config"].fillna(d["n_leads"])
+    t = d.pivot_table(index=["regime", "candidate"], columns="n_config",
                       values=SECONDARY, aggfunc="mean")
     return t.round(1).to_string() + "\n"
 

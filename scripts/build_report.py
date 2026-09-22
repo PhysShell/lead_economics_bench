@@ -112,7 +112,11 @@ def main() -> int:
         c = suites["curves"]
         size = c[c["scenario"].str.startswith("size_")].copy()
         if len(size):
-            size["n"] = size["n_leads"]
+            # Configured size comes from the scenario name; older runs have the
+            # test-fold size in n_leads due to a now-fixed key collision.
+            size["n"] = (
+                size["scenario"].astype(str).str.extract(r"_n(\d+)$")[0].astype(float)
+            ).fillna(size["n_leads"])
             sb = leaderboard(size, "pct_of_oracle_incremental",
                              group_cols=("regime", "n", "candidate"))
             sb.to_csv(out / "curve_data_size.csv", index=False)
