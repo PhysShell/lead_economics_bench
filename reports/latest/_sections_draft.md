@@ -5,6 +5,28 @@ Merged into `report.md` at assembly time. Not the deliverable.
 
 ---
 
+## Mandated report structure (brief §88), in order
+
+1. Executive summary — what was tested, what won, where it won, how large the effect
+2. **What falsified our assumptions** (mandatory section)
+3. Dataset evidence
+4. Benchmark results
+5. Statistical uncertainty
+6. Economic significance
+7. Data-regime analysis
+8. Ablations
+9. Failure modes
+10. Computational cost
+11. Product implications
+12. Market landscape
+13. Patent / prior-art summary
+14. Data collection recommendation
+15. Next real-world experiment
+
+Followed by the 17 direct answers of §89.
+
+---
+
 ## Dataset evidence
 
 | Dataset | Kind | Unit | n | Treatment | Outcome | Known value? | Known cost? | Licence |
