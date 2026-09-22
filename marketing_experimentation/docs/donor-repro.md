@@ -296,27 +296,123 @@ rate-limited, often requires a token, and is not guaranteed to serve
 arbitrary commit tarballs indefinitely. There is no vendored copy, no CRAN
 fallback, and no recorded hash of what that tarball should contain.
 
-**And the failure is total, not partial.** `renv::restore()` aborts on any
-failure, and `renv/activate.R` is written at the end. So 92 of 94 packages
-installed leaves the project **completely unusable** — the donor's
-`.Rprofile` sources a file that now still does not exist, and every `Rscript`
-in the repository dies at start-up. This is **D1 compounding**: the bootstrap
-deadlock returns whenever a restore is interrupted for any reason at all, not
-only on a cold clone.
+**And the failure is total, not partial — more total than first recorded.**
+An earlier version of this section said 92 packages installed and 2 failed,
+leaving an unusable project. Checking the library afterwards:
 
-**Our handling.** Both packages are built from a `git clone` checked out at
-the pinned SHA, which git serves normally on this network. That is the same
-tree the API tarball would have contained — `git archive` of a commit and
-the API's tarball of that commit are the same content — so this is a change
-of transport, not of version. The tree hash of what was actually built is
-recorded in the install log so the substitution is auditable rather than
-asserted. `renv::activate()` is then called explicitly to write the file the
-aborted restore never reached.
+```
+/home/user/donor-smoke/renv/library/.../x86_64-pc-linux-gnu   0 packages
+/root/.cache/R/renv/cache/.../x86_64-pc-linux-gnu            92 packages
+```
+
+renv installs into a staging area and commits to the library only if **every**
+package succeeds. Two failures out of 94 therefore roll back all 92 — the
+project library ends up **empty**, not partially populated. The cache keeps
+the builds, which is why a retry is fast, but nothing is installed.
+
+And `renv/activate.R` is written at the end of a successful restore, so it is
+never created. The donor's `.Rprofile` sources exactly that file, so every
+`Rscript` in the repository dies at start-up. This is **D1 compounding**: the
+bootstrap deadlock is not a cold-clone problem, it returns after *any*
+interruption anywhere in a 47-minute build — a failed download, a rate limit,
+a container restart.
+
+The practical shape of it: a 47-minute all-or-nothing transaction whose last
+two steps depend on a third-party API. That is not a robust way to distribute
+a reproducibility study, and it is the single thing most worth fixing in the
+donor.
+
+**Our handling**, and it is worth stating in full because it is a deviation
+from the donor's own install path:
+
+1. The 92 cached builds are linked into the project library directly. A renv
+   library *is* symlinks into `renv/cache`, so this is the layout renv would
+   have produced had it committed the transaction.
+2. `GeoLift` and `augsynth` are built from a `git clone` checked out at the
+   pinned SHA, which git serves normally on this network. That is the same
+   tree the API tarball would have contained — `git archive` of a commit and
+   the API's tarball of that commit are the same content — so this is a
+   change of **transport**, not of version. (`augsynth` must be installed
+   first; `GeoLift` depends on it.)
+3. The built trees' hashes are recorded:
+
+   | package | tree sha256 |
+   |---|---|
+   | `GeoLift` @ `4d2afd4` | `7f6b0a4dfabcb0a9816f85244da88567a181e28f8cfa95d9904787648e052a49` |
+   | `augsynth` @ `65c5a6f` | `98d03cf82dc90b0511f0a10738740f2dfbe80f6beee3d0fd94ec236c43fdbedd` |
+
+4. `renv::activate()` is called explicitly to write the file the aborted
+   restore never reached.
+5. `RemoteSha` and the other `Remote*` fields are written into the two
+   installed `DESCRIPTION`s, which `R CMD INSTALL` from a plain checkout does
+   not do. **This is the step that matters**: without it renv reports both as
+   `(Unknown Source)` and the provenance is a claim in a log file. With it,
+   `renv::status()` verifies the installed commit against the lockfile's
+   pinned SHA, and the substitution becomes machine-checkable.
+
+**Verification, not assertion.** Afterwards, against the lockfile's 99
+packages: **0 missing, 0 version mismatches**, and `renv::status()` reports
+no out-of-sync package. An ordinary `Rscript` in the project — the thing D1
+broke — starts cleanly and loads the stack at the pinned versions:
+
+```
+R 4.5.1 (2025-06-13)    renv 1.2.0 (pinned)
+arrow 23.0.1.2   jsonlite 2.0.0   CausalImpact 1.4.1
+GeoLift 2.7.5    augsynth 0.2.0   bsts 0.9.11   MarketMatching 1.2.1
+```
+
+One residual, recorded rather than swept: `renv::status()` still lists
+`RcppEigen` as "installed, recorded, not used" — a dependency renv cannot see
+being used. It is a bookkeeping note, not a version discrepancy.
 
 **What a donor could do about it**, since four of the audit's eight findings
 are now packaging: record the expected tarball hashes, or vendor the two
 GitHub dependencies, or note the CRAN-only subset that works without them.
 Any of the three would have turned a dead stop into a warning.
+
+### D9 — the lockfile pins a package version, not the build that version needs
+
+Found by the smoke run failing at the first panel:
+
+```
+Error in parquet___WriterProperties___Builder__create()
+```
+
+`renv.lock` pins `arrow 23.0.1.2` and that is exactly what was installed. But
+the R `arrow` package is a thin wrapper over a C++ library it builds or
+downloads at install time, and what got built was the **minimal** libarrow:
+
+```
+acero TRUE | dataset FALSE | parquet FALSE | json FALSE
+snappy FALSE | gzip FALSE | zstd FALSE | lz4 FALSE | bz2 FALSE
+```
+
+The donor's panels are **Parquet**. So a correctly-pinned, correctly-versioned
+`arrow 23.0.1.2` cannot read or write the study's own data format. Twenty-five
+minutes of compilation produced a package that satisfies the lockfile and
+cannot run the pipeline.
+
+**This is not a variant of D8 and it is more interesting.** D8 is a package
+that could not be fetched — loud, obvious, fatal at install time. D9 is a
+package that installed cleanly, reports the pinned version, satisfies
+`renv::status()`, and is silently missing the one capability the study needs.
+A lockfile records *what* was installed. It does not record *how it was
+built*, and for any package that compiles or downloads a backend at install
+time — `arrow`, and in a different way BLAS under R itself — the build
+configuration is a free variable that no lockfile in common use captures.
+
+**Our handling.** `apache.jfrog.io`, where `arrow` fetches prebuilt libarrow,
+answers 200 here; the first build simply fell back to minimal without using
+it. Rebuilt with `LIBARROW_MINIMAL=false` and `NOT_CRAN=true`, installed into
+the project library directly rather than through the renv cache — a
+differently-configured build of the same version must not be shared with the
+robustness lane, or the two lanes stop being independent.
+
+**Recorded as a limit on the version-matched claim**, alongside BLAS. The
+donor published neither its libarrow build flags nor its BLAS backend, so
+neither is matched, and neither can be. What can be stated is that the
+capability the pipeline needs is present and round-trips a panel-shaped
+frame.
 
 ### Audit summary
 
@@ -329,13 +425,14 @@ Any of the three would have turned a dead stop into a warning.
 | D5 | no licence | **blocking for reuse** | external wrapper, no vendored source | yes — add one |
 | D6 | `make smoke` deletes published results | **material** | read-only reference + disposable clone | yes — guard `clean` |
 | D7 | plots hard-code 7.5% truth | latent → **material on any θ ≠ 7.5%** | read `metadata.json` in the mutation diff | yes, two constants |
-| D8 | GeoLift + augsynth resolvable only via `api.github.com` tarball; restore is all-or-nothing | **blocking** where that API is restricted | build from `git` at the pinned SHA; call `renv::activate()` by hand | yes — hashes, a vendored copy, or a documented CRAN-only subset |
+| D8 | GeoLift + augsynth resolvable only via `api.github.com` tarball; restore is all-or-nothing, rolls back all 92 | **blocking** where that API is restricted | build from `git` at the pinned SHA, write `Remote*` fields, `renv::activate()` by hand | yes — hashes, a vendored copy, or a documented CRAN-only subset |
+| D9 | `arrow` satisfies the lockfile but built minimal: no Parquet, the study's own panel format | **blocking, and silent** — installs clean, reports the pinned version | rebuild with `LIBARROW_MINIMAL=false`, outside the shared cache | yes — record the build flags, or test the capability |
 
-Six of the eight are one-line or one-file fixes. That is the characteristic
+Seven of the nine are one-line or one-file fixes. That is the characteristic
 shape of reproducibility failure in this field: not deep methodological
 error, but a handful of unguarded lines that make a correct study hard to
-re-run. Worth stating plainly — **the donor's statistics have survived this
-audit intact, and all eight findings are about packaging.**
+re-run. Worth stating plainly — **the donor's statistics have survived every
+one of these intact. All nine findings are about packaging.**
 
 The two that are not one-line are the two that matter most, and they are the
 same failure seen twice: **D1 and D8 are both "the environment cannot
@@ -345,10 +442,22 @@ two that depend on a rate-limited API. Either alone is survivable. Together
 they mean any interruption, anywhere in a 47-minute build, leaves a
 repository where no R script will start.
 
+**D9 is the one worth generalising from**, because it is the only finding
+here that a lockfile cannot in principle prevent. A lockfile records *what
+version* was installed. It does not record *how it was built* — and for any
+package that compiles or downloads a backend at install time, the build
+configuration is a free variable. `arrow` without Parquet passes every check
+renv can perform and cannot open the study's data. The same class of gap
+covers BLAS under R itself. "Pinned" and "reproducible" are not the same
+claim, and the distance between them is exactly the kind of thing this track
+exists to price.
+
 A useful generalisation for the research question itself: every one of these
-would be invisible to a reader, a reviewer, or a citation. They are only
-visible to someone who runs the thing. That is the gap this track keeps
-finding, in a different form each time.
+would be invisible to a reader, a reviewer, or a citation. They are visible
+only to someone who runs the thing. That is the gap this track keeps finding,
+in a different form each time — and it is the argument for the whole gate,
+since the alternative was to accept published numbers and build on top of
+them.
 
 ## 4. G3 tolerances, fixed before the replay
 
