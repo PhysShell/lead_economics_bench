@@ -48,7 +48,7 @@ characteristic mistake, and it is available to us too, so it is written down
 here as *not sufficient* before the harder levels are attempted.
 
 **All three now pass**, which is the result §4d reports. Worth noting what
-that cost: eleven packaging defects had to be worked through first, two of
+that cost: twelve packaging defects had to be worked through first, two of
 them blocking. Anyone who had stopped at R0 would have reached the same
 conclusion about the donor's numbers for none of the work and none of the
 entitlement to it.
@@ -117,7 +117,7 @@ Only after G4 does an effect-size sweep begin.
 | M1 | decision-theory invariants (`0 ≤ EVSI ≤ EVPI`, free info never hurts) | **PASS** |
 | M2 | significance-gate bug isolated and relabelled | **PASS** |
 | M3 | information ladder on two-point θ | **PASS**, conclusion limited to S0→S1 |
-| M4a | pristine-clone audit (defects D1–D11 below) | **PASS** |
+| M4a | pristine-clone audit (defects D1–D12 below) | **PASS** |
 | M4b | version-matched runtime (R 4.5.1, Py 3.12.8) | **PASS** — 99/99 R packages, 83/83 Python pins, `renv::status()` clean |
 | M4c | upstream `make smoke` in the matched lane | **PASS** — exits 0, all four adapters complete |
 | M4d | host-drift smoke in the robustness lane | deferred; its library was rolled back (D8) |
@@ -507,6 +507,50 @@ two-lane isolation was asserted and not verified.
 run script now prints which `Rscript` it resolved before starting, so the
 lane is evidenced on every run rather than assumed once.
 
+### D12 — half the study's precision is lost to an unoverridden library default
+
+§4a established that `geolift` and `causalimpact` publish every level and
+interval at exactly 4 decimal places while `causalpy` and `google_mm` publish
+full float64. The cause is one unpassed argument.
+
+Neither R adapter rounds anything. Both end with:
+
+```r
+run_geolift.R:165        write(toJSON(result_json, auto_unbox = TRUE, pretty = TRUE, na = "null"), ...)
+run_causalimpact.R:164   write(toJSON(result_json, auto_unbox = TRUE, pretty = TRUE, na = "null"), ...)
+```
+
+and `jsonlite::toJSON` has `digits = 4` as its **default**:
+
+```
+default     {"att_level":-290.8473,"att_pct":-0.0776}
+digits = NA {"att_level":-290.847289091517,"att_pct":-0.0775934389776986}
+```
+
+So two of the four tools in a published methods comparison report their
+results at four decimal places because nobody passed `digits = NA`. The
+Python adapters write full precision, so the study's output precision is
+inconsistent across tools for a reason unrelated to the tools.
+
+**What it costs.** It is why the G3 tolerance for those two had to be
+censored at 5e-5 (§4b), and why their cross-platform determinism **cannot be
+measured below that from the published artefact**. The G3 result — worst
+difference exactly 0 on 40/40 rows — means "identical after rounding to four
+decimals", not "identical computation". The stronger claim is unavailable,
+and it is unavailable because of a default argument rather than anything
+about GeoLift or CausalImpact.
+
+**Does it contaminate anything of ours?** Checked rather than assumed. The
+information ladder uses `att_pct` and `ci_width` as KDE dimensions. The
+quantisation is 5e-5 on a level near 290 (≈1.4e-7 relative) and ~1e-4 on
+interval bounds expressed as proportions, against a Scott's-rule bandwidth
+near 0.07 — a ratio of roughly 700. Far too fine to affect a density
+estimate, and the S1/S2 results are unaffected.
+
+**Fix: one argument.** `digits = NA`. It would also make the D-series
+observation in §4a — that three of four tools are deterministic — verifiable
+at full precision instead of censored.
+
 ### Audit summary
 
 | | issue | severity | our workaround | upstream would need to change? |
@@ -522,12 +566,13 @@ lane is evidenced on every run rather than assumed once.
 | D9 | `arrow` satisfies the lockfile but built minimal: no Parquet, the study's own panel format | **blocking, and silent** — installs clean, reports the pinned version | rebuild with `LIBARROW_MINIMAL=false`, outside the shared cache | yes — record the build flags, or test the capability |
 | D10 | `make panels` aborts on a `png()` failure after writing every panel correctly | low — but total where it fires | `options(bitmapType="cairo")` in our R build; cause was ours, not the donor's | yes — `tryCatch`, or move the figure to the `figures` target |
 | D11 | `RSCRIPT` governs only `make panels`; two adapters hardcode `"Rscript"` | low with one R, **total with two** | set `PATH` for the whole run and print the resolved interpreter | yes — thread the interpreter through, or read it from config |
+| D12 | two of four tools publish at 4 dp because `jsonlite::toJSON` defaults to `digits = 4` | low for the donor's own claims, **blocking for anyone measuring determinism** | censor the tolerance at 5e-5 and say so | yes — one argument, `digits = NA` |
 
-Nine of the eleven are one-line or one-file fixes. That is the characteristic
+Ten of the twelve are one-line or one-file fixes. That is the characteristic
 shape of reproducibility failure in this field: not deep methodological
 error, but a handful of unguarded lines that make a correct study hard to
 re-run. Worth stating plainly — **the donor's statistics have survived every
-one of these intact. All eleven are about packaging**, and one of them,
+one of these intact. All twelve are about packaging**, and one of them,
 D10, turned out on inspection to be ours rather than the donor's.
 
 The two that are not one-line are the two that matter most, and they are the
@@ -732,7 +777,7 @@ prediction beforehand precisely so that it could not be used as an excuse
 afterwards; it was neither needed as one nor contradicted.
 
 `geolift` and `causalimpact` came back with a worst-case difference of
-**exactly zero** — bit-identical at 4 decimal places on all 40 rows. That is
+**exactly zero** — identical at 4 decimal places on all 40 rows. That is
 the censored tolerance doing its job: the honest claim is "identical to the
 precision the donor published", and the determinism below that precision
 remains untested because the artefact cannot test it.
