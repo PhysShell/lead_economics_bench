@@ -51,6 +51,59 @@ Python 3.12 environment was provisioned in which `pymc 6.2.0` +
 produced on 0.19.2; the 1.x API differs enough that porting is a follow-up,
 and it is recorded as a known limitation rather than glossed over.
 
+## PyMC-Marketing PIE — assessed separately (brief §17)
+
+**PIE = "Predicted Incrementality by Experimentation".** It is *not* lead
+scoring, and describing it as such would be a category error.
+
+What it actually does, from the module's own docstring and signature: fit a
+**BART** model on the corpus of campaigns that **did** run an incrementality
+experiment (geo test, ghost-ad holdout), learning the map from campaign
+features to **measured incrementality**, then predict a full incrementality
+posterior for campaigns that never ran a test.
+
+```python
+model = PIEModel(
+    pre_determined_features=["objective", "vertical", "budget"],
+    post_determined_features=["exposure_rate"],
+)
+model.fit(X, y, random_seed=42)   # y = measured incrementality from past RCTs
+predictions = model.predict(X_new)
+```
+
+| Question | Answer |
+|---|---|
+| Unit of analysis | **campaign**, not lead |
+| Training label | an **experimental readout** (measured incrementality) |
+| Requires RCTs? | **Yes — it cannot exist without a corpus of past experiments** |
+| Uncertainty | full BART posterior over predicted incrementality |
+| vs per-lead uplift | completely different estimand: transfer/meta-learning of *campaign-level* incrementality, not heterogeneous treatment effects across individuals |
+| Benchmarkable as lead scoring? | **No.** It gets its own campaign-level track. |
+
+**Status verified 2026-09-22.** The module's own documentation states the API
+is alpha: *"the API and defaults may change between releases."* Two concrete
+facts found by trying to run it:
+
+1. `pymc_marketing.pie` **does not exist in 0.19.2** (the newest release that
+   supports Python 3.11). It appears only in the 1.x line, which needs
+   Python ≥3.12.
+2. **PIE 1.1.0 is broken against the current `pymc-bart` (0.13.1).** It imports
+   `from pymc_bart.split_rules import ContinuousSplitRule, OneHotSplitRule`,
+   and `pymc_bart.split_rules` was removed in 0.13 when pymc-bart moved to the
+   Rust `bartrs` backend. The import sits inside a `try/except ImportError`
+   that sets `pmb = None`, so the failure surfaces much later as a misleading
+   *"pymc-bart is required for PIEModel. Install it with:
+   `pip install 'pymc-marketing[pie]'`"* — even when pymc-bart is installed and
+   imports fine.
+   **Working pin: `pymc-bart==0.12.0`.**
+
+This is exactly the "alpha, re-verify before relying on it" case the brief
+anticipated. It is usable today with a pinned dependency, and it should not be
+a load-bearing production dependency yet.
+
+A campaign-level benchmark for PIE's *own* claim is implemented in
+`scripts/run_pie_track.py`; results are in the final report.
+
 ## Maintenance assessment
 
 The single most decision-relevant column is "last release", because a causal
