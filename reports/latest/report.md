@@ -163,29 +163,35 @@ capacity beat online-ness even under drift. The one place bandits won
 (`propensity_not_uplift`, +4 to +9) is where the offline model is
 *structurally* biased, not where the bandit is adaptive.
 
-**6. "Bayesian uncertainty will pay for itself in decisions."** Half false, and
-the half that survives is not the half expected. The two things bundled under
-"Bayesian" come apart cleanly *(2 of 4 bayes regimes complete, n=5,000)*:
+**6. "Bayesian uncertainty will pay for itself in decisions."** False. Kill
+criterion K1 fires: across 4 regimes at n=5,000, `bayes_hierarchical` beats
+`propensity_ev_gbm` by **+1.2%** [−1.3%, +3.9%] — **no meaningful difference**
+— at **42× the compute** (36.5s vs 0.87s per fit).
 
-- **The posterior is worth nothing.** Risk-averse lower-bound policies scored
-  58.1 (lcb25) and 57.4 (lcb10) against the plain EV policy's 58.0 — a swing of
-  ±0.6 points, far inside the threshold. Bootstrap intervals on
-  `propensity_ev_gbm` changed its result by **exactly zero** (48.4 vs 48.4).
-  And the intervals are not even honest at the per-lead level: 80% nominal
-  coverage delivers **22%** actual (Bayesian) and **33%** (bootstrap).
-- **The hierarchical structure is worth a great deal.**
-  `bayes_hierarchical` scored **58.0** against `propensity_ev_gbm`'s 48.4 —
-  **+9.6 points** — and the no-pooling ablation isolates why:
-  `abl_bayes_no_hierarchy` scored **46.4**, so partial pooling alone is worth
-  **+11.6 points**, and without it the Bayesian model is *worse* than the
-  gradient-boosted baseline it is supposed to beat.
+Unpacking it further, because the two things bundled under "Bayesian" behave
+differently and only one of them is worthless:
 
-So the original assumption was wrong about the mechanism. The value is in
-**partial pooling across sparse segments**, not in quantified uncertainty — and
-partial pooling does not require MCMC. Mixed-effects or empirical-Bayes
-shrinkage should be tried before 45 seconds per fit is accepted as the price;
-that test was not run here and is the clearest piece of unfinished work in this
-study.
+- **The posterior changes no decisions.** Risk-averse lower-bound policies
+  moved the result by **−0.3%** (lcb10) and **−0.0%** (lcb25). Bootstrap
+  intervals on `propensity_ev_gbm` moved it by **exactly 0.0%** — the interval
+  is [+0.0, +0.0], because the point estimates are identical and only the
+  policy could have differed. And the intervals are not honest at the per-lead
+  level: 80% nominal coverage delivers **23%** actual (Bayesian) and **32%**
+  (bootstrap).
+- **Partial pooling is real, and not enough on its own.** The no-pooling
+  ablation loses **−3.2%** [−5.9%, −1.2%], so pooling genuinely contributes —
+  but the pooled model it produces still only ties a gradient-boosted
+  Propensity-EV that costs 1/42 as much.
+
+And the win is regime-conditional in the now-familiar way: `bayes_hierarchical`
+beats `propensity_ev_gbm` on `propensity_not_uplift` (+4.1%), ties on `sparse`
+(+2.2%) and `hidden_confounding` (−2.1%), and **loses** on `very_rare_outcome`
+(−3.6%). An earlier draft of this report, written when only `sparse` and
+`propensity_not_uplift` had finished, recorded a +9.6-point Bayesian advantage
+and concluded K1 would not fire. Two more regimes reversed it. That is recorded
+rather than quietly overwritten, because it is the cleanest example in the
+study of why a preregistered regime list has to be completed before a verdict
+is read off it.
 
 **7. "An MMM is a sensible day-one feature."** False, and dangerously so. An
 *uncalibrated* PyMC-Marketing MMM has 14.9% mean budget-allocation regret
@@ -601,10 +607,24 @@ AUROC ships a coin-flip between 1st and 8th. Neither metric knows what a deal
 is worth or what an agent-hour costs, so neither can rank an allocation.
 
 **Net value per agent-hour** tells the same story from the other side. At full
-capacity, where total profit is identical across methods, `dr_learner` returns
-**$4,930 per agent-hour** against `random`'s **$3,693** (+33%) — because it
-declines to spend minutes on negative-uplift leads. A business at full capacity
-should read the model as a cost-reduction tool, not a revenue tool.
+capacity, where total profit is nearly identical across methods (84–88% of
+Oracle for everything including `random`), the per-hour returns are not:
+
+| candidate | net $/agent-hour at 100% capacity | vs `random` |
+|---|---|---|
+| `oracle` | 7,712 | +109% |
+| `t_learner` | **5,620** | **+52%** |
+| `dr_learner` | 4,930 | +33% |
+| `propensity_ev_gbm` | 3,813 | +3% |
+| `hist_profit_per_agent_hour` | 3,712 | +1% |
+| `random` | 3,693 | — |
+| `lead_score_gbm` | 3,687 | −0% |
+
+The causal models earn 33–52% more per hour worked because they decline to
+spend minutes on negative-uplift leads; the analytics baseline and the lead
+score earn what random does. **A business at full capacity should read the
+model as a cost-reduction tool, not a revenue tool** — same profit, fewer
+hours — and should note that lead scoring delivers neither.
 
 **Sunk cost, handled correctly.** Once a lead exists, its CPL cannot change the
 next action, and the code enforces this:
@@ -675,7 +695,7 @@ unit of aggregation, not the sample size.
 capacity a causal model captures 5–7× what lead scoring or an analytics
 baseline does. At 100% capacity everything converges to 85–88% and the model is
 worth nothing on total profit — the advantage moves into efficiency instead
-(+33% net per agent-hour).
+(+33% to +52% net per agent-hour, §6).
 
 This is also the sharpest qualification the study produces on the incumbents:
 `lead_score_gbm` at 5% capacity captures **4.9%** of the achievable gain, below
@@ -739,42 +759,66 @@ effort model together account for the majority of the gap between lead scoring
 is the difference between EV mode and rank mode, which grows as capacity
 tightens.
 
-### 8.1 Uncertainty ablations (RQ5, RQ6) — complete for 2 of 4 regimes, n=5,000
+### 8.1 Uncertainty ablations (RQ5, RQ6) — 4 regimes × 4 seeds, n=5,000
 
-% of Oracle gain, mean over `sparse` and `propensity_not_uplift`, 4 seeds:
+% of Oracle gain averaged over `sparse`, `propensity_not_uplift`,
+`hidden_confounding` and `very_rare_outcome`:
 
-| candidate | % of Oracle | fit (s) | 80% interval coverage | what it isolates |
+| candidate | % of Oracle | fit (s) | 80% coverage | what it isolates |
 |---|---|---|---|---|
-| `bayes_hierarchical_lcb25` | 58.1 | 45.8 | 0.222 | risk aversion at 25% |
-| **`bayes_hierarchical`** | **58.0** | 45.0 | 0.222 | the full model |
-| `bayes_hierarchical_lcb10` | 57.4 | 45.8 | 0.222 | risk aversion at 10% |
-| `propensity_ev_gbm` | 48.4 | 0.9 | — | the non-Bayesian reference |
-| `propensity_ev_gbm_bootstrap` | 48.4 | 5.9 | 0.331 | bootstrap uncertainty |
-| **`abl_bayes_no_hierarchy`** | **46.4** | 20.8 | 0.103 | **pooling removed** |
-| `bayes_hierarchical_abstain50` | 45.1 | 45.8 | 0.222 | abstain on the thinnest 50% |
-| `propensity_ev_gbm_bootstrap_lcb25` | 43.7 | 5.9 | 0.331 | risk aversion, frequentist |
-| `propensity_ev_gbm_bootstrap_abstain50` | 33.8 | 5.9 | 0.331 | abstention, frequentist |
-| `propensity_ev_gbm_bootstrap_abstain25` | 17.5 | 5.9 | 0.331 | abstain on the thinnest 25% |
-| `bayes_hierarchical_abstain25` | **12.9** | 45.8 | 0.222 | abstain on the thinnest 25% |
+| **`bayes_hierarchical`** | **54.6** | 36.5 | 0.227 | the full model |
+| `bayes_hierarchical_lcb10` | 54.6 | 36.5 | 0.227 | risk aversion at 10% |
+| `bayes_hierarchical_lcb25` | 53.6 | 36.5 | 0.227 | risk aversion at 25% |
+| **`propensity_ev_gbm`** | **53.2** | **0.87** | — | the non-Bayesian reference |
+| `propensity_ev_gbm_bootstrap` | 53.2 | 5.1 | 0.319 | bootstrap uncertainty |
+| `propensity_ev_gbm_bootstrap_lcb25` | 49.6 | 5.1 | 0.319 | risk aversion, frequentist |
+| `propensity_ev_gbm_bootstrap_lcb10` | 47.3 | 5.1 | 0.319 | risk aversion, frequentist |
+| **`abl_bayes_no_hierarchy`** | **46.1** | 18.4 | 0.140 | **pooling removed** |
+| `t_learner` | 41.8 | 1.1 | — | causal reference |
+| `hist_profit_per_agent_hour` | 41.3 | 0.03 | — | analytics reference |
+| `propensity_ev_gbm_bootstrap_abstain50` | 34.8 | 5.1 | 0.319 | abstain on the thinnest 50% |
+| `bayes_hierarchical_abstain50` | 28.8 | 36.5 | 0.227 | abstain on the thinnest 50% |
+| `propensity_ev_gbm_bootstrap_abstain25` | 16.4 | 5.1 | 0.319 | abstain on the thinnest 25% |
+| `bayes_hierarchical_abstain25` | **8.0** | 36.5 | 0.227 | abstain on the thinnest 25% |
+
+Paired comparisons under the preregistered rule:
+
+| comparison | Δ % | 95% CI | verdict |
+|---|---|---|---|
+| `bayes_hierarchical` − `propensity_ev_gbm` | **+1.2%** | [−1.3, +3.9] | **no meaningful difference → K1 fires** |
+| `bayes_hierarchical` − `abl_bayes_no_hierarchy` | +3.2% | [+1.2, +5.9] | pooling wins |
+| `bayes_hierarchical` − `hist_profit_per_agent_hour` | +7.3% | [+3.5, +11.2] | beats analytics |
+| `bayes_hierarchical_lcb10` − `bayes_hierarchical` | −0.3% | [−1.6, +0.8] | no difference |
+| `bayes_hierarchical_lcb25` − `bayes_hierarchical` | −0.0% | [−0.6, +0.5] | no difference |
+| `propensity_ev_gbm_bootstrap` − `propensity_ev_gbm` | +0.0% | [+0.0, +0.0] | no difference |
+
+And per regime, `bayes_hierarchical` − `propensity_ev_gbm`:
+`propensity_not_uplift` **+4.1%** [+1.1, +7.0] (win), `sparse` +2.2%
+[−0.7, +6.3], `hidden_confounding` −2.1% [−7.2, +2.6], `very_rare_outcome`
+**−3.6%** [−7.6, −0.4] (loss).
 
 Four readings:
 
-1. **Partial pooling is the whole Bayesian advantage.** 58.0 → 46.4 when it is
-   removed, which is larger than the model's entire margin over the
-   gradient-boosted baseline. Without pooling the Bayesian model *loses* to it.
-2. **The posterior changes no decisions.** lcb10 / lcb25 move the result by
-   −0.6 / +0.1. Bootstrap intervals move `propensity_ev_gbm` by exactly 0.0.
-3. **Intervals do not cover.** 80% nominal delivers 22% (Bayesian) and 33%
-   (bootstrap) against per-lead truth. This is a harsh standard — the posterior
-   covers parameter uncertainty, not misspecification, nor the point-estimated
-   value and effort nuisances feeding the EV — but a product must not present
-   these as calibrated 80% intervals, because they are not.
-4. **Abstention is expensive as scored.** Declining the thinnest 25% costs
-   45 points (58.0 → 12.9). The mechanism is documented and deliberate:
-   declined leads take the control action and the freed capacity is **not**
-   reallocated, so this is a lower bound on abstention's value, not a
-   measurement of it (§16.7 in the methodology). It measures the cost of
-   refusing to act, not the value of deferring to a human.
+1. **K1 fires.** The full Bayesian model ties a gradient-boosted Propensity-EV
+   that costs 1/42 as much. It is not worse — it beats the analytics baseline
+   by +7.3% and is a perfectly good decision model — it is just not *better*
+   than the cheap one, which is exactly what the kill criterion was written to
+   detect.
+2. **Partial pooling is real but not sufficient.** Removing it costs −3.2%
+   with the interval excluding zero, so the hierarchy is doing work. It is just
+   not enough work to clear a much cheaper model.
+3. **The posterior changes no decisions.** Every risk-aware variant lands
+   within ±0.3% of its own point-estimate policy, and the bootstrap variant's
+   interval is literally [+0.0, +0.0]. Meanwhile the intervals do not cover:
+   80% nominal delivers 23% (Bayesian) and 32% (bootstrap) against per-lead
+   truth. That is a harsh standard — the posterior covers parameter
+   uncertainty, not misspecification, nor the point-estimated value and effort
+   nuisances feeding the EV — but a product must not label these "80%".
+4. **Abstention is expensive as scored.** Declining the thinnest 25% costs 47
+   points (54.6 → 8.0). The mechanism is deliberate and documented: declined
+   leads take the control action and the freed capacity is **not** reallocated.
+   So this is a lower bound on abstention's value, not a measurement of it — it
+   prices the cost of refusing to act, not the value of deferring to a human.
 
 ---
 
@@ -912,7 +956,7 @@ Agreed in advance in [`docs/benchmark-spec.md`](../../docs/benchmark-spec.md) §
 
 | # | Criterion | Trigger | Status |
 |---|---|---|---|
-| K1 | Kill Bayesian complexity | Bayesian within 2% of best non-Bayesian at >10× compute | **NOT triggered** *(2 of 4 regimes)* — `bayes_hierarchical` 58.0 vs `propensity_ev_gbm` 48.4 at n=5,000 in sparse regimes, well outside 2%, at 51× compute. But the win is **partial pooling**, not the posterior (§2.6), and the cheap-pooling alternative was not tested |
+| K1 | Kill Bayesian complexity | Bayesian within 2% of best non-Bayesian at >10× compute | **TRIGGERED** — `bayes_hierarchical` − `propensity_ev_gbm` = +1.2% [−1.3, +3.9] over 4 regimes at n=5,000, at **42× compute** (36.5s vs 0.87s). Ship the simple model |
 | K2 | Kill uplift | Causal fails to beat `propensity_ev_gbm` by >2% **on randomized data** | **TRIGGERED, twice** — synthetic `easy_randomized`: s_learner +1.3% (n.s.), x_learner −0.7%, t_learner −1.7%, dr_learner −3.5%. **Real** randomized data (§4.2): 15 of 16 comparisons show no meaningful difference and the 16th favours the propensity ranking |
 | K3 | Kill lead-level decisioning | `hist_profit_per_agent_hour` reaches ≥80% of Oracle | **NOT triggered** — it reaches 36.6% |
 | K4 | Kill MMM for SMB | MMM allocation regret >10% at SMB sizes | **NOT triggered at SMB sizes** — calibrated MMM 0.61% regret on `smb_short` (52 weeks) and 1.25% on `very_short` (30 weeks), both well under 10%. **But it fails the criterion at 260 weeks** (25.1%), which is the opposite of the expected direction and is treated as an open failure in §9 |
@@ -953,17 +997,20 @@ by the rung below it failing.
 | **1** | **`propensity_ev_logit`** — calibrated P(convert) × predicted value ÷ predicted minutes, under a capacity constraint | ~1–5k resolved leads, effort logging | lead scoring by +5.0%, analytics by +10.7% | §5 |
 | **2** | Randomised holdout (5–10%) with logged propensity, permanently | product decision, not a model | makes everything above measurable | §15 |
 | **3** | **`s_learner`** — one GBM with treatment as a feature | ~25k resolved leads **and** a measured response-heterogeneity signal | rung 1 by +2.9%, and only in the right regime | §5, §7.1 |
-| **3b** | **Partial pooling across segments** — try mixed-effects or empirical-Bayes shrinkage first, PyMC only if they fall short | many small segments (campaigns, sources, regions) with thin data each | `propensity_ev_gbm` by +9.6 points in sparse regimes | §8.1 |
+| **3b** | **Partial pooling across segments** — mixed-effects or empirical-Bayes shrinkage; **not** PyMC | many small segments (campaigns, sources, regions) with thin data each | removing pooling costs −3.2% [−5.9, −1.2], but full MCMC still only ties rung 1's GBM at 42× the cost | §8.1 |
 | **4** | Uncertainty surfacing / abstention | posterior or bootstrap intervals | **not demonstrated** — see §2.6, §2.9, §8.1 | — |
 | **5** | Budget allocation: ridge with adstock+saturation first, calibrated MMM only with monitoring | a running lift-test programme | equal split, 3.98% vs 6.16% regret | §4.4 |
 
-Rung 3b is where the largest un-banked gain in this study sits, and also its
-largest open question: partial pooling was worth +11.6 points but was only
-tested via 45-second MCMC fits, and the cheap alternatives were never
-benchmarked. Rung 4 has no evidence behind it and should not be built until it
-does — the intervals measured here do not even cover (22% actual against 80%
-nominal). Rung 5 should not be built before a partner is running lift tests,
-because without them the MMM is worse than an equal split.
+Rung 3b is conditional and modest: pooling contributes (−3.2% when removed,
+interval excluding zero) but the only implementation benchmarked here — full
+MCMC — fires kill criterion K1 by tying a model that costs 1/42 as much. Build
+it only if a partner's data really is dominated by thin segments, and build it
+with shrinkage rather than sampling. Benchmarking the cheap alternatives is the
+clearest piece of unfinished work in this study. Rung 4 has no evidence behind
+it and should not be built until it does — the intervals measured here cover
+23% against a nominal 80%. Rung 5 should not be built before a partner is
+running lift tests, because without them the MMM is worse than an equal
+split.
 
 ### 11.4 Day-one value, before any model has data
 
@@ -1212,20 +1259,21 @@ against 26.1% for the economics wrapper. Ranking by P(convert) under scarcity
 selects the leads who would have converted anyway.
 
 **3. Is a Bayesian approach needed at all?**
-**The posterior, no. The hierarchy, yes — but probably not via MCMC.** These
-must be separated, and separating them reverses the expected answer. Quantified
-uncertainty changed decisions by ±0.6 points (risk-averse lower-bound policies
-58.1 / 57.4 vs the plain EV policy's 58.0) and by *exactly zero* for bootstrap
-intervals, while under-covering badly — 80% nominal intervals achieve 22%
-actual coverage against per-lead truth. But the **hierarchical** model beat
-`propensity_ev_gbm` by **+9.6 points** in sparse regimes at n=5,000, and the
-no-pooling ablation shows **+11.6 of those points are partial pooling alone**;
-strip the hierarchy out and the Bayesian model is *worse* than the baseline.
-So kill criterion K1 does not fire — but the thing that earns its keep is
-pooling across sparse segments, which mixed-effects or empirical-Bayes
-shrinkage can also provide at a fraction of 45 seconds per fit. **That cheaper
-comparison was not run, and until it is, "we need PyMC" is not established —
-only "we need pooling" is.**
+**No. Kill criterion K1 fires.** Over 4 regimes at n=5,000,
+`bayes_hierarchical` beat `propensity_ev_gbm` by **+1.2%** [−1.3%, +3.9%] — no
+meaningful difference — at **42× the compute** (36.5s vs 0.87s per fit). It
+wins `propensity_not_uplift` (+4.1%) and loses `very_rare_outcome` (−3.6%),
+which is the same regime-conditional pattern the causal family shows.
+
+Two qualifications that matter for what to build. First, the *posterior*
+specifically is worth nothing: every risk-aware policy landed within ±0.3% of
+its own point-estimate version, the bootstrap variant's interval is literally
+[+0.0, +0.0], and the intervals under-cover badly (80% nominal → 23% actual).
+Second, the *hierarchy* is not nothing: removing partial pooling costs −3.2%
+[−5.9%, −1.2%], so pooling genuinely contributes — it simply is not enough to
+clear a model costing 1/42 as much. If a partner's data is dominated by many
+thin segments, pooling is worth having; get it from mixed effects or
+empirical-Bayes shrinkage, which this study did not benchmark and should have.
 
 **4. Where is causal uplift genuinely more useful than propensity?**
 **Only where treatment response is heterogeneous.** Decomposed: heterogeneous
@@ -1374,21 +1422,21 @@ benchmark: kill criterion K2 fired twice — on synthetic randomized data and
 again on the real Hillstrom experiment — the doubly-robust learner finished
 10th of 21, the causal forest spent 51% of the compute to land below a logistic
 regression, bandits bought nothing, and quantified uncertainty changed
-decisions by ±0.6 points while its 80% intervals covered 22%. The causal
-upgrade is real but conditional, worth +2.9% on average, carried entirely by
-three regimes, and it should be gated behind a measured test for response
-heterogeneity rather than shipped by default.
+decisions by ±0.3 points while its 80% intervals covered 23%, and K1 fired too
+— the full hierarchical Bayesian model tied a gradient-boosted Propensity-EV
+costing 1/42 as much. The causal upgrade is real but conditional, carried
+entirely by a minority of regimes, and it should be gated behind a measured
+test for response heterogeneity rather than shipped by default.
 
-**One piece of the ambitious plan survived and deserves a second look**:
-hierarchical partial pooling, worth +9.6 points over the gradient-boosted
-baseline in sparse regimes, of which +11.6 is the pooling itself. That is the
-one result pointing *toward* more statistical machinery rather than less. It
-is also the least finished: it was only ever tested as 45-second MCMC, and the
-cheap alternatives — mixed effects, empirical-Bayes shrinkage — were never
-benchmarked against it. Run that comparison before concluding anything about
-PyMC. If shrinkage captures most of the +11.6, the answer to this whole
-question is a logistic regression with pooled segment effects, and the platform
-was never needed.
+**One piece of the ambitious plan is worth a second look, and it is smaller
+than it first appeared**: hierarchical partial pooling. Removing it costs
+−3.2% [−5.9%, −1.2%], so it does real work — but the model carrying it still
+only ties the cheap baseline, so the work is not worth 42× the compute *as
+implemented*. The open question is whether mixed effects or empirical-Bayes
+shrinkage capture most of that −3.2% for near-zero cost. This study did not
+run that comparison and should have; it is the clearest unfinished work here.
+If shrinkage does capture it, the answer to this whole question is a logistic
+regression with pooled segment effects, and the platform was never needed.
 
 And if the partner's sales team has capacity to call everyone: **stop.** At 100%
 capacity every method in this study converges to 85–88% of Oracle, and the most
