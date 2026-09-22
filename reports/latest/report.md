@@ -32,71 +32,119 @@ and one hyperparameter budget. The primary metric is money — net value per
 
 ### What won
 
-**Nothing that justifies a Bayesian-causal platform. Something that justifies a
-narrow, cheap product.**
+**The cheap half of the hypothesis. Not the expensive half.**
 
-The ordering that survived every check:
+Over 19 synthetic regimes at 8 seeds, scored on the 17 regimes every candidate
+completed (% of the Oracle's achievable gain):
 
-| Layer | Best candidate | % of Oracle gain | Verdict |
+| Layer | Best candidate | % of Oracle | fit (s) |
 |---|---|---|---|
-| Decision engine with explicit economics | `s_learner` / `propensity_ev_logit` | **58–61%** | the region worth building in |
-| Lead scoring (`P(convert)` ranking) | `lead_score_logit` | 52% | beaten, reliably |
-| End-to-end analytics / historical ROI | `hist_conversion_rate` | 38% | beaten, decisively |
-| Last-click attribution | `last_click_attribution` | 30% | beaten, decisively |
-| No model at all | `random` / `fifo` | 25% | — |
+| **Causal metalearner** | `s_learner` | **60.7** | 2.22 |
+| **Economics + logistic regression** | **`propensity_ev_logit`** | **60.7** | **0.98** |
+| Economics + gradient boosting | `propensity_ev_gbm` | 58.7 | 1.72 |
+| Other causal learners | `x_learner` 55.7 · `t_learner` 54.9 · `causal_forest` 52.8 · `dr_learner` 49.7 | | 4.1–22.5 |
+| Lead scoring (`P(convert)` ranking) | `lead_score_logit` | 54.3 | 0.96 |
+| End-to-end analytics / historical ROI | `hist_conversion_rate` | 38.6 | 0.05 |
+| Last-click attribution | `last_click_attribution` | 29.1 | 0.05 |
+| No model at all | `random` 24.3 · `fifo` 24.0 | | 0.04 |
 
-The single largest effect in the entire study is **not** causal inference over
-propensity. It is **explicit economics over any ranking at all**:
-`propensity_ev_logit` — a logistic regression multiplied by predicted deal
-value and divided by predicted agent minutes — beats the **strongest**
-analytics baseline by **+9.5% of net value per 1,000 leads** (95% CI +7.8% to
-+11.4%) and beats a gradient-boosted lead score by **+5.0%**. Both clear the
-preregistered 2% practical threshold several times over.
+**The best causal learner and a logistic regression with explicit economics
+finish in a statistical tie — 60.74 against 60.72 — and the logistic
+regression does it in 44% of the compute.** Under the preregistered decision
+rule the difference is **+1.5% of net value per 1,000 leads, 95% CI
+[+0.4%, +2.7%]**: the interval excludes zero, the point estimate does not clear
+the 2% practical threshold, so the verdict is **no meaningful difference**.
 
-A note on which baseline that is, since the point of the exercise is to lose to
-a strong one. The preregistration named `hist_profit_per_agent_hour` as the
-analytics reference for RQ1, but on the data it is *not* the best analytics
-baseline — plain `hist_conversion_rate` scores higher (38.8% vs 36.7% of
-Oracle). Every headline comparison below is therefore reported against
-`hist_conversion_rate`, the strongest one, which makes each advantage about
-1.3 points *smaller* than the preregistered reference would have shown.
+The rest of the causal family does worse than that. `dr_learner` — the most
+theoretically defensible estimator in the study — is a **significant loss** at
+−2.7% [−3.9%, −1.4%], finishing 10th of 21 behind a lead score.
 
-The causal machinery adds **+2.9%** on top of that (`s_learner` vs
-`propensity_ev_logit`, 95% CI +1.2% to +4.9%) — which *barely* clears the same
-threshold, and only because three regimes out of ten carry it.
+The single largest effect in the study is not causal inference over propensity.
+It is **explicit economics over any ranking at all**. `propensity_ev_logit` —
+a logistic regression multiplied by predicted deal value and divided by
+predicted agent minutes — beats:
+
+| beaten reference | Δ net value / 1,000 leads | 95% CI | verdict |
+|---|---|---|---|
+| `hist_conversion_rate` (strongest analytics) | **+9.3%** (+$20,066) | [+7.9, +10.7] | **WIN** |
+| `hist_profit_per_agent_hour` (preregistered analytics reference) | +10.4% (+$22,227) | [+9.1, +11.7] | **WIN** |
+| `last_click_attribution` | +14.3% (+$29,592) | [+12.7, +15.9] | **WIN** |
+| `lead_score_gbm` (gradient-boosted lead scoring) | **+4.3%** (+$9,760) | [+3.5, +5.3] | **WIN** |
+| `lead_score_logit` | +3.3% (+$7,614) | [+2.4, +4.3] | **WIN** |
+
+A note on which analytics baseline that is, since the point of the exercise is
+to lose to a strong one. The preregistration named `hist_profit_per_agent_hour`
+as the analytics reference, but on the data it is *not* the best analytics
+baseline — plain `hist_conversion_rate` scores higher (38.6% vs 36.2% of
+Oracle). Headline comparisons are therefore reported against
+`hist_conversion_rate`, which makes each advantage about 1 point *smaller*
+than the preregistered reference would have shown.
+
+And gradient boosting buys nothing over logistic regression inside the economic
+wrapper: `propensity_ev_gbm` − `propensity_ev_logit` = **−0.5%**
+[−0.9%, −0.1%]. The lift comes from the objective, not the estimator.
 
 ### Where it won
 
-This is the part that matters more than the headline, because the advantage is
-**conditional, not general**. Causal modelling beat the simple economic model
-in 3 of 10 regimes and **lost** in 2:
+The causal advantage is **conditional, and the condition is narrow**. Per
+regime, against `propensity_ev_logit` (`*` clears +2%, `!` loses by more
+than 2%):
 
-| Regime | `s_learner` vs `propensity_ev_logit` | Verdict |
-|---|---|---|
-| `strong_heterogeneity` | **+10.4%** [+5.5, +15.5] | causal wins |
-| `capacity_value_heterogeneity` | **+9.2%** [+4.5, +14.6] | causal wins |
-| `propensity_not_uplift` | **+4.4%** [+3.4, +5.6] | causal wins |
-| `value_heterogeneity` | +0.8% [−2.1, +4.9] | no meaningful difference |
-| `agent_time_heterogeneity` | −0.1% [−1.9, +2.5] | no meaningful difference |
-| `easy_randomized` | −0.2% [−2.2, +2.4] | no meaningful difference |
-| `observed_confounding` | −0.4% [−1.5, +0.6] | no meaningful difference |
-| `rare_outcome` | −1.5% [−3.3, +0.3] | no meaningful difference |
-| `sparse` | −2.8% [−4.3, −1.4] | **causal loses** |
-| `very_rare_outcome` | −5.2% [−9.7, −1.8] | **causal loses** |
+| regime | `s_learner` | `x_learner` | `t_learner` | `dr_learner` | `causal_forest` |
+|---|---|---|---|---|---|
+| `strong_heterogeneity` | **+10.4*** | **+9.2*** | **+7.3*** | **+5.7*** | **+6.0*** |
+| `capacity_value_heterogeneity` | **+9.2*** | **+9.1*** | **+6.9*** | **+8.3*** | **+9.1*** |
+| `propensity_not_uplift` | **+4.4*** | **+2.6*** | **+3.3*** | +1.7 | **+2.3*** |
+| `seasonality_trend` | +0.8 | −1.0 | −0.6 | −3.6! | −2.9! |
+| `value_heterogeneity` | +0.8 | −1.6 | −2.4 | −6.8! | −6.8! |
+| `negative_control_null_effect` | +0.3 | −0.0 | −0.0 | +0.2 | +0.0 |
+| `agent_time_heterogeneity` | −0.1 | −1.0 | −3.5! | −4.0! | −3.7! |
+| `easy_randomized` | −0.2 | −2.2 | −3.2! | −5.0! | −4.5! |
+| `observed_confounding` | −0.4 | −2.3! | −1.5 | −4.3! | −3.7! |
+| `delayed_censored` | −0.6 | −3.3! | −3.4! | −5.0! | −4.4! |
+| `policy_feedback_loop` | −0.6 | −4.2! | −4.0! | −9.8! | −6.0! |
+| `concept_drift` | −1.0 | −1.3 | −1.6 | −1.4 | −1.4 |
+| `hidden_confounding` | −1.0 | −1.3 | −1.2 | −2.1! | −2.3! |
+| `selection_bias` | −1.3 | −2.9! | −1.7 | −6.9! | −5.5! |
+| `rare_outcome` | −1.5 | −7.1! | −6.6! | −12.9! | −8.7! |
+| `misleading_attribution` | −1.8 | −3.5! | −3.4! | −6.6! | −4.8! |
+| `sparse` | −2.8! | −4.5! | −4.4! | −6.1! | −6.1! |
+| `very_rare_outcome` | −5.2! | −12.0! | −10.7! | −16.0! | −6.7! |
+| **`noisy_crm`** | **crash** | **crash** | **crash** | **crash** | **crash** |
 
-The condition is specific and testable on a partner's own data before any
-model is built: **causal modelling pays only when leads differ in how they
-*respond to being contacted*.** When they differ only in deal value or in
-cost-to-serve — which is the common case — multiplying by value and dividing
-by minutes captures the whole gain, in a logistic regression.
+Read down the columns. **`s_learner` wins 3 regimes of 18 and loses 2.
+`x_learner` wins 3 and loses 9. `t_learner` wins 3 and loses 9.
+`causal_forest` wins 3 and loses 10. `dr_learner` wins 2 and loses 12.**
+
+The three winning regimes are the same three every time, and they are exactly
+the three built to contain **heterogeneous treatment response**. Everywhere
+else — confounding, selection bias, feedback loops, drift, delay, rare
+outcomes, sparse data — the causal machinery costs money.
+
+**And on `noisy_crm` it does not run at all.** Every EconML learner fails with
+`Input X contains NaN`, 8 seeds out of 8, on the regime built to resemble a
+real CRM export with missing values. The XGBoost-based economic models handle
+the missingness natively; `propensity_ev_logit` scores 59.9% there, its
+second-best regime of the entire sweep. That regime is excluded from the
+headline mean so the comparison stays like-for-like, which *flatters* the
+causal family.
+
+The condition is testable on a partner's own data before any model is built:
+**causal modelling pays only when leads differ in how they respond to being
+contacted.** When they differ only in deal value or cost-to-serve — the common
+case — multiplying by value and dividing by minutes captures the whole gain.
 
 ### How big the effect is
 
 At the benchmark's economics ($38/agent-hour, 32% contribution margin, 25% of
-the capacity needed to call everyone), moving from a historical
-profit-per-agent-hour heuristic to `propensity_ev_logit` is worth
-**+$24,500 per 1,000 leads**; adding causal modelling on top is worth a further
-**+$7,400 per 1,000 leads**, and only in the regimes above.
+the capacity needed to call everyone):
+
+- moving from the best analytics heuristic to `propensity_ev_logit` is worth
+  **+$20,066 per 1,000 leads**;
+- moving from a gradient-boosted lead score to it is worth **+$9,760 per
+  1,000 leads**;
+- adding the best causal learner on top is worth **+$3,509 per 1,000 leads**
+  and does not clear the preregistered threshold.
 
 Two magnitudes bound the product:
 
@@ -112,15 +160,20 @@ Two magnitudes bound the product:
 
 Required section. These were held at the start, tested, and are wrong.
 
-**1. "Uplift/causal modelling is the core differentiator."** False as stated.
-Decomposing heterogeneity three ways shows that explicit economics alone
-handles two of the three kinds. `propensity_ev_logit` is the *best candidate in
-the study* when deal value varies (56.4% of Oracle) and when handle time varies
-(61.3%) — ahead of every causal learner. It collapses to 44.4% only when
-heterogeneous *treatment response* is added. Causal inference is worth roughly
-**15 points of Oracle gain, and only against that one kind of heterogeneity**.
-That is a far narrower claim than the one the project started with, and it is
-falsifiable on a design partner's data before anything is built.
+**1. "Uplift/causal modelling is the core differentiator."** False, and the
+final margin is zero. The best causal learner finishes in a statistical tie
+with a logistic regression carrying explicit economics (+1.5%, CI
+[+0.4%, +2.7%], inside the 2% threshold), at 2.3× the compute; the rest of the
+causal family loses. Decomposing heterogeneity three ways shows why: explicit
+economics alone handles two of the three kinds. `propensity_ev_logit` is the
+best candidate in the study when handle time varies (61.0% of Oracle) and level
+with the best when deal value varies (55.1% against `s_learner`'s 56.5%). It
+collapses — **61 → 45** — only when heterogeneous *treatment response* is
+added, and that is the one place the causal learners pull clear, at 61–66.
+Causal inference is worth roughly **16 points of Oracle gain, and only against
+that one kind of heterogeneity**. That is a far narrower claim than the one the
+project started with, and it is falsifiable on a design partner's data before
+anything is built.
 
 **1b. "…and the causal advantage will show up broadly on real randomized
 data."** It shows up in exactly one place. Across **48 paired comparisons** of
@@ -139,18 +192,23 @@ contain the response heterogeneity the causal learners are built for, and in
 that campaign they found it and turned it into money (+3.5% to +4.4%, intervals
 excluding zero).
 
-**2. "More sophisticated estimators will win."** False, expensively. The
-doubly-robust learner — theoretically the most defensible — finishes **10th of
-21** at 49.9% of Oracle, below a logistic regression with a value multiplier.
-The causal forest consumes **51% of the entire benchmark's compute** (26.9s per
-fit versus 1.0s) to land 5 points *below* `propensity_ev_logit`. Sophistication
-bought negative return on four of ten regimes and negative return on every
-compute budget.
+**2. "More sophisticated estimators will win."** False, expensively, and the
+ordering is almost exactly inverted. The doubly-robust learner — theoretically
+the most defensible estimator here — finishes **10th of 21** at 49.7% of
+Oracle, below a plain lead score, and **loses 12 of the 18 regimes it could
+run**. The causal forest consumes **46% of the entire benchmark's compute**
+(22.5s per fit against 0.98s) to land 8 points *below* `propensity_ev_logit`.
+Across the causal family, cost and rank move in opposite directions: the
+cheapest metalearner (`s_learner`, 2.2s) is the only one that ties the simple
+model, and every more expensive one does worse.
 
-**3. "Gradient boosting will beat logistic regression."** False, and it is not
-close: `propensity_ev_gbm` − `propensity_ev_logit` = **−0.0%**
-[−0.6%, +0.6%]. Zero. The lift comes from the economics wrapper, not the
-learner. The simplest shippable model is therefore much simpler than expected.
+**3. "Gradient boosting will beat logistic regression."** False, and it is
+the logistic regression that is very slightly ahead: `propensity_ev_gbm` −
+`propensity_ev_logit` = **−0.5%** [−0.9%, −0.1%]. The interval excludes zero
+and the effect is inside the practical threshold, so the honest verdict is "no
+meaningful difference" — but there is certainly no case for the boosted model.
+The lift comes from the economics wrapper, not the learner, and the simplest
+shippable model is therefore much simpler than the project assumed.
 
 **4. "Uplift metrics identify good policies."** False where it matters. Qini
 correlates with realised money at ρ = +0.75 across a whole leaderboard, which
@@ -594,29 +652,39 @@ Every comparison uses the preregistered rule: **paired** bootstrap over shared
 clearing **2% of the reference**. Anything else is reported as *"no meaningful
 evidence of difference"*, which is a result and is printed as one.
 
-Headline comparisons, net value per 1,000 leads:
+Headline comparisons, net value per 1,000 leads, over the 17 regimes every
+candidate completed:
 
 | comparison | Δ $/1k | Δ % of reference | 95% CI (%) | verdict |
 |---|---|---|---|---|
-| `s_learner` − `propensity_ev_logit` | +7,438 | **+2.9%** | [+1.2, +4.9] | **WIN** (just clears) |
-| `s_learner` − `lead_score_gbm` | +19,465 | +8.0% | [+5.4, +11.1] | **WIN** |
-| `s_learner` − `hist_profit_per_agent_hour` | +31,951 | +13.9% | [+11.3, +16.7] | **WIN** |
-| `propensity_ev_logit` − `hist_profit_per_agent_hour` | +24,513 | +10.7% | [+8.8, +12.6] | **WIN** |
-| `propensity_ev_logit` − `lead_score_gbm` | +12,027 | +5.0% | [+3.6, +6.5] | **WIN** |
-| `propensity_ev_gbm` − `propensity_ev_logit` | −36 | −0.0% | [−0.6, +0.6] | no meaningful difference |
-| `x_learner` − `propensity_ev_gbm` | +3,180 | +1.3% | [−0.0, +2.7] | no meaningful difference |
-| `causal_forest` − `propensity_ev_gbm` | −1,458 | −0.6% | [−2.0, +1.0] | no meaningful difference |
-| `dr_learner` − `propensity_ev_gbm` | −3,403 | −1.3% | [−2.6, +0.2] | no meaningful difference |
-| `hist_profit_per_agent_hour` − `hist_conversion_rate` | −2,317 | −1.0% | [−1.9, −0.1] | no meaningful difference |
+| `propensity_ev_logit` − `last_click_attribution` | +29,592 | **+14.3%** | [+12.7, +15.9] | **WIN** |
+| `s_learner` − `hist_conversion_rate` | +23,602 | +10.9% | [+9.2, +12.8] | **WIN** |
+| `propensity_ev_logit` − `hist_profit_per_agent_hour` | +22,227 | +10.4% | [+9.1, +11.7] | **WIN** |
+| `propensity_ev_logit` − `hist_conversion_rate` | +20,066 | **+9.3%** | [+7.9, +10.7] | **WIN** |
+| `lead_score_gbm` − `hist_conversion_rate` | +10,306 | +4.8% | [+3.4, +6.1] | **WIN** |
+| `propensity_ev_logit` − `lead_score_gbm` | +9,760 | **+4.3%** | [+3.5, +5.3] | **WIN** |
+| `propensity_ev_logit` − `lead_score_logit` | +7,614 | +3.3% | [+2.4, +4.3] | **WIN** |
+| **`s_learner` − `propensity_ev_logit`** | **+3,509** | **+1.5%** | **[+0.4, +2.7]** | **no meaningful difference** |
+| `x_learner` − `propensity_ev_logit` | −471 | −0.2% | [−1.3, +1.0] | no meaningful difference |
+| `propensity_ev_gbm` − `propensity_ev_logit` | −1,219 | −0.5% | [−0.9, −0.1] | no meaningful difference |
+| `hist_profit_per_agent_hour` − `hist_conversion_rate` | −2,162 | −1.0% | [−1.6, −0.4] | no meaningful difference |
+| `causal_forest` − `propensity_ev_logit` | −4,375 | −1.8% | [−3.0, −0.6] | no meaningful difference |
+| **`dr_learner` − `propensity_ev_logit`** | **−6,493** | **−2.7%** | **[−3.9, −1.4]** | **LOSS** |
 
-Two observations a reader should not skip:
+Three observations a reader should not skip:
 
-- **The headline causal win is the weakest significant result in the table.**
-  +2.9% against a 2% threshold, on a mean carried by three regimes out of ten.
-  Everything below it in the causal family fails the rule outright.
-- **The economics win is not marginal.** +10.7% and +5.0% with intervals
-  nowhere near zero. If only one finding survives replication, it should be
-  this one.
+- **The causal upgrade does not clear the bar.** +1.5% against a 2% threshold,
+  with the interval's lower end at +0.4%. The rule was fixed in advance
+  precisely so that a result like this could not be talked up: it is a real,
+  small, positive effect that does not justify the complexity. And it is the
+  *best* member of its family — `dr_learner` is a significant loss.
+- **The economics win is not marginal.** +9.3% over the strongest analytics
+  baseline and +4.3% over a gradient-boosted lead score, with intervals nowhere
+  near zero, on the primary metric. If exactly one finding from this study
+  survives replication, it should be this one.
+- **Rank order is not the story; the threshold is.** `s_learner` does top the
+  leaderboard. It tops it by 0.02 points of Oracle share, and the paired test
+  says that is not a difference worth paying for.
 
 **What the intervals do not cover.** Eight seeds with paired comparisons
 separate large effects from noise and cannot resolve differences well below the
@@ -699,8 +767,8 @@ The deliverable of this section is a map a business can apply to itself
 | 5k–25k resolved leads, homogeneous response | **`propensity_ev_logit`**. Causal adds nothing | s_learner −0.2% on `easy_randomized`, −2.8% on `sparse` |
 | > 25k leads **and** response heterogeneity | **`s_learner`** (one GBM, treatment as a feature) | +9.2% and +10.4% in the two heterogeneity regimes |
 | Outcome rate below ~1% | **`propensity_ev_logit`**. Causal learners are actively harmful | dr_learner −13.4%, x_learner −9.2% on `very_rare_outcome` |
-| Deal value varies, response does not | **`propensity_ev_logit`** — best in the study here | 56.4% vs 51.7 (x_learner), 50.3 (t_learner) |
-| Handle time varies, response does not | **`propensity_ev_logit`** — best in the study here | 61.3% vs 58.1 (x_learner), 53.5 (t_learner) |
+| Deal value varies, response does not | **`propensity_ev_logit`** — level with the best | 55.1% vs 56.5 (s_learner), 52.2 (x_learner), 42.9 (dr_learner) |
+| Handle time varies, response does not | **`propensity_ev_logit`** — best in the study here | 61.0% vs 59.0 (x_learner), 53.7 (t_learner), 52.5 (dr_learner) |
 | Sales capacity ≥ demand | **No model.** Fix something else | every method converges to 85–88% at 100% capacity |
 | **Randomized treatment logs exist** (an A/B holdout, or logged propensities) | **Causal estimands are identified.** `s_learner` if response heterogeneity is present, `propensity_ev_logit` otherwise — and OPE becomes available, so you can score a policy you never deployed | the real-data track (§4.2) is only possible because Hillstrom and Criteo are randomized |
 | **Observational CRM only, no randomization** | **`propensity_ev_logit`, and do not claim causality.** Uplift estimates are identified only under an untestable assumption, and the observational regimes show the cost: `class_transformation` drops to 13.9% under `observed_confounding` against 37.2% on average | `observed_confounding`, `hidden_confounding`, `selection_bias` regimes |
@@ -763,18 +831,21 @@ Three regimes isolating one kind of heterogeneity each:
 
 | candidate | agent_time_het (effort varies) | value_het (deal value varies) | capacity_value_het (all three, incl. response) |
 |---|---|---|---|
-| `x_learner` | 58.1 | 51.7 | **64.9** |
-| `causal_forest` | 52.5 | 41.8 | 64.4 |
-| `s_learner` | 60.2 | 56.2 | 64.3 |
-| `dr_learner` | 51.6 | — | 62.8 |
-| `t_learner` | 53.5 | 50.3 | 59.5 |
-| **`propensity_ev_logit`** | **61.3** | **56.4** | 44.4 |
-| `propensity_ev_gbm` | 57.9 | 53.8 | 49.6 |
+| `s_learner` | 60.9 | **56.5** | 65.9 |
+| **`propensity_ev_logit`** | **61.0** | 55.1 | 45.3 |
+| `x_learner` | 59.0 | 52.2 | **65.8** |
+| `propensity_ev_gbm` | 57.8 | 52.7 | 50.2 |
+| `t_learner` | 53.7 | 50.8 | 60.8 |
+| `causal_forest` | 53.2 | 43.0 | 65.8 |
+| `dr_learner` | 52.5 | 42.9 | 63.9 |
+| `lead_score_gbm` | 36.3 | 49.0 | 26.3 |
 
 Read across the `propensity_ev_logit` row: explicit economics handles
-heterogeneous **effort** and heterogeneous **deal value** on its own, beating
-every causal learner in both. It collapses (61 → 44) only when heterogeneous
-**treatment response** is added. So:
+heterogeneous **effort** (61.0, the best score in that regime) and
+heterogeneous **deal value** (55.1, within a point of the best) on its own,
+ahead of or level with every causal learner. It collapses — **61 → 45** — only
+when heterogeneous **treatment response** is added, and that is the one place
+the causal learners pull clear at 61–66. So:
 
 - heterogeneous deal value → solved by multiplying by predicted value;
 - heterogeneous handle time → solved by dividing by predicted effort;
@@ -1012,9 +1083,9 @@ Agreed in advance in [`docs/benchmark-spec.md`](../../docs/benchmark-spec.md) §
 |---|---|---|---|
 | K1 | Kill Bayesian complexity | Bayesian within 2% of best non-Bayesian at >10× compute | **TRIGGERED** — `bayes_hierarchical` − `propensity_ev_gbm` = +1.2% [−1.3, +3.9] over 4 regimes at n=5,000, at **42× compute** (36.5s vs 0.87s). Ship the simple model |
 | K2 | Kill uplift | Causal fails to beat `propensity_ev_gbm` by >2% **on randomized data** | **TRIGGERED on the aggregate** — synthetic `easy_randomized`: s_learner +1.3% (n.s.), x_learner −0.7%, t_learner −1.7%, dr_learner −3.5%. **Real** randomized data (§4.2): of 48 comparisons, 41 show no meaningful difference, 1 favours propensity, and all 6 causal wins are confined to one campaign arm. **Not** triggered within that arm |
-| K3 | Kill lead-level decisioning | `hist_profit_per_agent_hour` reaches ≥80% of Oracle | **NOT triggered** — it reaches 36.6% |
+| K3 | Kill lead-level decisioning | `hist_profit_per_agent_hour` reaches ≥80% of Oracle | **NOT triggered** — it reaches 36.2%, and the best analytics baseline of any kind reaches 38.6% |
 | K4 | Kill MMM for SMB | MMM allocation regret >10% at SMB sizes | **NOT triggered at SMB sizes** — calibrated MMM 0.61% regret on `smb_short` (52 weeks) and 1.25% on `very_short` (30 weeks), both well under 10%. **But it fails the criterion at 260 weeks** (25.1%), which is the opposite of the expected direction and is treated as an open failure in §9 |
-| K5 | Kill the whole hypothesis | Best analytics baseline within 2% of best model | **NOT triggered** — the gap is 22.9 points of Oracle gain (+13.9% of net value) |
+| K5 | Kill the whole hypothesis | Best analytics baseline within 2% of best model | **NOT triggered, decisively** — the gap to `propensity_ev_logit` is 22.1 points of Oracle gain (+9.3% of net value, CI [+7.9, +10.7]) |
 
 **K2 is the most important line in this report, and the way it fires is more
 informative than the fact that it fires.** On the aggregate it fires on both
@@ -1039,11 +1110,17 @@ more than the practical threshold with an interval excluding zero.
 **That region exists and is:** limited sales capacity (materially below the
 effort needed to work every lead) **+** heterogeneous deal value **+**
 heterogeneous treatment response **+** above roughly 25,000 resolved leads.
-In it, the decision model beats the best analytics baseline by +13.9% of net
-value per 1,000 leads and lead scoring by +8.0%, both with intervals well clear
-of zero.
+In it, the decision model beats the strongest analytics baseline by **+9.3%**
+of net value per 1,000 leads and a gradient-boosted lead score by **+4.3%**,
+both with intervals well clear of zero — and inside the three
+response-heterogeneity regimes the causal layer adds a further +4.4% to +10.4%
+on top of that.
 
-The criterion is met. The region is narrower than the hypothesis assumed.
+**The criterion is met, and it is met by the economic layer rather than the
+causal one.** The region where explicit economics pays is broad: it is 17 of
+19 regimes. The region where *causal inference* additionally pays is narrow:
+3 of 18. Those are two different products with two different business cases,
+and the study supports the first much more strongly than the second.
 
 ### 11.3 Product maturity ladder
 
@@ -1055,7 +1132,7 @@ by the rung below it failing.
 | **0** | Profit-per-agent-hour reporting by campaign/source | CRM export with effort and realised value | last-click dashboards (+3.9%) | §5 |
 | **1** | **`propensity_ev_logit`** — calibrated P(convert) × predicted value ÷ predicted minutes, under a capacity constraint | ~1–5k resolved leads, effort logging | lead scoring by +5.0%, analytics by +10.7% | §5 |
 | **2** | Randomised holdout (5–10%) with logged propensity, permanently | product decision, not a model | makes everything above measurable | §15 |
-| **3** | **`s_learner`** — one GBM with treatment as a feature | ~25k resolved leads **and** a measured response-heterogeneity signal | rung 1 by +2.9%, and only in the right regime | §5, §7.1 |
+| **3** | **`s_learner`** — one GBM with treatment as a feature | ~25k resolved leads **and** a measured response-heterogeneity signal | rung 1 by +1.5% overall (below threshold), but by +4.4% to +10.4% in the three heterogeneity regimes | §5, §1 |
 | **3b** | **Partial pooling across segments** — mixed-effects or empirical-Bayes shrinkage; **not** PyMC | many small segments (campaigns, sources, regions) with thin data each | removing pooling costs −3.2% [−5.9, −1.2], but full MCMC still only ties rung 1's GBM at 42× the cost | §8.1 |
 | **4** | Uncertainty surfacing / abstention | posterior or bootstrap intervals | **not demonstrated** — see §2.6, §2.9, §8.1 | — |
 | **5** | Budget allocation: ridge with adstock+saturation first, calibrated MMM only with monitoring | a running lift-test programme | equal split, 3.98% vs 6.16% regret | §4.4 |
@@ -1301,18 +1378,20 @@ acceptable answer in advance and is used where it is the truth.
 
 **1. Is there evidence that a decision-centric approach gives a practical
 advantage over ordinary end-to-end analytics?**
-**Yes, and it is the largest effect in the study.** +10.7% of net value per
-1,000 leads for `propensity_ev_logit` over the best historical baseline
-(95% CI +8.8% to +12.6%), and +13.9% for `s_learner`. In % of Oracle gain the
-analytics layer tops out at ~38% while the decision layer reaches 58–61%. The
+**Yes, and it is the largest effect in the study.** +9.3% of net value per
+1,000 leads for `propensity_ev_logit` over the strongest analytics baseline
+(95% CI +7.9% to +10.7%), +10.9% for `s_learner`, and +14.3% over last-click
+attribution. In % of Oracle gain the analytics layer tops out at 38.6% while
+the decision layer reaches 60.7%. The
 cause is structural, not statistical: analytics aggregates to campaign or
 channel, the decision is per lead, and more data does not fix a unit mismatch —
 the analytics baselines are flat in N from 2k to 100k.
 
 **2. Is there an advantage over ordinary lead scoring?**
-**Yes, +5.0%** (95% CI +3.6% to +6.4%) for the same logistic regression once
-it is multiplied by predicted deal value and divided by predicted agent
-minutes. The advantage widens sharply as capacity tightens: at 5% capacity
+**Yes, +4.3%** (95% CI +3.5% to +5.3%) over a gradient-boosted lead score,
+and +3.3% over a logistic one, for the same logistic regression once it is
+multiplied by predicted deal value and divided by predicted agent minutes. The
+advantage widens sharply as capacity tightens: at 5% capacity
 `lead_score_gbm` captures 4.9% of the achievable gain — *below random's 6.8%* —
 against 26.1% for the economics wrapper. Ranking by P(convert) under scarcity
 selects the leads who would have converted anyway.
@@ -1335,13 +1414,19 @@ thin segments, pooling is worth having; get it from mixed effects or
 empirical-Bayes shrinkage, which this study did not benchmark and should have.
 
 **4. Where is causal uplift genuinely more useful than propensity?**
-**Only where treatment response is heterogeneous.** Decomposed: heterogeneous
-deal value is solved by multiplying by value; heterogeneous handle time is
-solved by dividing by effort; heterogeneous *response* is the only one needing
-a causal model, and it is worth ~15 points of Oracle gain when present. Causal
-beat the simple economic model in 3 of 10 regimes (`strong_heterogeneity`
-+10.4%, `capacity_value_heterogeneity` +9.2%, `propensity_not_uplift` +4.4%),
-tied in 5, and **lost** in `sparse` (−2.8%) and `very_rare_outcome` (−5.2%).
+**Only where treatment response is heterogeneous — and overall, on this
+evidence, nowhere near enough to ship by default.** Across 19 regimes the best
+causal learner ties the simple economic model (+1.5%, CI [+0.4%, +2.7%], inside
+the 2% threshold) and every other member of its family loses.
+
+The wins are concentrated and repeatable: `s_learner` beats
+`propensity_ev_logit` in exactly 3 of 18 regimes — `strong_heterogeneity`
++10.4%, `capacity_value_heterogeneity` +9.2%, `propensity_not_uplift` +4.4% —
+and those same three are where every causal learner wins. Everywhere else it
+ties or loses; `dr_learner` loses 12 regimes of 18. Decomposed: heterogeneous
+deal value is solved by multiplying by value, heterogeneous handle time by
+dividing by effort, and heterogeneous *response* is the only one that needs a
+causal model.
 On clean randomized data with no heterogeneity structure it earns nothing.
 
 The real data says the same thing, and says it better than the simulator can.
@@ -1369,17 +1454,20 @@ what makes everything else measurable.
 **6. What is the simplest model family we would actually ship?**
 **Calibrated logistic regression, multiplied by a predicted contribution
 margin, divided by predicted handle time, allocated under an explicit capacity
-constraint.** That is `propensity_ev_logit`: 1.0 seconds to fit, 58.4% of
-Oracle, second on the entire leaderboard, and statistically indistinguishable
-from its gradient-boosted twin (−0.0%, CI [−0.6%, +0.6%]). The intelligence is
-in the objective, not the estimator.
+constraint.** That is `propensity_ev_logit`: **0.98 seconds to fit, 60.7% of
+Oracle, tied for first on the entire leaderboard** with a causal metalearner
+costing 2.3× as much, and no worse than its own gradient-boosted twin
+(−0.5%, CI [−0.9%, −0.1%], inside the threshold). It is also the only one of
+the two that runs at all on data with missing values. The intelligence is in
+the objective, not the estimator.
 
 **7. At what data volume does it start being useful?**
 **~1,000–5,000 resolved leads** for the economics wrapper — it is the *best*
 candidate at 2,000 leads (39.2% and 48.4% of Oracle in two regimes, ahead of
 every causal learner). **~25,000 resolved leads** before causal modelling
 overtakes it, and then only with response heterogeneity present. Below ~1% base
-rate, causal learners are actively harmful at any size tested.
+rate, causal learners are actively harmful at any size tested: on
+`very_rare_outcome` they lose 5.2% to 16.0% against the same simple model.
 
 **8. What data must a business start collecting today?**
 Four things, all impossible to reconstruct later: (i) **immutable funnel events
