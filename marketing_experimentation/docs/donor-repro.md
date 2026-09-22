@@ -272,6 +272,52 @@ at 7.5% while the metrics layer derives it from the data. Latent in the
 published study, because 7.5% was the truth; live the moment anyone varies θ,
 and silent when it fires.
 
+### D8 — two dependencies resolvable only through an authenticated, rate-limited API, and a restore that is all-or-nothing
+
+Found by running the restore, not by reading the lockfile.
+
+`renv.lock` pins two packages to GitHub commits rather than to CRAN:
+
+```
+GeoLift   2.7.5  GitHub  facebookincubator/GeoLift  @ 4d2afd4
+augsynth  0.2.0  GitHub  ebenmichael/augsynth       @ 65c5a6f
+```
+
+renv resolves a GitHub pin through
+`https://api.github.com/repos/<owner>/<repo>/tarball/<sha>`. On this network
+that endpoint returns **403**, as does `codeload.github.com`. Both packages
+failed to download; the other 92 built successfully over 47 minutes.
+
+**Two things are worth separating here.** The 403 is this environment's, not
+the donor's. The fragility is the donor's: the pinned version of **GeoLift —
+one of the four tools the study is actually about** — has exactly one
+published installation route, and it runs through an API that is
+rate-limited, often requires a token, and is not guaranteed to serve
+arbitrary commit tarballs indefinitely. There is no vendored copy, no CRAN
+fallback, and no recorded hash of what that tarball should contain.
+
+**And the failure is total, not partial.** `renv::restore()` aborts on any
+failure, and `renv/activate.R` is written at the end. So 92 of 94 packages
+installed leaves the project **completely unusable** — the donor's
+`.Rprofile` sources a file that now still does not exist, and every `Rscript`
+in the repository dies at start-up. This is **D1 compounding**: the bootstrap
+deadlock returns whenever a restore is interrupted for any reason at all, not
+only on a cold clone.
+
+**Our handling.** Both packages are built from a `git clone` checked out at
+the pinned SHA, which git serves normally on this network. That is the same
+tree the API tarball would have contained — `git archive` of a commit and
+the API's tarball of that commit are the same content — so this is a change
+of transport, not of version. The tree hash of what was actually built is
+recorded in the install log so the substitution is auditable rather than
+asserted. `renv::activate()` is then called explicitly to write the file the
+aborted restore never reached.
+
+**What a donor could do about it**, since four of the audit's eight findings
+are now packaging: record the expected tarball hashes, or vendor the two
+GitHub dependencies, or note the CRAN-only subset that works without them.
+Any of the three would have turned a dead stop into a warning.
+
 ### Audit summary
 
 | | issue | severity | our workaround | upstream would need to change? |
@@ -283,12 +329,26 @@ and silent when it fires.
 | D5 | no licence | **blocking for reuse** | external wrapper, no vendored source | yes — add one |
 | D6 | `make smoke` deletes published results | **material** | read-only reference + disposable clone | yes — guard `clean` |
 | D7 | plots hard-code 7.5% truth | latent → **material on any θ ≠ 7.5%** | read `metadata.json` in the mutation diff | yes, two constants |
+| D8 | GeoLift + augsynth resolvable only via `api.github.com` tarball; restore is all-or-nothing | **blocking** where that API is restricted | build from `git` at the pinned SHA; call `renv::activate()` by hand | yes — hashes, a vendored copy, or a documented CRAN-only subset |
 
-Five of the seven are one-line fixes. That is the characteristic shape of
-reproducibility failure in this field: not deep methodological error, but a
-handful of unguarded lines that make a correct study hard to re-run. Worth
-stating plainly — the donor's *statistics* survived this audit intact, and
-every finding above is about packaging.
+Six of the eight are one-line or one-file fixes. That is the characteristic
+shape of reproducibility failure in this field: not deep methodological
+error, but a handful of unguarded lines that make a correct study hard to
+re-run. Worth stating plainly — **the donor's statistics have survived this
+audit intact, and all eight findings are about packaging.**
+
+The two that are not one-line are the two that matter most, and they are the
+same failure seen twice: **D1 and D8 are both "the environment cannot
+bootstrap itself"**. A `.Rprofile` that needs a file the restore creates, and
+a restore that writes that file only if all 94 packages succeed — including
+two that depend on a rate-limited API. Either alone is survivable. Together
+they mean any interruption, anywhere in a 47-minute build, leaves a
+repository where no R script will start.
+
+A useful generalisation for the research question itself: every one of these
+would be invisible to a reader, a reviewer, or a citation. They are only
+visible to someone who runs the thing. That is the gap this track keeps
+finding, in a different form each time.
 
 ## 4. G3 tolerances, fixed before the replay
 
