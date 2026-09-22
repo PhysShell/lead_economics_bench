@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Run the remaining benchmark suites in sequence, waiting for whatever is
-# already running so the 4-core box is never oversubscribed.
+# Run the remaining benchmark suites in sequence.
 #
 #   nohup bash scripts/run_remaining_suites.sh > reports/runs/chain.log 2>&1 &
 #
-# Sizes are chosen to finish on a 4-core container. The commands for the full
+# Sizes are chosen to finish on a 4-core container. Commands for the full
 # sweeps are in docs/methodology.md.
+#
+# NB: this is a script file rather than an inline `bash -c` on purpose. An
+# inline waiter whose own command line contains the pattern it greps for
+# matches itself and waits forever.
 set -u
 cd "$(dirname "$0")/.."
 
@@ -19,16 +22,13 @@ wait_for() {
 
 log() { echo "[$(date -u +%H:%M:%S)] $*"; }
 
-log "waiting for mmm to finish"
-wait_for "run_benchmark.py --suite mmm"
-
 log "starting real (Hillstrom + Criteo 500k deterministic subsample)"
 nice -n 5 $PY scripts/run_benchmark.py --suite real --seeds 3 --criteo-rows 500000 \
   > reports/runs/real.log 2>&1
 log "real done"
 
-log "waiting for curves/bayes before ablation"
-wait_for "run_benchmark.py --suite curves"
+log "waiting for the lead sweep before ablation, to avoid oversubscribing"
+wait_for "run_benchmark.py --suite lead"
 
 log "starting ablation"
 nice -n 5 $PY scripts/run_benchmark.py --suite ablation --seeds 6 --n-leads 30000 \
