@@ -85,16 +85,23 @@ significance flag, at prior 0.4 and cost ratio 1 (EVPI ceiling $200k):
 | `google_mm` | $35,100 | $55,490 | +58% |
 | `causalimpact` | $40,800 | **$57,006** | +40% |
 
-**GeoLift recovers almost all of the gap.** Its wide, conservative interval
-still moves the posterior enough to change a budget decision, even in the runs
-where that interval comfortably contains zero. The gate was discarding
-roughly 93% of its value, and "never optimal" was a statement about `p < .05`,
-not about GeoLift.
+**GeoLift recovers almost all of the gap.** The gate was discarding roughly
+93% of its value, and "never optimal" was a statement about `p < .05`, not
+about GeoLift.
+
+> **Retraction, see the addendum.** An earlier version of this paragraph
+> attributed the recovery to GeoLift's *wide interval* moving the posterior.
+> The code does not show that — the likelihood here is built from `att_pct`
+> alone, and adding the interval width was later measured at between −$1,475
+> and +$96 with a sign that flips across bandwidths. What the data support is
+> that GeoLift's **distribution of point estimates** is informative while its
+> significance flag is not.
 
 And the second-order observation matters more than the first:
 
 > Under the binary flag the four tools span **11×** in value ($3.6k–$40.8k).
-> Under the point estimate they span **17%** ($48.7k–$57.0k).
+> Under the point estimate they span **17%** ($48.7k–$57.0k), and on the
+> 8-split averages in the addendum, **12%** ($46.3k–$52.0k).
 
 Recast conclude that "point estimates alone would tell you these tools are
 interchangeable — the uncertainty story tells you why they aren't." On this
