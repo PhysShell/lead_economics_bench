@@ -15,6 +15,25 @@ advance.
 
 **Read the findings in [`reports/latest/report.md`](reports/latest/report.md).**
 
+The short version, after 19 synthetic regimes, two real randomized experiments
+and 6,800 scored cells:
+
+- **Explicit economics wins decisively.** `P(convert) x predicted margin /
+  predicted handle time`, under a capacity constraint, beats the strongest
+  analytics baseline by **+9.3%** of net value per 1,000 leads and a
+  gradient-boosted lead score by **+4.3%**, both with intervals nowhere near
+  zero. It is a *logistic regression* and it fits in one second.
+- **The causal machinery does not clear the bar.** The best causal learner ties
+  it (+1.5%, CI [+0.4%, +2.7%], inside the preregistered 2% threshold) at 2.3x
+  the compute. `dr_learner` is a significant loss. Kill criteria **K1 and K2
+  both fire**.
+- **The advantage is conditional, and the condition is measurable**: causal
+  modelling pays only where leads differ in how they *respond to contact* —
+  3 regimes of 18 synthetically, and 1 campaign arm of 7 on real data.
+- **An analytics dashboard does not beat what the sales floor already does**
+  (+1.9%, inside the threshold, against the business's own logged policy).
+  The decision layer beats it by +11.4%.
+
 ---
 
 ## What it measures

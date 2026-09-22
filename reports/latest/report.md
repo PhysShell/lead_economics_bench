@@ -1074,8 +1074,8 @@ author did not look. §66 requires these to be visible.
 
 ### 9.2 Where the *benchmark* failed, and what it cost
 
-Full list in [`docs/methodology.md`](../../docs/methodology.md) §8. The four
-that would have produced confidently wrong answers:
+Full list in [`docs/methodology.md`](../../docs/methodology.md) §8 — ten of
+them. The five that would have produced confidently wrong answers:
 
 1. **Truth column collision.** Per-stage `P(funded | application)` was written
    to `p_funded_a{a}` — the same name as the overall funnel probability —
@@ -1092,8 +1092,21 @@ that would have produced confidently wrong answers:
    posterior draws; residual cross-check error ~6%, reported as a diagnostic
    and raising above 15%.
 4. **A second key collision.** `RealizedOutcome.to_dict()` emitted `n_leads`,
-   overwriting the configured dataset size with the test-fold size and
-   scrambling every data-size curve. Renamed to `n_test_leads`.
+   overwriting the configured dataset size with the test-fold size. Renamed to
+   `n_test_leads` — but a long-running suite imports the module once, so the
+   lead sweep kept writing the old shape for two hours after the fix. That
+   stale column then fed the incumbent replay, which regenerated its datasets
+   at 7,722 leads while every other candidate ran at 30,000. The human
+   baseline — the one number a business would actually check the product
+   against — was measuring a different problem.
+
+5. **The headline metric was a mean of ratios.** `pct_of_oracle_incremental`
+   divides by the Oracle's gain on that seed, which under `concept_drift` is
+   3% of its size elsewhere. Averaging it reported **1,454% of Oracle for
+   `fifo`**, whose raw incremental value is negative, and floated the
+   expensive causal learners to the top of a table where the raw ordering has
+   them mid-pack. Every leaderboard in this report is on the ratio-of-means
+   scale instead.
 
 None of these would have produced an obviously broken result. All of them would
 have produced a confidently wrong one. That is the argument for the sanity

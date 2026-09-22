@@ -155,10 +155,45 @@ build, and because §66 requires failures to be visible.
    which meant the report builder crashed on it — after every suite had already
    run. Replaced by an explicit `ok_rows` helper at all four call sites.
 
+8. **The headline metric was a mean of ratios.** `pct_of_oracle_incremental`
+   divides by the Oracle's incremental gain *on that seed*. Under
+   `concept_drift` that gain is about $3.0k per 1,000 leads against
+   $109k-$208k in every other regime, because drift leaves almost nothing on
+   the table for anybody. Averaging those ratios reported **1,454% of Oracle
+   for `fifo`**, whose raw incremental value is negative, and 1,344% for
+   `dr_learner` — and those two figures then dominated the leaderboard mean
+   and floated the expensive causal learners to the top of a table where the
+   raw ordering has them mid-pack. Replaced by `aggregate.oracle_share`, a
+   ratio of means, which is stable at any prize size and agrees with the old
+   metric wherever the denominator was never in doubt.
+
+9. **The incumbent baseline was replayed on a quarter-size dataset.**
+   `add_incumbent_baseline.py` regenerated its datasets from the `n_leads`
+   column, which holds the *test-fold* size (7,722) rather than the configured
+   30,000 for any row written before the `n_test_leads` rename. Long-running
+   suites import the module once at start, so the lead sweep wrote the old
+   shape for two hours after the fix landed. The incumbent — the one candidate
+   representing what the business actually does — was therefore scored on a
+   different problem than everything it was being compared with. A second
+   effect of the same column: failed candidates never reach the code that
+   overwrites `n_leads`, so `noisy_crm` had two distinct cell tuples per seed
+   and got two incumbent rows per cell.
+
+10. **The generated kill criteria disagreed with the report.**
+    `kill_criteria.csv` scored K1/K2/K5 on Oracle-share points rather than the
+    preregistered paired net-value rule, and on the lead+ablation+bayes
+    concatenation rather than the lead sweep — suites with different dataset
+    sizes, regime sets and candidate lists. It printed a 34-point causal
+    "advantage" and marked K2 not triggered while the report, computed
+    correctly, said the opposite. A benchmark whose own artefacts contradict
+    its conclusions is worse than one with no artefacts.
+
 None of these would have produced an obviously broken result. All of them
-would have produced a *confidently wrong* one — or, in the case of the last
-two, a crash at exactly the moment when hours of compute were already spent
-and the temptation to work around it rather than fix it is strongest.
+would have produced a *confidently wrong* one — and the last three are the
+most instructive, because they were all found by running the reporting layer
+against partial data early instead of waiting until every suite had finished.
+Two of them are the same mistake in different clothes: dividing by a
+denominator that is sometimes near zero, and pooling cells that never met.
 
 ## 9. Blockers and things not done
 
