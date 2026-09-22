@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 # Build R 4.5.1 from the official source tarball into its own prefix, so the
-# exact-repro lane does not collide with the 4.6.1 the robustness lane uses.
-# rocker/r-ver:4.5.1 would be the better route, but there is no Docker daemon
-# in this container -- see repro/recast/README.md.
+# version-matched lane does not collide with the 4.6.1 the robustness lane
+# uses. rocker/r-ver:4.5.1 would be the better route, but there is no Docker
+# daemon in this container -- see repro/recast/README.md.
+#
+# Verified on 2026-09-22:
+#   tarball sha256  b42a7921400386645b10105b91c68728787db5c4c83c9f6c30acdce632e1bb70
+#   result          R version 4.5.1 (2025-06-13) "Great Square Root"
+#   gcc / gfortran  13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1)
+#   BLAS            /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0 (reference)
+#
+# The donor published none of the last three, which is exactly why this lane
+# is called version-matched rather than exact.
 set -eux
 export DEBIAN_FRONTEND=noninteractive
 apt-get install -y -qq --no-install-recommends \

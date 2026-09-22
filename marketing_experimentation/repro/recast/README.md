@@ -59,6 +59,38 @@ normal machine is still Rocker.
 2025-06-13), records its SHA256, and installs to `/opt/R/4.5.1` so it cannot
 collide with the system R that the robustness lane uses.
 
+**Built and verified here, 2026-09-22:**
+
+| | |
+|---|---|
+| tarball SHA256 | `b42a7921400386645b10105b91c68728787db5c4c83c9f6c30acdce632e1bb70` |
+| result | R 4.5.1 (2025-06-13) "Great Square Root" |
+| configure | `--prefix=/opt/R/4.5.1 --enable-R-shlib --with-x=no --with-blas --with-lapack` |
+| gcc / gfortran | 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1) |
+| BLAS | `libblas.so.3.12.0` — reference BLAS, not a tuned one |
+
+The BLAS row matters more than it looks. The donor almost certainly ran
+Apple Accelerate on ARM64. Reference BLAS and Accelerate do not accumulate in
+the same order, so last-digit differences in anything that goes through a
+matrix decomposition — which is all four estimators — are expected rather
+than suspicious. This is recorded now, before any replay, so that it is a
+prediction and not an excuse.
+
+### The bootstrap, exercised on exactly the condition it was written for
+
+Running `bootstrap.R` against the freshly built 4.5.1, which has no packages
+beyond base and recommended:
+
+```
+R running: R version 4.5.1 (2025-06-13)
+R pinned:  4.5.1
+LANE: version-matched. R version agrees with the lockfile.
+```
+
+The lockfile version was read with base R alone, on an interpreter where
+`requireNamespace("jsonlite")` is `FALSE`. The earlier `jsonlite::fromJSON`
+version would have failed on that line.
+
 ## The bootstrap defect, and the workaround
 
 The donor's `.Rprofile` is one line:
@@ -96,6 +128,26 @@ and then `pip install -e .`, and `pyproject.toml` carries ranges
 (`pymc>=5.10`) where `requirements.txt` carries pins (`pymc==5.28.1`). The
 loose install runs second and can move a pinned version out from under the
 published results.
+
+Use `uv venv --seed`, which provides a real `pip`. Without `--seed` the
+virtualenv has no `pip` at all and the donor's own install command cannot be
+run; `uv pip` would work but is a different resolver, and this lane exists to
+avoid exactly that kind of substitution.
+
+**Verified 2026-09-22**, `pip freeze` against `requirements.txt`:
+
+| | |
+|---|---|
+| pins in `requirements.txt` | 83 |
+| installed | 83 |
+| missing | **0** |
+| version mismatches | **0** |
+| packages beyond the pins | **0** |
+
+Spot check: `pymc 5.28.1`, `arviz 0.23.4`, `causalpy 0.8.0`, `matched_markets`
+imports. The Python half of the version-matched lane is exact to the donor's
+own manifest, which is more than can be said for the R half — there, only the
+interpreter version is matched and the compiled stack is rebuilt locally.
 
 ## Never run `make smoke` in the reference clone
 

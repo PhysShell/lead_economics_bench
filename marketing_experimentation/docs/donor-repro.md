@@ -12,22 +12,92 @@ gate before it produces a single new number.
 G0  pristine clone, environment recorded
  ↓
 G1  two lanes assembled, not one
-      REPRO LANE       R 4.5.1 + Python 3.12.8 + frozen reqs + exact SHAs
-      ROBUSTNESS LANE  host: R 4.6.1 + Python 3.11.15
+      VERSION-MATCHED  R 4.5.1 + Python 3.12.8 + frozen reqs + exact SHAs
+      ROBUSTNESS       host: R 4.6.1 + Python 3.11.15
  ↓
-G2  upstream `make smoke`, N=5, all four estimators, in the repro lane
+G2  upstream `make smoke`, N=5, all four estimators, in the matched lane
  ↓
 G3  golden replay: DGP -> estimator -> raw output, against published rows
  ↓
-G4  theta mutation at +2%, N=20-50
+G4  theta mutation at +2%, then at -5%, N=20-50
 ```
 
 The two lanes answer different questions and must not be mixed:
 
 | lane | question |
 |---|---|
-| **repro** | can we reproduce the donor at all? |
+| **version-matched** | can we reproduce the donor at all? |
 | **robustness** | how sensitive is the donor to a current environment? |
+
+### R0 / R1 / R2 — three levels of "reproduced", and only one is passed
+
+"Reproducible" is not one claim. The donor's chain has three links, and
+passing the last one says nothing about the first two:
+
+| level | claim | what is held fixed | state |
+|---|---|---|---|
+| **R0** analytical replay | published `results.jsonl` → published aggregate metrics | the raw rows themselves | **PASS** (M0) |
+| **R1** generated-data replay | same DGP seed → same `true_att_level`, effect arm, 4,000 keys | the generator and its RNG | pending M5a |
+| **R2** estimator replay | same panel + same config + same seed → same estimator output | the four tools and their stacks | pending M5b |
+
+R0 was passed in an afternoon and is the weakest of the three: it recomputes
+summary statistics from numbers somebody else produced. It cannot detect a
+broken generator, a version-sensitive estimator, or a platform difference.
+Publishing R0 and calling the study reproducible would be the field's
+characteristic mistake, and it is available to us too, so it is written down
+here as *not sufficient* before the harder levels are attempted.
+
+R1 and R2 are separated deliberately, because they fail for different
+reasons and a combined test cannot tell you which link broke. R1 failing
+means the data are not the donor's data and nothing downstream is
+comparable. R2 failing with R1 passing is the interesting case: same inputs,
+different answers, which is a per-tool platform-sensitivity finding rather
+than a defect.
+
+**Forensic hashing, and a correction to how R1 has to work.** The plan was to
+hash each regenerated panel and compare it against the donor's. **That is not
+available: the donor ships no panels.** `panels/` is gitignored and absent
+from the repository; only `results/raw/results.jsonl` (32,000 rows) and the
+aggregates are published. There is no upstream hash to match.
+
+A panel hash is therefore only an *internal* determinism check — same seed,
+same machine, same bytes twice — which is worth having and proves nothing
+about the donor.
+
+The donor comparison has to run through a quantity that is a function of the
+generated panel and *is* published. There is one, and it is sharper than
+expected:
+
+> `true_att_level = mean(Y − Y_counterfactual)` over the treated post-period,
+> recorded on every row.
+
+Checked against the published file:
+
+| | |
+|---|---|
+| distinct values on the **effect** arm | **4,000** — exactly one per (scenario, iteration) |
+| tools disagreeing on it for the same key | **0** of 4,000 |
+| distinct values on the **null** arm | **1** (`0.0`) |
+
+So the effect arm gives 4,000 independent fingerprints of the generated data,
+each one a full-precision function of that panel's noise realisation. The
+null arm gives none at all — with θ = 0, `Y ≡ Y_cf` and the quantity is
+identically zero by construction, carrying no information about the panel
+whatsoever. **R1 is therefore an effect-arm test.** Anyone reporting "the DGP
+reproduced" from null-arm agreement would be reporting that zero equals zero.
+
+`google_mm` then does double duty. It is OLS/TBR and expected deterministic,
+and its `att_level` depends on all 21 geos across the whole window rather
+than on the treated post-period alone. If its estimate matches to
+floating-point tolerance, R1 and R2 are both established for that tool in one
+comparison, and it becomes the instrument against which the three stochastic
+tools are judged.
+
+Per-tool input hashes are still taken, at the point *after* each adapter has
+converted the panel — long/wide reshapes, date encodings, donor-pool
+selection all happen there, and a hash taken only at the panel boundary would
+miss an adapter that changed. That way a disagreement at R2 is attributable
+to the estimator rather than argued about.
 
 Only after G4 does an effect-size sweep begin. Two of the milestones below are
 already passed and they are the reason the gate exists: reproducing
@@ -44,12 +114,14 @@ already passed and they are the reason the gate exists: reproducing
 | M2 | significance-gate bug isolated and relabelled | **PASS** |
 | M3 | information ladder on two-point θ | **PASS**, conclusion limited to S0→S1 |
 | M4a | pristine-clone audit (defects D1–D5 below) | **PASS** |
-| M4b | donor-exact runtime assembled (R 4.5.1, Py 3.12.8) | **IN PROGRESS** |
-| M4c | upstream smoke in the exact lane | blocked on M4b |
+| M4b | version-matched runtime assembled (R 4.5.1, Py 3.12.8) | R **built and verified**; renv + pip restoring |
+| M4c | upstream smoke in the matched lane | blocked on M4b |
 | M4d | host-drift smoke in the robustness lane | R 4.6.1 restore running |
-| M5 | end-to-end upstream golden replay | blocked on M4 |
-| M6 | θ mutation (+2%) as a pipeline mutation test | blocked on M5 |
-| M7 | coarse θ likelihood atlas | blocked on M6 |
+| M5a | R1 — DGP panel hashes reproduced | blocked on M4b |
+| M5b | R2 — golden estimator replay against published rows | blocked on M5a |
+| M6a | θ mutation +2% (six PASS criteria, §5) | static audit **done**, §5a |
+| M6b | θ mutation −5% (sign mutation) | blocked on M6a |
+| M7 | coarse θ likelihood atlas | blocked on M6b |
 | M8 | continuous prior + richer action set | blocked on M7 |
 | M9 | business VOI / RUN–DON'T-RUN | blocked on M8 |
 | M10 | regime map / method selection | blocked on M9 |
@@ -159,6 +231,48 @@ product is not available without a grant from the authors.**
 record bootstrap instructions and content hashes, and keep the clone external
 at `/home/user/getrecast/geolift-simulation-study`.
 
+### D6 — `make smoke` begins by deleting the published results
+
+```make
+smoke: clean ...
+clean:
+	rm -rf panels/ results/ figures/
+```
+
+`results/raw/results.jsonl` is the 32,000-row artefact every golden
+comparison is measured against. It is git-tracked, so it survives — but an
+acceptance target whose first act is deleting the thing it accepts against is
+a trap for anyone running it on a dirty tree.
+
+**Our handling:** the reference clone's `results/` is `chmod a-w` and never
+runs `make`. A disposable clone (`git clone --shared`) at
+`/home/user/donor-smoke` takes every make target.
+
+### D7 — the figure layer is not parameterised in θ, while everything else is
+
+See §5a. `plot_forest.py` and `plot_ci_gallery.py` hard-code the true effect
+at 7.5% while the metrics layer derives it from the data. Latent in the
+published study, because 7.5% was the truth; live the moment anyone varies θ,
+and silent when it fires.
+
+### Audit summary
+
+| | issue | severity | our workaround | upstream would need to change? |
+|---|---|---|---|---|
+| D1 | `.Rprofile` sources a gitignored file; `make env` can't bootstrap a cold clone | **blocking** | `R --vanilla -f bootstrap.R` | yes — one guard in `.Rprofile` |
+| D2 | README clone URL 404s | cosmetic | use the real URL | yes, one line |
+| D3 | `VERSIONS.md` vaguer than `renv.lock` on R | low | trust the lockfile | yes, regenerate |
+| D4 | `pyproject.toml` ranges vs `requirements.txt` pins, loose install runs second | **material** | `requirements.txt`, then `-e . --no-deps` | yes — reorder or drop one |
+| D5 | no licence | **blocking for reuse** | external wrapper, no vendored source | yes — add one |
+| D6 | `make smoke` deletes published results | **material** | read-only reference + disposable clone | yes — guard `clean` |
+| D7 | plots hard-code 7.5% truth | latent → **material on any θ ≠ 7.5%** | read `metadata.json` in the mutation diff | yes, two constants |
+
+Five of the seven are one-line fixes. That is the characteristic shape of
+reproducibility failure in this field: not deep methodological error, but a
+handful of unguarded lines that make a correct study hard to re-run. Worth
+stating plainly — the donor's *statistics* survived this audit intact, and
+every finding above is about packaging.
+
 ## 4. G3 tolerances, fixed before the replay
 
 Defined in advance so a disagreement cannot be rationalised afterwards. One
@@ -178,15 +292,91 @@ machine" is a question a buyer would ask and nobody has published.
 
 ## 5. G4 — the mutation test, and what it is really checking
 
-Before any sweep: `A1`, θ = **+2%**, N = 20–50. Not for statistics — to find
-out whether the pipeline is parameterised in θ or merely appears to be.
+Before any sweep: `A1`, θ = **+2%**, N = 20–50, then θ = **−5%**. Not for
+statistics — to find out whether the pipeline is parameterised in θ or merely
+appears to be. A generator can be fully parameterised while the analysis
+quietly is not.
 
-Specifically, whether anything downstream assumes `effect ∈ {0, 0.075}`:
-`effect_label == "effect"` used as a proxy for the magnitude, a hard-coded
-`0.075` in metric computation, `true_att_pct` not recomputed, the
-`results.jsonl` schema, or golden-comparison logic keyed to the two known
-arms. A generator can be fully parameterised while the analysis quietly is
-not.
+**PASS requires all six:**
+
+| | criterion |
+|---|---|
+| 1 | the generator accepts an arbitrary θ |
+| 2 | the recorded true ATT reflects +2%, not a hard-coded 7.5 |
+| 3 | all four adapters complete without error |
+| 4 | the output schema is unchanged |
+| 5 | downstream metrics do not assume `effect_label` means exactly 7.5% |
+| 6 | the decision layer can consume θ = 2% |
+
+Criterion 5 is the one to distrust. The donor README describes only `null`
+and `effect`, so a hidden binarity has somewhere comfortable to hide.
+
+### 5a. Static audit, done before spending any compute
+
+Reading the source first costs an hour and can save a 50-iteration run that
+produces confidently wrong figures. The result is more interesting than a
+straight pass or fail: **the numeric pipeline is parameterised in θ and the
+figure layer is not.**
+
+| | criterion | verdict | evidence |
+|---|---|---|---|
+| 1 | generator accepts arbitrary θ | **PARTIAL** | `generate_panels.R:41` `effect_sizes <- c(0.0, 0.075)` is a top-level constant. `parse_cli()` exists at :108 but wires only `--n_iterations` and `--output_base`. However `effect_pct` is a genuine *function argument* down to :265, so the gap is one unexported flag, not a refactor |
+| 2 | true ATT reflects θ | **PASS** | `compute_true_att()` derives from `mean(Y − Y_counterfactual)` over the treated post-period; `generate_panels.R:265` sets `Y[post] <- Y_cf[post] * (1 + effect_pct)`. No constant anywhere in the chain |
+| 3 | four adapters complete | untested | needs M4c |
+| 4 | schema unchanged | **PASS** | `effect_pct` is already a first-class column and a grouping key in `compute_metrics.py:125`. θ = 0.02 needs no schema change |
+| 5 | metrics free of 7.5 | **SPLIT — see below** | |
+| 6 | decision layer consumes θ = 2% | **PASS** | `two_point_problem(pi, c_fp, c_fn, effect=0.075)` already takes `effect` as a parameter; 0.075 is only the default |
+
+**Criterion 5, in detail.** The metrics layer is clean and the plotting layer
+is not:
+
+| file | θ-safe? | |
+|---|---|---|
+| `src/python/run_tools.py:441` | **yes** | iterates `meta["effect_sizes"].items()` — discovers arms from `metadata.json` rather than assuming two known ones |
+| `analysis/compute_metrics.py` | **yes** | `true_att_pct` from the data; `bias = avg − true` |
+| `analysis/audit_metrics.py` | **yes** | same, independently |
+| `analysis/generate_tables.py` | **yes** | selects by label only, no magnitude |
+| `analysis/plot_forest.py:66–67` | **NO** | `col_titles = ["7.5% Effect", …]`, `true_values = {"effect": 7.5, "null": 0.0}` |
+| `analysis/plot_ci_gallery.py:42` | **NO** | `TRUE_ATT = 0.075`, drawn as "True ATT (7.5%)" |
+
+So a θ = +2% run yields **correct numbers and lying figures**: bias and
+coverage computed against the true 2%, while the forest plot draws its
+reference line at 7.5% and titles the column "7.5% Effect". Every estimator
+would appear massively biased, and the error is in the axis.
+
+This is worth more as a finding than as a complaint. The donor's own
+published figures are sound because 7.5% happened to be the truth. The defect
+only fires when someone does what the parameterisation invites — and it fires
+silently, in the direction of a dramatic result.
+
+**A second, structural one.** `effect_labels <- c("null", "effect")` is used
+as a *directory name* (`panels/{scenario}/{effect_label}/`) and as the arm key
+throughout. Arms are keyed by label, not by magnitude, so a second θ
+overwrites the first. Two effect sizes cannot coexist on disk. For a
+two-truth study that is invisible; for the θ-atlas at M7 it is structural, and
+the label has to encode magnitude (`eff_p020`, `eff_m050`) before any sweep
+runs.
+
+**Handling.** The donor is not patched in place. The mutation runs in the
+disposable clone, and the diff — expected to be roughly three lines: a
+`--effect_sizes` flag, a magnitude-bearing label, and the two plot constants
+read from `metadata.json` — is recorded in this repository as a diff rather
+than as vendored source (D5: no licence).
+
+### 5b. θ = −5%, the sign mutation
+
+`+2%` tests magnitude. It does not test **sign**, and sign is where a
+marketing decision actually lives: the question a business faces is not only
+"how big is the lift" but "is this channel destroying money". A pipeline can
+be perfectly parameterised in magnitude and still assume the effect is
+positive — in a one-sided test, in an `abs()`, in a coverage check, in a
+"detected" flag that means "significant *and* positive".
+
+The two-point world cannot surface this, because both of its truths are ≥ 0.
+θ = −5% is therefore not an extra data point on a curve; it is a separate
+mutation test with its own pass condition: the sign of the recorded true ATT,
+the direction of every interval, and the meaning of `significant` must all
+survive a negative truth.
 
 ## 6. Then a two-stage sweep, not a uniform one
 
