@@ -121,8 +121,8 @@ Only after G4 does an effect-size sweep begin.
 | M4b | version-matched runtime (R 4.5.1, Py 3.12.8) | **PASS** — 99/99 R packages, 83/83 Python pins, `renv::status()` clean |
 | M4c | upstream `make smoke` in the matched lane | **PASS** — exits 0, all four adapters complete |
 | M4d | host-drift smoke in the robustness lane | deferred; its library was rolled back (D8) |
-| M5a | R1 — DGP reproduced via `true_att_level` | **PASS** — 80/80 exact to 1e-9 (§4d) |
-| M5b | R2 — golden estimator replay against published rows | **PASS** at N=5/scenario; 20-iteration run under way for the preregistered count |
+| M5a | R1 — DGP reproduced via `true_att_level` | **PASS** — 320/320 exact to 1e-9 (§4d.1) |
+| M5b | R2 — golden estimator replay against published rows | **PASS** — 160 rows/tool, clears the preregistered count (§4d.1) |
 | M6a | θ mutation +2% (six PASS criteria, §5) | static audit **done** (§5a), patch **written and tested** |
 | M6b | θ mutation −5% (sign mutation) | patch covers it; blocked on M6a |
 | M7 | coarse θ likelihood atlas | blocked on M6b |
@@ -800,14 +800,42 @@ the sort of thing that should be known before two teams argue about why their
 numbers differ by a point.
 
 **Caveat on the count.** §4b asked for 10 fixed iterations for the
-deterministic pair and 20 for the stochastic pair, on A1. This run gives 10
-rows per tool on A1 (5 iterations × 2 arms) and 40 across all four scenarios.
-So the preregistered A1 count is **met for `google_mm` and `geolift` and
-under-met for `causalpy` and `causalimpact`**, while total evidence exceeds
-it and spans four regimes rather than one. A 20-iteration run is under way to
-meet the letter of what was written down; this section is written from the
-N=5 result and will be updated, not replaced, so that both counts stay
-visible.
+deterministic pair and 20 for the stochastic pair, on A1. The run above gives
+10 rows per tool on A1 (5 iterations × 2 arms) and 40 across all four
+scenarios. So the preregistered A1 count was **met for `google_mm` and
+`geolift` and under-met for `causalpy` and `causalimpact`**.
+
+### 4d.1 The same test at the full preregistered count
+
+Re-run at **20 iterations per scenario** — 640 rows, **160 per tool**, which
+clears the preregistered count in every cell with room to spare. Both results
+are kept; the first is not deleted now that a larger one exists.
+
+| | N=5/scenario (40/tool) | **N=20/scenario (160/tool)** |
+|---|---|---|
+| **R1** DGP | 80/80 exact, max 4.6e-13 | **320/320 exact, max 8.0e-13** |
+| `google_mm` | 40/40, worst 2.5e-13 rel | **160/160, worst 1.3e-12 rel** |
+| `geolift` | 40/40, worst 0 | **160/160, worst 0** |
+| `causalimpact` | 40/40, worst 0 | **160/160, worst 0** |
+| `causalpy` | +0.0010pp vs 2×SE 0.0122 | **+0.0009pp vs 2×SE 0.0061** |
+| `significant` agreement | 159/160 rows | **636/640 rows** |
+
+**G3 verdict: PASS**, at four times the evidence and with every conclusion
+in §4d unchanged.
+
+Two details worth reading rather than skimming:
+
+- `causalpy`'s mean difference stayed at ~+0.0009pp while its standard error
+  **halved** (0.0122 → 0.0061 for 2×SE), exactly as √n predicts. The
+  agreement is therefore not a tolerance too loose to fail — it survives a
+  bar twice as tight.
+- Its four `significant` disagreements out of 160 (97.5% agreement) are the
+  expected consequence of a point estimate carrying 1.3% Monte Carlo noise
+  landing near a threshold. §4b preregistered that such rows are tolerated
+  and counted rather than silently excused; they are counted here.
+- `google_mm`'s worst relative difference grew from 2.5e-13 to 1.3e-12
+  with 4× the rows — the maximum of a larger sample of floating-point noise,
+  not a drift. Still three orders of magnitude inside its 1e-9 tolerance.
 
 ## 5. G4 — the mutation test, and what it is really checking
 
