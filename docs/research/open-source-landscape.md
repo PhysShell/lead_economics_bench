@@ -104,6 +104,23 @@ a load-bearing production dependency yet.
 A campaign-level benchmark for PIE's *own* claim is implemented in
 `scripts/run_pie_track.py`; results are in the final report.
 
+Two fairness points about that benchmark, stated because they cut against the
+result rather than for it:
+
+1. **The shape of the truth decides the winner.** The first version of the
+   campaign DGP made true incrementality *additive* in the logged features,
+   which makes the ridge baseline correctly specified and the comparison
+   meaningless. A second variant (`--interactions`) adds channel x vertical
+   effects, a non-monotone creative-age effect and a budget x exposure
+   interaction. Both are reported.
+2. **Feature representation differs by necessity.** The ridge baseline receives
+   `log(budget)` and `log(audience)`; PIE receives the raw columns and
+   label-encodes internally. This is not a handicap for BART — a tree ensemble
+   splits on order, so it is invariant to any monotone transform of a
+   continuous feature — whereas ridge genuinely needs the log to represent
+   diminishing returns at all. Each model gets the representation its
+   functional form requires.
+
 ## Maintenance assessment
 
 The single most decision-relevant column is "last release", because a causal
