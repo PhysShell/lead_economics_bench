@@ -1,144 +1,156 @@
-# Layer 3, first result: the statistical winner and the business winner are different rules
+# Layer 3: the experiment is usually worth running; the significance gate is not
 
-**What this is.** A decision layer bolted onto Recast's published per-run
-results. No new estimator, no new simulation — their 32,000 runs, plus a loss
-function. Produced before writing any benchmark of our own, deliberately,
-because it can kill or sharpen the hypothesis for the cost of an afternoon.
-
-**Reproduce:** `python marketing_experimentation/scripts/business_phase_diagram.py`
+**Reproduce:** `python marketing_experimentation/scripts/voi_v2.py`
+**Superseded first attempt:** `scripts/significance_gate_v1.py`
+**Invariants:** `tests/test_decision.py` (123 tests)
 
 ---
 
-## 1. Their numbers, recomputed from raw
+## 0. The correction that produced the real finding
 
-First, an independent check. Recast publish `results/raw/results.jsonl`
-(32,000 records, repo `getrecast/geolift-simulation-study` @ `5133d37`,
-2026-06-15). Recomputing FPR and FNR from those records rather than reading
-them off the prose:
-
-| tool | FPR A1 | A2 | A3 | A4 | FNR A1 | A2 | A3 | A4 |
-|---|---|---|---|---|---|---|---|---|
-| `geolift` 2.7.5 | **4.6** | 4.2 | 4.9 | **3.3** | **91.3** | 91.0 | 89.3 | **95.7** |
-| `google_mm` | 16.9 | 18.3 | 19.1 | 14.5 | 57.1 | 53.0 | 47.3 | 65.9 |
-| `causalpy` 0.8.0 | 19.8 | 18.2 | 18.0 | 24.8 | 66.2 | 64.3 | 65.2 | 63.5 |
-| `causalimpact` 1.4.1 | **27.8** | 30.0 | 28.9 | 29.5 | **37.9** | 37.2 | 34.3 | 47.8 |
-
-1,000 null runs and 1,000 effect runs per cell; effect = +7.5%. This
-reproduces their published claims exactly, which also establishes that their
-artefact is usable as an external golden test.
-
-## 2. The decision model
-
-A method is a rule returning significant / not. With `pi` the prior that the
-channel really works:
+The first pass reported that a **free** experiment was not worth running over
+70% of the business-loss plane. That cannot be true. If information costs
+nothing you can always read the result and then do exactly what you would have
+done anyway, so
 
 ```
-loss(method)  = (1-pi) * FPR * C_FP  +  pi * FNR * C_FN  +  C_test
-loss(no test) = min((1-pi) * C_FP,  pi * C_FN)
+EVSI >= 0    whenever   C_experiment = 0
 ```
 
-`DO_NOT_RUN` competes on equal terms: without an experiment you act on the
-prior and take whichever mistake it makes cheaper, paying no experiment cost.
-The gap between the two is the value of information.
+always holds. The violation was diagnostic, not fatal: what v1 actually
+modelled was a **significance gate**, a policy that is *forced* to obey its
+own verdict:
 
-## 3. The result
+```
+significant     -> take the action
+not significant -> do not take the action
+```
 
-At `C_FN = $500k`, `C_test = $40k`, over a grid of cost ratio
-`C_FP/C_FN ∈ [0.1, 10]` and prior `pi ∈ [0.05, 0.90]`:
+A forced policy can lose to acting on the prior. An optimally-used signal
+cannot. v1 is therefore kept and relabelled — the gate is what practice runs,
+so the gap between it and the optimal policy is the result.
 
-| rule | share of the plane it wins |
-|---|---|
-| **`DO_NOT_RUN`** | **87.8%** |
-| `causalimpact` | 11.8% |
-| `google_mm` | 0.4% |
-| `causalpy` | 0% |
-| `geolift` | **0%** |
+The invariant is now a test (`test_free_information_never_hurts`), as are
+`0 <= EVSI <= EVPI`, "a useless signal is worth exactly zero", and "a perfect
+signal is worth exactly EVPI". v2 refuses to print any number until all 1,800
+cells pass.
 
-Regret of committing to one rule everywhere:
+---
 
-| policy | mean regret | p90 | max | optimal in |
-|---|---|---|---|---|
-| `DO_NOT_RUN` | **$4,429** | $8,185 | $103,432 | 87.8% |
-| `google_mm` | $145,448 | $286,295 | $832,025 | 0.4% |
-| `geolift` | $153,313 | $348,402 | $446,080 | 0% |
-| `causalimpact` | $164,858 | $422,949 | $1,344,975 | 11.8% |
-| `causalpy` | $184,357 | $334,631 | $972,050 | 0% |
+## 1. What changes when the signal is used properly
 
-**And it is not an artefact of the experiment's price.** Sweeping `C_test`:
+Recast's published runs, scenario A1, `C_FN = $500k`, effect +7.5%.
 
-| `C_test` | `C_test/C_FN` | plane where running wins |
+| | v1 significance gate | v2 optimal use |
 |---|---|---|
-| $0 | 0.000 | **30%** |
-| $5,000 | 0.010 | 27% |
-| $20,000 | 0.040 | 20% |
-| $40,000 | 0.080 | 12% |
-| $80,000 | 0.160 | 5% |
+| cells where a free experiment has negative value | **>70%** | **0 of 450** |
+| most negative value seen | large | **−$0.00** (tolerance $0.45) |
+| invariant `0 ≤ EVSI ≤ EVPI` | violated | **PASS over 1,800 cells** |
 
-**Even a free experiment is not worth running over 70% of this plane.** The
-driver is not cost, it is the false-negative rates: at a +7.5% effect these
-tools miss 38–91% of real effects, so the test often fails to shift the
-decision away from what the prior already implied.
+**But the RUN/DON'T-RUN verdict barely moved: 12% of the plane, both times.**
+The reason is completely different, and that difference is the finding.
 
-## 4. What this says that Recast's study does not
+Under v1 the experiment looked worthless because the gate destroyed value.
+Under v2 it is genuinely worth something almost everywhere — the *median EVSI
+is $0* because a one-bit signal usually fails to move a two-point decision at
+all, and where it does move it, the value is real but smaller than a $40k
+test.
 
-Recast conclude, correctly, that tool choice is a business tradeoff between
-false positives and false negatives, and stop there. Pricing the tradeoff
-changes three things:
+## 2. The gate's damage is compulsion, not information loss
 
-1. **GeoLift is never the right answer under this loss model — 0% of cells,
-   in both costings.** It is the best-calibrated tool in the study (FPR
-   3–5%) and that is exactly why: a 91% false-negative rate means it
-   rarely produces information, so a decision-maker who would otherwise pay
-   for it is better off keeping the money. "Well calibrated" and "worth
-   running" are different properties, and only the second one is a business
-   question.
-2. **The dominant competitor is not another estimator, it is not
-   experimenting.** Any product in this space whose baseline is "which tool
-   should you use" is benchmarking against the wrong opponent.
-3. **A single fixed default beats every learned alternative here**, and the
-   default is `DO_NOT_RUN` at $4,429 mean regret against $145k+ for any tool.
-   On this evidence, the *selector* half of the hypothesis is in trouble and
-   the *feasibility* half is not.
-
-## 5. What this cannot establish
-
-Stated before the result is quoted anywhere, because the result is
-uncomfortable enough to be quoted carelessly.
-
-- **The decision is binary.** Significant / not throws away the point
-  estimate, and a real budget decision uses magnitude. This is deliberately
-  the crude version: it shows the ranking is cost-dependent, not the size of
-  the effect. A magnitude-aware version would favour running more often.
-- **One effect size.** +7.5% is a large lift. Businesses chasing 1–2% face
-  worse false-negative rates than these, which pushes further toward
-  `DO_NOT_RUN` — but the point estimate would also be more informative than a
-  significance flag, pushing the other way. Unresolved.
-- **Recast's synthetic DGP.** Lognormal baselines, AR(1) at ρ=0.30, weekly
-  seasonality, 105-day panels. Recast themselves note their DGP omits real
-  geo complications and that the ranking may move on dirtier data.
-- **The no-test benchmark is charitable to itself.** `min(...)` assumes the
-  business acts optimally on its prior. A business with miscalibrated beliefs
-  loses more by not testing than this model charges it.
-- **Tools are configured as Recast configured them.** A tuned GeoLift might
-  trade some of that calibration for power. Configuration is a separate axis
-  and untested here.
-
-## 6. Consequence for the research question
-
-The three-layer framing holds up, and the weight has moved:
-
-| layer | status after this |
+| measure | value |
 |---|---|
-| **1. Statistical behaviour** — FPR/FNR/coverage | occupied: Recast, Statsig, Microsoft ExP |
-| **2. Regime selection** — data properties → best method | partially occupied; and this result suggests the prize may be small, since one fixed rule already wins most of the plane |
-| **3. Business decision** — costs, prior, RUN/DON'T RUN | unoccupied, and **the only layer where the answer changed anything** |
+| cells where the gate scores worse than acting on the prior | **70%** |
+| median share of a *valuable* experiment discarded by the gate | **0%** |
 
-The sharpest open question is no longer "which estimator wins where". It is:
+These look contradictory and are not. Where the experiment has material value,
+the gate mostly captures it. Where the gate loses, EVSI is near zero — so
+there was nothing to discard, and the gate loses by **forcing an action on a
+signal that should not have changed the action**.
 
-> Does a business-cost-aware feasibility layer change the run/don't-run
-> decision often enough, on *realistic* data regimes and with a
-> magnitude-aware decision rule, to be worth building — given that a single
-> fixed rule already achieves $4,429 mean regret on the crude version?
+That is a sharper claim than "p-values throw information away". The mechanism
+is that `p < .05` is binding rather than advisory, and it is binding exactly
+where it is least informative.
 
-That question has a preregisterable answer and a cheap first test, and it is
-a much narrower claim than the brief started with.
+## 3. The result that reverses my earlier claim
+
+I previously wrote that **GeoLift is never optimal — 0% of cells**. That was
+an artefact of the gate. Using the *point estimate* rather than the
+significance flag, at prior 0.4 and cost ratio 1 (EVPI ceiling $200k):
+
+| tool | EVSI, binary flag | EVSI, point estimate | uplift |
+|---|---|---|---|
+| `geolift` | $3,600 | **$50,260** | **+1,296%** |
+| `causalpy` | $8,200 | $48,661 | +493% |
+| `google_mm` | $35,100 | $55,490 | +58% |
+| `causalimpact` | $40,800 | **$57,006** | +40% |
+
+**GeoLift recovers almost all of the gap.** Its wide, conservative interval
+still moves the posterior enough to change a budget decision, even in the runs
+where that interval comfortably contains zero. The gate was discarding
+roughly 93% of its value, and "never optimal" was a statement about `p < .05`,
+not about GeoLift.
+
+And the second-order observation matters more than the first:
+
+> Under the binary flag the four tools span **11×** in value ($3.6k–$40.8k).
+> Under the point estimate they span **17%** ($48.7k–$57.0k).
+
+Recast conclude that "point estimates alone would tell you these tools are
+interchangeable — the uncertainty story tells you why they aren't." On this
+evidence that is precisely backwards *for a decision-maker*: once the estimate
+is used to update a belief rather than to pass a threshold, the tools become
+close to interchangeable, and the disagreement they document is largely a
+disagreement about where to put a threshold nobody is obliged to use.
+
+Their framing is right for their users, because their users live in the gated
+world. That is the point.
+
+## 4. What this does to the research question
+
+| layer | status |
+|---|---|
+| 1. statistical behaviour | occupied — Recast, Statsig, Microsoft ExP |
+| 2. regime selection | prize looks smaller than assumed: under optimal use the tools converge |
+| 3. business decision | **the live question, and it moved** |
+
+The question is no longer "which estimator should this business use". It is:
+
+> Marketing experimentation platforms compute statistical significance
+> competently, and then convert evidence into budget action with a rule that
+> is beaten by acting on the prior in 70% of the plane. Is the gap between
+> `p < .05` and the posterior-optimal action large enough, on realistic data
+> regimes, to be worth building?
+
+That is a harder claim for a head-to-head leaderboard to kill, because it is
+not a claim about estimators at all.
+
+## 5. What this still cannot establish
+
+- **A two-point prior.** θ ∈ {0, +7.5%} is all the published data supports,
+  because Recast simulated exactly two truths. A real prior is a distribution
+  over effect *size*, including negative effects — a marketing test can
+  discover that a channel actively destroys money, and nothing here can
+  represent that. This needs simulations at −10%, −5%, −2%, 0, +1%, +2%, +5%,
+  +7.5%, +10%, +15%, or a continuous sweep.
+- **Two actions.** hold / scale. Real budget decisions are cut / hold / raise
+  moderately / raise hard, and the value of information rises with the
+  richness of the action set.
+- **One scenario and one cost setting** for the headline comparison.
+- **KDE likelihood on 500 held-out runs per arm.** The fit/evaluate split is
+  in place so the density has not seen the points it scores, but the tails are
+  thin and the continuous EVSI numbers should be read as indicative.
+- **Recast's synthetic DGP**, with its stated limitations.
+
+## 6. Next, in order
+
+1. Effect-size sweep — the single highest-value missing input. Everything in
+   §3 rests on two points of θ.
+2. Richer action set, which should raise EVSI across the board.
+3. Spike-and-slab prior over effect size, ideally empirical from published
+   marketing experiments.
+4. Only then, re-derive the phase diagram and the selector question.
+
+Vendor archaeology is paused until these are done. The landscape told us where
+the gap is; continuing to read vendor documentation will not tell us whether
+it is worth anything.

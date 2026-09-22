@@ -1,4 +1,24 @@
 #!/usr/bin/env python
+"""v1, SUPERSEDED as a value-of-information model; kept as a policy model.
+
+**What this measures is a significance gate, not the value of an experiment.**
+
+    significant     -> take the action
+    not significant -> do not take the action
+
+The policy is forced to obey the gate, which is why it can score worse than
+acting on the prior, and why this script reported that a *free* experiment was
+not worth running over 70% of the plane. That finding violates `EVSI >= 0` --
+free information cannot hurt, because you can always ignore it -- so it is not
+a statement about experiments. It is a statement about the gate.
+
+`voi_v2.py` computes the value of the experiment properly (EVPI / EVSI / ENBS,
+with the invariants enforced). This file stays because the gate is what
+conventional experimentation practice actually runs, so the difference between
+the two is a research finding rather than a bug to be deleted.
+
+**Do not quote the numbers below as evidence about experiments.** They are
+evidence about `p < .05` as a decision rule.
 """Layer 3 on Layer 1's published numbers: which method wins once errors cost money.
 
 Recast's study (June 2026) establishes the statistical behaviour of four
