@@ -123,6 +123,15 @@ and raises.
 Neither dataset is committed. `scripts/download_datasets.py` fetches them and
 SHA256 digests are pinned in `src/leadbench/data/real.py`.
 
+**Economics on the real track.** These datasets carry no agent time and no
+margin, so the constraint is a **send budget** (treat the top `k` share) and
+the value per outcome and cost per treatment are preregistered constants.
+Under a fixed budget every policy treats exactly the same *number* of users,
+so total treatment cost is identical across candidates and the comparison is
+driven entirely by **incremental outcomes**; the value/cost constants rescale
+the reported level but cannot change the ranking. This track therefore tests
+targeting quality, not the full economic problem.
+
 ### MMM
 
 Six regimes over an aggregate DGP with geometric adstock, exponential
