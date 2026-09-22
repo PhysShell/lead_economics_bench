@@ -222,6 +222,10 @@ def main() -> int:
     if len(mmm):
         section("MMM track", _mmm_table(mmm), out)
 
+    if len(lead):
+        section("Data-regime map: what wins where", _regime_map(lead), out)
+        section("Cost of the win: value against compute", _cost_table(lead), out)
+
     p = Path(args.out)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("".join(out))
@@ -306,6 +310,59 @@ def _real_table(real: pd.DataFrame) -> str:
          .mean().reset_index())
     d[["dr_value", "dr_ci_low", "dr_ci_high", "snips_value"]] *= 1000.0
     return d.round(3).to_string(index=False) + "\n"
+
+
+def _regime_map(lead: pd.DataFrame) -> str:
+    """Per regime: the winner, the best analytics baseline, and the gap.
+
+    The gap column is what decides whether a decision engine is worth building
+    *in that regime*, and it is reported on the preregistered dollar scale as
+    well as the readable Oracle-share scale.
+    """
+    exclude = {"oracle", "do_nothing"}
+    d = lead[~lead["candidate"].isin(exclude)]
+    analytics = {"hist_profit_per_agent_hour", "hist_net_profit", "hist_conversion_rate",
+                 "hist_roas", "last_click_attribution", "lowest_cpl", "random", "fifo",
+                 "call_everyone", "existing_policy_replay", "existing_policy_capped"}
+    rows = []
+    for regime, g in d.groupby("regime"):
+        m = g.groupby("candidate")[[SECONDARY, PRIMARY]].mean()
+        if m.empty:
+            continue
+        best = m[SECONDARY].idxmax()
+        base_pool = m[m.index.isin(analytics)]
+        base = base_pool[SECONDARY].idxmax() if len(base_pool) else None
+        cmp_df = paired(g, best, base) if base else pd.DataFrame()
+        verdict = cmp_df["verdict"].iloc[0] if len(cmp_df) else "n/a"
+        rows.append({
+            "regime": regime,
+            "winner": best,
+            "winner_oracle%": round(float(m.loc[best, SECONDARY]), 1),
+            "best_analytics": base,
+            "analytics_oracle%": round(float(m.loc[base, SECONDARY]), 1) if base else np.nan,
+            "gap_pts": round(float(m.loc[best, SECONDARY] - m.loc[base, SECONDARY]), 1) if base else np.nan,
+            "gap_$per1k": round(float(m.loc[best, PRIMARY] - m.loc[base, PRIMARY]), 0) if base else np.nan,
+            "verdict": verdict,
+        })
+    note = (
+        "\nNOTE: both `winner` and `best_analytics` are post-hoc maxima over "
+        "candidates, so the gap is optimistic on both sides and this table is "
+        "DESCRIPTIVE. The preregistered comparisons against fixed references "
+        "(hist_profit_per_agent_hour, lead_score_gbm, propensity_ev_gbm) in the "
+        "RQ sections above are the ones that decide anything.\n"
+    )
+    return pd.DataFrame(rows).to_string(index=False) + "\n" + note
+
+
+def _cost_table(lead: pd.DataFrame) -> str:
+    cols = [c for c in [SECONDARY, "fit_seconds", "predict_seconds", "peak_rss_delta_mb"]
+            if c in lead.columns]
+    d = lead.groupby("candidate")[cols].mean().sort_values(SECONDARY, ascending=False)
+    d["fit_x_vs_propensity_ev"] = d["fit_seconds"] / max(
+        float(d.loc["propensity_ev_gbm", "fit_seconds"]) if "propensity_ev_gbm" in d.index else 1.0,
+        1e-9,
+    )
+    return d.round(2).to_string() + "\n"
 
 
 def _mmm_table(mmm: pd.DataFrame) -> str:
