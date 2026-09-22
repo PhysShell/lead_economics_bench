@@ -35,7 +35,17 @@ THRESHOLD_PCT = 2.0
 
 
 def clustered_paired(sub: pd.DataFrame, cand: str, metric: str):
-    """Paired difference vs the reference, clustered on seed."""
+    """Paired difference vs the reference, clustered on seed.
+
+    The percentage is scaled by ``abs(reference)``, and is reported as NaN when
+    the reference is too close to zero to divide by. Criteo's conversion
+    scenario has a *negative* random baseline -- at a 0.28% outcome rate the
+    preregistered cost per treatment exceeds the value it buys, so treating
+    anybody loses money -- and dividing by a signed near-zero denominator
+    flips the sign of every comparison and inverts the ordering. An earlier
+    version of this script did exactly that and reported a candidate that was
+    worse than random in raw dollars as "+34.9%, BEATS RANDOM".
+    """
     key = ["seed", "budget"]
     ref = sub[sub.candidate == REFERENCE].set_index(key)[metric]
     cur = sub[sub.candidate == cand].set_index(key)[metric]
@@ -49,17 +59,33 @@ def clustered_paired(sub: pd.DataFrame, cand: str, metric: str):
     se = per_seed.std(ddof=1) / np.sqrt(len(per_seed))
     crit = stats.t.ppf(0.975, len(per_seed) - 1)
     lo, hi = mean - crit * se, mean + crit * se
-    base = ref.loc[shared].to_numpy().mean()
-    scale = 100.0 / base if base else np.nan
-    return dict(seeds=len(per_seed), diff=mean, pct=mean * scale,
-                pct_lo=lo * scale, pct_hi=hi * scale)
+    base = float(ref.loc[shared].to_numpy().mean())
+    spread = float(np.abs(ref.loc[shared].to_numpy()).mean())
+    # A reference whose mean is a small fraction of its own scale cannot
+    # anchor a percentage.
+    usable = abs(base) > 0.10 * spread and abs(base) > 1e-9
+    scale = 100.0 / abs(base) if usable else np.nan
+    return dict(seeds=len(per_seed), diff=mean, lo=lo, hi=hi, base=base,
+                pct=mean * scale, pct_lo=lo * scale, pct_hi=hi * scale,
+                pct_usable=usable)
 
 
 def verdict(res: dict) -> str:
-    if res["pct_lo"] > 0 and res["pct"] > THRESHOLD_PCT:
-        return "BEATS RANDOM"
-    if res["pct_hi"] < 0 and res["pct"] < -THRESHOLD_PCT:
-        return "WORSE THAN RANDOM"
+    """Decided on the raw difference, never on the percentage.
+
+    The interval has to exclude zero in raw units, and the effect has to clear
+    the practical threshold -- which can only be expressed as a percentage when
+    the reference is a usable denominator. Where it is not, the interval test
+    alone decides and the verdict says so.
+    """
+    if res["lo"] > 0:
+        if not res["pct_usable"]:
+            return "beats random (raw; % not defined)"
+        return "BEATS RANDOM" if res["pct"] > THRESHOLD_PCT else ""
+    if res["hi"] < 0:
+        if not res["pct_usable"]:
+            return "worse than random (raw; % not defined)"
+        return "WORSE THAN RANDOM" if res["pct"] < -THRESHOLD_PCT else ""
     return ""
 
 
@@ -81,6 +107,9 @@ def main() -> None:
         print(f"=== {scen} ===")
         print(f"    random baseline {base:.2f}/1k | outcome rate "
               f"{sub.pred_mean_observed.mean():.4f} | ~{events:,.0f} events in the test fold")
+        if base <= 0:
+            print("    NOTE: the random policy's own value is <= 0 here, so "
+                  "percent-of-reference is meaningless; raw differences only.")
         rows = []
         for cand in sorted(sub.candidate.unique()):
             if cand == REFERENCE:
@@ -88,9 +117,15 @@ def main() -> None:
             res = clustered_paired(sub, cand, args.metric)
             if res:
                 rows.append((cand, res))
-        for cand, res in sorted(rows, key=lambda r: -r[1]["pct"]):
-            print(f"  {cand:22s} {res['diff']:+8.3f}  {res['pct']:+6.1f}%  "
-                  f"95% CI [{res['pct_lo']:+7.1f},{res['pct_hi']:+7.1f}]  {verdict(res)}")
+        # Sorted by the raw difference. Sorting by percentage inverts the
+        # ordering whenever the reference is negative.
+        for cand, res in sorted(rows, key=lambda r: -r[1]["diff"]):
+            if res["pct_usable"]:
+                pct = (f"{res['pct']:+6.1f}%  95% CI "
+                       f"[{res['pct_lo']:+7.1f},{res['pct_hi']:+7.1f}]")
+            else:
+                pct = f"    n/a  95% CI [{res['lo']:+7.3f},{res['hi']:+7.3f}] raw"
+            print(f"  {cand:22s} {res['diff']:+8.3f}  {pct}  {verdict(res)}")
         print()
 
     print("Causal family vs the plain propensity ranking (`response_score`) —")
@@ -108,12 +143,20 @@ def main() -> None:
                 line += f"{'-':>14s}"
                 continue
             per_seed = (cur.loc[shared] - ref.loc[shared]).groupby(level="seed").mean().to_numpy()
-            base = abs(ref.loc[shared].to_numpy().mean())
+            ref_vals = ref.loc[shared].to_numpy()
+            base = abs(float(ref_vals.mean()))
+            spread = float(np.abs(ref_vals).mean())
             mean = per_seed.mean()
             se = per_seed.std(ddof=1) / np.sqrt(len(per_seed))
             crit = stats.t.ppf(0.975, len(per_seed) - 1)
             sig = "*" if (mean - crit * se > 0 or mean + crit * se < 0) else " "
-            line += f"{100 * mean / base:+12.1f}%{sig}"
+            # Same guard as clustered_paired: a reference sitting near zero
+            # cannot anchor a percentage, and printing one invents an effect
+            # size out of a small denominator.
+            if base > 0.10 * spread and base > 1e-9:
+                line += f"{100 * mean / base:+12.1f}%{sig}"
+            else:
+                line += f"{'n/a':>12s} {sig}"
         print(line)
     print(f"  columns: {'s_learner':>13s}{'t_learner':>13s}{'x_learner':>13s}{'dr_learner':>13s}")
     print("  * interval excludes zero")
