@@ -218,3 +218,14 @@ These would change conclusions if they are wrong, so they are stated plainly.
    needed to call everyone). The capacity sweep covers 5%–100%, and the answer
    does move with it, so the headline number should be read as "at this
    capacity", not as a universal constant.
+
+7. **Abstention is scored pessimistically, on purpose.** When
+   `AbstentionPolicy` declines to decide, the lead receives the *control*
+   action and the freed capacity is not reallocated. A real deployment would
+   hand those leads back to the existing human process, which would work some
+   of them, and would presumably spend the freed agent-hours elsewhere. So the
+   abstention numbers are a **lower bound** on its value: they measure the cost
+   of refusing to act, not the value of deferring to a human. Read "abstention
+   loses money here" as "abstention is not free", not as "never abstain" — the
+   argument for abstention is about avoiding confident errors on thin evidence,
+   and this benchmark cannot price that.
