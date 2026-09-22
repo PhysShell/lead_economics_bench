@@ -102,8 +102,23 @@ def main() -> int:
         fails.to_csv(out / "failures.csv", index=False)
         summary["n_failed_cells"] = int(fails["count"].sum()) if len(fails) else 0
 
-        pf = pareto_frontier(board[board["n_seeds"] >= 2], "mean", "fit_seconds")
+        # Pareto on the Oracle-share scale, averaged across regimes, with the
+        # two degenerate reference points removed. On the raw dollar scale
+        # `do_nothing` dominates everything on cost (zero seconds, and a net
+        # value that still contains the whole do-nothing floor), which makes
+        # the frontier meaningless.
+        pcost = (
+            lead[lead["status"] == "ok"]
+            .groupby("candidate")[["pct_of_oracle_incremental", "fit_seconds",
+                                   "predict_seconds"]]
+            .mean()
+            .reset_index()
+            .rename(columns={"pct_of_oracle_incremental": "mean"})
+        )
+        pcost = pcost[~pcost["candidate"].isin(["oracle", "do_nothing"])]
+        pf = pareto_frontier(pcost, "mean", "fit_seconds")
         pf.to_csv(out / "pareto.csv", index=False)
+        _plot_pareto(pcost, pf, out / "figures" / "pareto_value_vs_compute.png")
 
         _plot_regime_bars(lead, out / "figures" / "by_regime.png")
         _plot_coverage(lead, out / "figures" / "uncertainty_coverage.png")
@@ -279,23 +294,78 @@ def _kill_criteria(lead: pd.DataFrame, mmm: pd.DataFrame, bayes: pd.DataFrame) -
             "triggered": bool((bay - nonbay) < 2.0 and (ratio or 0) > 10.0),
         })
 
-    # K4: MMM
+    # K4: MMM. Split calibrated from uncalibrated, because an SMB that has
+    # never run a geo test cannot have the calibrated version -- crediting the
+    # method with a lift-test-calibrated score would answer a question nobody
+    # asked.
     if len(mmm):
         m = mmm[mmm["status"] == "ok"]
         col = "regret_pct_b1.0"
         if col in m.columns:
-            smb = m[(m["regime"].isin(["mmm_smb_short_history", "mmm_very_short_history"]))
-                    & (~m["candidate"].isin(["oracle"]))]
-            best = pd.to_numeric(smb[col], errors="coerce").groupby(smb["candidate"]).mean()
-            v = float(best.min()) if len(best) else float("nan")
+            smb = m[
+                m["regime"].isin(["mmm_smb_short_history", "mmm_very_short_history"])
+                & (~m["candidate"].isin(["oracle"]))
+            ]
+            by_cand = pd.to_numeric(smb[col], errors="coerce").groupby(
+                smb["candidate"]
+            ).mean()
+            uncal = by_cand[~by_cand.index.astype(str).str.contains("calibrated")]
+            v_all = float(by_cand.min()) if len(by_cand) else float("nan")
+            v_uncal = float(uncal.min()) if len(uncal) else float("nan")
             rows.append({
-                "criterion": "K4 kill MMM for SMB",
-                "test": "best non-oracle MMM regret at SMB data sizes > 10%",
-                "value": v,
+                "criterion": "K4 kill MMM for SMB (no experiments)",
+                "test": "best UNCALIBRATED MMM regret at SMB data sizes > 10%",
+                "value": v_uncal,
                 "threshold": 10.0,
-                "triggered": bool(v > 10.0),
+                "triggered": bool(v_uncal > 10.0),
+            })
+            rows.append({
+                "criterion": "K4b MMM for SMB WITH lift tests",
+                "test": "best MMM regret including experiment-calibrated variants > 10%",
+                "value": v_all,
+                "threshold": 10.0,
+                "triggered": bool(v_all > 10.0),
+            })
+        # The question a buyer actually cares about: does the model beat simply
+        # splitting the budget evenly? `pct_of_oracle_gain` is normalised so
+        # equal allocation scores 0 and the Oracle scores 100.
+        gcol = "pct_of_oracle_gain_b1.0"
+        if gcol in m.columns:
+            g = pd.to_numeric(m[gcol], errors="coerce").groupby(m["candidate"]).mean()
+            g = g.drop(labels=[c for c in ("oracle", "equal_allocation") if c in g.index])
+            uncal_g = g[~g.index.astype(str).str.contains("calibrated")]
+            best_uncal = float(uncal_g.max()) if len(uncal_g) else float("nan")
+            rows.append({
+                "criterion": "K4c uncalibrated MMM barely beats an equal split",
+                "test": "best uncalibrated MMM captures < 25% of the gain an "
+                        "Oracle has over equal allocation",
+                "value": best_uncal,
+                "threshold": 25.0,
+                "triggered": bool(best_uncal < 25.0),
             })
     return pd.DataFrame(rows)
+
+
+def _plot_pareto(all_c: pd.DataFrame, frontier: pd.DataFrame, path: Path) -> None:
+    if all_c.empty:
+        return
+    fig, ax = plt.subplots(figsize=(8.5, 5))
+    ax.scatter(all_c["fit_seconds"], all_c["mean"], s=28, alpha=0.7)
+    for _, r in all_c.iterrows():
+        ax.annotate(r["candidate"], (r["fit_seconds"], r["mean"]),
+                    fontsize=6.5, xytext=(3, 3), textcoords="offset points")
+    if len(frontier):
+        f = frontier.sort_values("fit_seconds")
+        ax.plot(f["fit_seconds"], f["mean"], "r--", lw=1.2, label="Pareto frontier")
+        ax.legend(fontsize=8)
+    ax.set_xscale("symlog", linthresh=0.05)
+    ax.set_xlabel("mean fit seconds per scenario (log scale)")
+    ax.set_ylabel("% of Oracle's achievable gain")
+    ax.set_title("Is the extra compute buying anything?")
+    ax.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(path, dpi=130)
+    plt.close()
 
 
 def _plot_regime_bars(lead: pd.DataFrame, path: Path) -> None:
