@@ -49,10 +49,24 @@ programme is about:
 > "Point estimates alone would tell you these tools are interchangeable. The
 > uncertainty story tells you why they aren't."
 
-**What this kills.** The differentiation claim "vendor-neutral empirical
-comparison of multiple geo estimators" is no longer novel. Capability level
-**I** (compares multiple estimator families empirically) is *done*, publicly,
-with code.
+**What this kills — stated more carefully than a first reading suggested.**
+The claim "vendor-neutral empirical comparison of multiple geo estimators" is
+no longer novel *as a study*. But an earlier draft of this document said
+"capability I is closed", and that is too strong. What Recast built is
+
+    several methods x several synthetic regimes -> head-to-head comparison
+
+which is not the same object as
+
+    my historical data + my false-positive cost + my false-negative cost
+    + my budget + my duration -> pick design and estimator, show expected
+    business regret, possibly say DO NOT RUN
+
+Recast themselves note their DGP is limited, that real geo complications are
+not covered, that the ranking may change on dirtier data, and they invite
+extension. So capability **I is occupied as a published benchmark and open as
+a per-business decision service**. The distinction matters because it is
+where the entire remaining hypothesis now lives.
 
 **What it leaves.** The study is deliberately narrow, and its limits are the
 only remaining room:
@@ -109,10 +123,17 @@ H+I.**
 ### Statsig — simulated A/A, daily, for every customer (capability D)
 
 Statsig runs simulated A/A tests **every day in the background for every
-company on the platform** (*vendor-reported*, Statsig docs and blog). Reported
-validation: 10,000 simulated A/A tests at 100k users per group enrolled over
-14 days; their sequential methodology holds FPR below 5%, a fixed-horizon
-z-test sits at ~5%, and a z-test **with peeking exceeds 20%**.
+company on the platform** — representative sample, random test/control split,
+the customer's actual metrics, their stats engine, empirical false-positive
+rate, 100 tests per request with history retained (*vendor-reported*, Statsig
+docs). When developing their sequential methodology they ran a further
+**50,000 A/A tests across more than 5,000 real metrics from 100 customers**,
+finding naive peeking produces FPR around **17–20%**.
+
+This is the least ambiguous prior art in the whole landscape. The generic idea
+"run production metrics through fake A/A" is not new, and the scale at which
+it is already running is not small. That is good news about the pain being
+real and bad news about the idea being novel.
 
 That last figure is independent corroboration of the brief's §22 peeking
 torture test, from a vendor with production data. It also means the peeking
@@ -150,19 +171,36 @@ under its baseline scenario is the thing to check, not its feature list.
 Sources: <https://github.com/facebookincubator/GeoLift>,
 <https://facebookincubator.github.io//GeoLift/docs/Methodology/>
 
-### Google Meridian GeoX — design selection (capability G)
+### Google Meridian GeoX — design optimisation (capability G), and a correction
 
-*Vendor-reported*: helps determine **which experiment design — holdback, go
-dark, or heavy up — is best suited** to a business objective, uses time-based
-regression plus stratified sampling as the measurement engine, supports native
-multi-cell execution against a common control, and is positioned as
-publisher-agnostic. Exited beta claiming **31% cheaper geo experiments**
-(*vendor-reported*, unverified).
+An earlier draft of this document said GeoX "chooses holdback vs go-dark vs
+heavy-up". **That is wrong and the correction narrows the gap in one place
+while widening the threat in another.**
 
-The official overview page is thin on method: it does not document pre-experiment
-power/MDE, geo selection, multi-estimator comparison, experiment cost or a
-do-not-run path. **Phase 2 must read the API reference, the user guide and the
-repository before the grid row above is treated as settled.**
+What GeoX actually does, on the business's own historical data: generate
+candidate experimental designs, filter them by out-of-sample fit, run
+placebo / A-A checks, respect budget constraints, compute MDE, rank candidate
+designs, and compare them via `compare_designs()`. Its FAQ tells users to
+check viability against R², A/A placebo p-value, and whether the MDE is
+business-feasible.
+
+That is a large part of the hypothetical preflight, almost line for line,
+already shipping.
+
+What it does *not* do: choose the business intervention for you.
+`experiment_types` and `methodology` are set by the user in `DesignConfig`;
+GeoX then searches for the best designs *within* that posture and lets you
+compare configurations. The accurate statement is therefore **"supports these
+design types, optimises within them, and allows comparing candidate
+configurations"** — not "decides which intervention your business needs".
+
+Small difference in wording, meaningful difference in where a gap could be.
+Measurement engine is time-based regression with stratified sampling; multi-cell
+against a common control is supported; exited beta claiming **31% cheaper geo
+experiments** (*vendor-reported*, unverified).
+
+**Still to read before this row is settled:** API reference, user guide and
+repository, specifically for any do-not-run path or cost model.
 
 Sources: <https://developers.google.com/meridian/geox>,
 <https://github.com/google/meridian-geox>,
@@ -233,7 +271,10 @@ needs narrowing on three fronts and may not survive the rest of Phase 2:
    what no vendor is incentivised to build.
 
 The two capability columns nobody occupies are **K (do-not-run)** and
-**L (value of information)**. Those are also the two that require a business
+**L (value of information)** — and a first computed result on those two is in
+`layer3-first-result.md`, which found that under a plausible loss model
+DO_NOT_RUN wins 88% of the cost-by-prior plane, and 70% even when the
+experiment is free. Those are also the two that require a business
 cost model rather than a statistical one, which may be why. Whether they are
 unoccupied because they are valuable and hard, or because they are worthless,
 is a question the benchmark can actually answer — and the brief's K5 already
