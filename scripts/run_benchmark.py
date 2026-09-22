@@ -304,6 +304,10 @@ def suite_real(args) -> None:
             scen.append(spec.name)
             print(f"\n=== {spec.name} ===")
             frames.append(run_real_scenario(spec, ds))
+            # Write after every scenario: this suite is long and a crash at the
+            # end would otherwise discard hours of completed work.
+            _write(pd.concat(frames, ignore_index=True), "real", "results",
+                   _manifest("real", "Real randomized experiments scored by OPE", scen))
     hashes["hillstrom"] = verify("hillstrom")["sha256"]
 
     if not args.skip_criteo:
@@ -321,6 +325,8 @@ def suite_real(args) -> None:
             scen.append(spec.name)
             print(f"\n=== {spec.name} ===")
             frames.append(run_real_scenario(spec, ds))
+            _write(pd.concat(frames, ignore_index=True), "real", "results",
+                   _manifest("real", "Real randomized experiments scored by OPE", scen))
         hashes["criteo"] = verify("criteo")["sha256"]
 
     man = _manifest("real", "Real randomized experiments scored by OPE", scen)
