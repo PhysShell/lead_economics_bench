@@ -8,3 +8,4 @@ __pycache__/
 reports/runs/
 likelihood_models_results.json
 replay_check_results.json
+theta_atlas_results.json

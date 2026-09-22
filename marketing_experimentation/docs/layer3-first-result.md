@@ -315,6 +315,69 @@ Monotonicity `EVSI(S2) ≥ EVSI(S1) ≥ EVSI(S0)` holds for all four tools withi
 two standard deviations, so the ladder is behaving as a coarsening hierarchy
 should and the S1→S2 null is not a density-estimation artefact.
 
+## B.1 Why the S0 ranking is what it is — and why it is not a quality ranking
+
+§B reports that the share of decision value surviving the significance bit
+runs from 7.8% (`geolift`) to 79.9% (`causalimpact`). That ordering needed an
+explanation, and it has an exact one, using Recast's own published
+calibration numbers rather than anything of ours.
+
+A one-bit signal is worth what it **discriminates** — the gap between how
+often it fires when there is an effect and how often it fires when there is
+not. Scenario A1, from the donor's `metrics.csv`:
+
+| tool | FPR | TPR | discrimination | coverage | bias | **S0 keeps** |
+|---|---|---|---|---|---|---|
+| `geolift` | **4.6%** | 8.7% | **4.1 pp** | 92–95% | +0.2 pp | **7.8%** |
+| `causalpy` | 19.8% | 33.8% | 14.0 pp | 80% | −1.0 pp | 17.5% |
+| `google_mm` | 16.9% | 42.9% | 26.0 pp | 83% | +2.0 pp | 70.4% |
+| `causalimpact` | **27.8%** | 62.1% | **34.3 pp** | 72% | +3.8 pp | **79.9%** |
+
+> **Spearman correlation between discrimination and S0 retention: 1.00.**
+> Perfect rank agreement across all four tools.
+
+So the ladder's S0 column is not mysterious and not an artefact. It measures
+exactly what it should. But reading the table left to right makes the
+uncomfortable part plain:
+
+**The tool that keeps most of its value through the significance gate is the
+worst-calibrated one, and the tool that keeps least is the only
+well-calibrated one.** `causalimpact` scores highest at S0 because it rejects
+often — 27.8% of the time when nothing is happening — and a bit that fires
+often discriminates more in a world where the effect is present 40% of the
+time. Its intervals cover 72% of the time against a nominal 95%, and it
+overstates lift by nearly four percentage points.
+
+### What this does to the GeoLift claim, which it strengthens
+
+§B said GeoLift "has an informative estimator behind a gate that discards 92%
+of what it knows". That was an inference from our EVSI numbers. It now has
+direct support from the donor's:
+
+> **GeoLift detects a real +7.5% lift 8.7% of the time.** Its interval is
+> 52 pp wide against 19–22 pp for the others. It is the only tool whose false
+> positive rate matches its nominal level, and it achieves that by being
+> almost powerless in this DGP.
+
+Meanwhile its *point estimate* is worth $46,445 — within 12% of the best of
+the four. **Calibrated, nearly powerless, and as informative as anything else
+once you stop thresholding it.** That is a sharper statement than the one it
+replaces, and it is now supported from two independent directions.
+
+### Where this leaves Recast's conclusion and ours
+
+They are compatible, and they are answers to different questions:
+
+| | conclusion |
+|---|---|
+| **Recast** | GeoLift is the only tool whose error rates are what they claim. Use it. |
+| **This track** | GeoLift's calibration costs it nearly all its power, and if you use its estimate to update a belief rather than to pass a threshold, you lose almost nothing relative to the other three. |
+
+Their advice is right for a user who must report a significance verdict. Ours
+is for a user who must choose a budget. The S0 ranking — an 11× spread — is
+largely a ranking of **how willing each tool is to reject**, and it
+disappears at S1, where the four converge to within 12%.
+
 ## C. Prior art on the decision layer itself
 
 Decision theory over experiments is emphatically not new, and the landscape
