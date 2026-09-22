@@ -48,11 +48,18 @@ The ordering that survived every check:
 The single largest effect in the entire study is **not** causal inference over
 propensity. It is **explicit economics over any ranking at all**:
 `propensity_ev_logit` — a logistic regression multiplied by predicted deal
-value and divided by predicted agent minutes — beats the best historical
-analytics baseline by **+10.7% of net value per 1,000 leads**
-(95% CI +8.8% to +12.6%), and beats a gradient-boosted lead score by **+5.0%**
-(95% CI +3.6% to +6.5%). Both clear the preregistered 2% practical threshold
-several times over.
+value and divided by predicted agent minutes — beats the **strongest**
+analytics baseline by **+9.5% of net value per 1,000 leads** (95% CI +7.8% to
++11.4%) and beats a gradient-boosted lead score by **+5.0%**. Both clear the
+preregistered 2% practical threshold several times over.
+
+A note on which baseline that is, since the point of the exercise is to lose to
+a strong one. The preregistration named `hist_profit_per_agent_hour` as the
+analytics reference for RQ1, but on the data it is *not* the best analytics
+baseline — plain `hist_conversion_rate` scores higher (38.8% vs 36.7% of
+Oracle). Every headline comparison below is therefore reported against
+`hist_conversion_rate`, the strongest one, which makes each advantage about
+1.3 points *smaller* than the preregistered reference would have shown.
 
 The causal machinery adds **+2.9%** on top of that (`s_learner` vs
 `propensity_ev_logit`, 95% CI +1.2% to +4.9%) — which *barely* clears the same
@@ -866,15 +873,34 @@ benchmark's total compute:
 | `hist_profit_per_agent_hour` | 0.06 | 0.00 | 0.1% | 36.6 |
 | `random` | 0.04 | 0.00 | 0.1% | 24.9 |
 
-The Pareto frontier has three points on it and only three:
-**`hist_profit_per_agent_hour`** (free, 36.6%), **`propensity_ev_logit`**
-(1.0s, 58.4%) and **`s_learner`** (2.25s, 61.3%). Everything else is dominated.
+The Pareto frontier (not dominated on higher value *and* lower cost) has seven
+points, and the shape of it is the product argument:
+
+| candidate | fit (s) | % of Oracle |
+|---|---|---|
+| `call_everyone` | 0.040 | 25.7 |
+| `lowest_cpl` | 0.044 | 29.0 |
+| `hist_roas` | 0.048 | 33.7 |
+| `hist_conversion_rate` | 0.048 | 38.8 |
+| `lead_score_logit` | 0.97 | 52.7 |
+| **`propensity_ev_logit`** | **1.00** | **58.7** |
+| **`s_learner`** | **2.25** | **60.6** |
+
+Four of the seven are essentially free and buy you up to 38.8%. The fifth costs
+a second and buys 52.7%. **Above one second of compute there are exactly two
+non-dominated candidates**, and `s_learner` is the last point on the frontier:
+nothing costing more than 2.25 seconds is worth its price on this benchmark.
+`causal_forest`, `dr_learner`, `x_learner`, `t_learner`, `funnel_ev_gbm`,
+`propensity_ev_gbm` and every Bayesian variant are all dominated.
 
 `causal_forest` is the clearest verdict in the study: **27× the compute of
-`propensity_ev_logit` to finish 4.8 points below it.** Bayesian candidates cost
-another order of magnitude beyond that (PyMC sampling at n=5,000 takes longer
-per scenario than the entire rest of the lead track), which is why kill
-criterion K1 is written the way it is.
+`propensity_ev_logit` to finish 5 points below it**, while consuming half the
+benchmark's total compute. The Bayesian candidates cost another order of
+magnitude beyond that — a single PyMC fit at n=5,000 takes 45 seconds, more
+than the entire non-Bayesian lead track for that scenario — which is why kill
+criterion K1 is written the way it is, and why §2.6's finding that the win is
+*pooling* rather than the posterior matters commercially: pooling is available
+without paying this.
 
 ---
 

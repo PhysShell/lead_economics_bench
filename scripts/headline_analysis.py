@@ -113,6 +113,9 @@ def main() -> None:
     ap.add_argument("--runs", default="reports/runs/lead")
     ap.add_argument("--reference", default="propensity_ev_logit",
                     help="the simple economic baseline everything must beat")
+    ap.add_argument("--analytics", default="hist_conversion_rate",
+                    help="the strongest analytics baseline; checked against the "
+                         "whole hist_* family before it is used")
     ap.add_argument("--seed", type=int, default=20260922)
     args = ap.parse_args()
 
@@ -126,9 +129,25 @@ def main() -> None:
     print("=" * 78)
     print(leaderboard(d).round(1).to_string())
 
+    # Do not take the chosen analytics reference on trust: a falsification
+    # study that quietly compares against a weak baseline proves nothing.
+    analytics = d[d.candidate.str.startswith(("hist_", "last_click", "lowest_cpl"))]
+    ranked = analytics.groupby("candidate").pct_of_oracle_incremental.mean()
+    ranked = ranked.sort_values(ascending=False)
+    print("\nAnalytics baselines, strongest first:")
+    print(ranked.round(2).to_string())
+    if ranked.index[0] != args.analytics:
+        print(f"\n  !! {ranked.index[0]} outscores the chosen reference "
+              f"{args.analytics}; rerun with --analytics {ranked.index[0]}")
+
     print("\n" + "=" * 78)
     print("PAIRED COMPARISONS — preregistered rule: CI excludes 0 AND |diff| > 2%")
     print("=" * 78)
+    # `hist_conversion_rate` rather than the preregistered
+    # `hist_profit_per_agent_hour`: on the data it is the *stronger* analytics
+    # baseline, and a study built to falsify its own hypothesis compares
+    # against the strongest available reference, not the nominated one. Both
+    # are reported so the preregistered comparison stays visible.
     pairs = [
         ("s_learner", args.reference),
         ("x_learner", args.reference),
@@ -136,10 +155,13 @@ def main() -> None:
         ("causal_forest", args.reference),
         ("propensity_ev_gbm", args.reference),
         (args.reference, "lead_score_gbm"),
+        (args.reference, "lead_score_logit"),
+        (args.reference, args.analytics),
         (args.reference, "hist_profit_per_agent_hour"),
+        ("s_learner", args.analytics),
         (args.reference, "last_click_attribution"),
-        ("lead_score_gbm", "hist_profit_per_agent_hour"),
-        ("hist_profit_per_agent_hour", "hist_conversion_rate"),
+        ("lead_score_gbm", args.analytics),
+        ("hist_profit_per_agent_hour", args.analytics),
     ]
     print(f"{'comparison':50s} {'$/1k':>9s} {'%ref':>7s} {'95% CI (%)':>18s}  verdict")
     for a, b in pairs:
