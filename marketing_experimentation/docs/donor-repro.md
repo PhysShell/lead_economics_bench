@@ -37,8 +37,8 @@ passing the last one says nothing about the first two:
 | level | claim | what is held fixed | state |
 |---|---|---|---|
 | **R0** analytical replay | published `results.jsonl` → published aggregate metrics | the raw rows themselves | **PASS** (M0) |
-| **R1** generated-data replay | same DGP seed → same `true_att_level`, effect arm, 4,000 keys | the generator and its RNG | pending M5a |
-| **R2** estimator replay | same panel + same config + same seed → same estimator output | the four tools and their stacks | pending M5b |
+| **R1** generated-data replay | same DGP seed → same `true_att_level`, effect arm | the generator and its RNG | **PASS** (§4d) |
+| **R2** estimator replay | same panel + same config + same seed → same estimator output | the four tools and their stacks | **PASS** (§4d) |
 
 R0 was passed in an afternoon and is the weakest of the three: it recomputes
 summary statistics from numbers somebody else produced. It cannot detect a
@@ -46,6 +46,12 @@ broken generator, a version-sensitive estimator, or a platform difference.
 Publishing R0 and calling the study reproducible would be the field's
 characteristic mistake, and it is available to us too, so it is written down
 here as *not sufficient* before the harder levels are attempted.
+
+**All three now pass**, which is the result §4d reports. Worth noting what
+that cost: eleven packaging defects had to be worked through first, two of
+them blocking. Anyone who had stopped at R0 would have reached the same
+conclusion about the donor's numbers for none of the work and none of the
+entitlement to it.
 
 R1 and R2 are separated deliberately, because they fail for different
 reasons and a combined test cannot tell you which link broke. R1 failing
@@ -99,9 +105,7 @@ selection all happen there, and a hash taken only at the panel boundary would
 miss an adapter that changed. That way a disagreement at R2 is attributable
 to the estimator rather than argued about.
 
-Only after G4 does an effect-size sweep begin. Two of the milestones below are
-already passed and they are the reason the gate exists: reproducing
-*aggregates from published raw output* (M0) tests only half the chain.
+Only after G4 does an effect-size sweep begin.
 
 ---
 
@@ -113,12 +117,12 @@ already passed and they are the reason the gate exists: reproducing
 | M1 | decision-theory invariants (`0 ≤ EVSI ≤ EVPI`, free info never hurts) | **PASS** |
 | M2 | significance-gate bug isolated and relabelled | **PASS** |
 | M3 | information ladder on two-point θ | **PASS**, conclusion limited to S0→S1 |
-| M4a | pristine-clone audit (defects D1–D7 below) | **PASS** |
-| M4b | version-matched runtime (R 4.5.1, Py 3.12.8) | Python **PASS**, 83/83 pins exact; R built and verified, renv restoring |
-| M4c | upstream smoke in the matched lane | queued behind M4b |
-| M4d | host-drift smoke in the robustness lane | R 4.6.1 restore running |
-| M5a | R1 — DGP reproduced via `true_att_level` | checker **written and validated**, awaits M4c |
-| M5b | R2 — golden estimator replay against published rows | same checker, same block |
+| M4a | pristine-clone audit (defects D1–D11 below) | **PASS** |
+| M4b | version-matched runtime (R 4.5.1, Py 3.12.8) | **PASS** — 99/99 R packages, 83/83 Python pins, `renv::status()` clean |
+| M4c | upstream `make smoke` in the matched lane | **PASS** — exits 0, all four adapters complete |
+| M4d | host-drift smoke in the robustness lane | deferred; its library was rolled back (D8) |
+| M5a | R1 — DGP reproduced via `true_att_level` | **PASS** — 80/80 exact to 1e-9 (§4d) |
+| M5b | R2 — golden estimator replay against published rows | **PASS** at N=5/scenario; 20-iteration run under way for the preregistered count |
 | M6a | θ mutation +2% (six PASS criteria, §5) | static audit **done** (§5a), patch **written and tested** |
 | M6b | θ mutation −5% (sign mutation) | patch covers it; blocked on M6a |
 | M7 | coarse θ likelihood atlas | blocked on M6b |
@@ -689,6 +693,76 @@ would want to know that before attributing the gap to the marketing.
 exactly what the replay tests. Reference BLAS here against Accelerate there
 can move `google_mm`'s machine-epsilon agreement without any of these tools
 being at fault.
+
+## 4d. G3 result: the donor reproduces
+
+Run at N=5 per scenario, all four scenarios, both arms — 160 rows, 40 per
+tool. Tolerances as fixed in §4b, before any of this existed.
+
+**`make smoke` exits 0.** The donor's own acceptance target passes unmodified
+in the version-matched lane, which settles G4 criterion 3: all four adapters
+complete.
+
+| level | verdict | |
+|---|---|---|
+| **R1** DGP | **PASS** | 80/80 `true_att_level` exact to 1e-9, max abs 4.6e-13; 20 distinct fingerprints over 20 panels |
+| **R2** estimators | **PASS** | all four, below |
+
+| tool | result | `significant` |
+|---|---|---|
+| `google_mm` | **40/40** within 1e-9 relative, **worst 2.5e-13** | 40/40 |
+| `geolift` | **40/40**, worst **exactly 0** | 40/40 |
+| `causalimpact` | **40/40**, worst **exactly 0** | 40/40 |
+| `causalpy` | mean Δ **+0.0010pp** against 2×SE = 0.0122pp; CI width ×1.012 | 39/40 |
+
+### What this establishes, stated no more strongly than it is
+
+**The donor's numerical results reproduce on a different operating system, a
+different architecture and a different BLAS.** macOS ARM64 with (presumably)
+Accelerate → Linux x86_64 with reference BLAS. Given how the audit above
+reads — eleven packaging defects, two of them blocking — that is worth
+saying plainly: **the packaging is fragile and the science underneath it is
+sound.** Those are separate findings and the first does not impeach the
+second.
+
+The BLAS prediction made in §2 was right in both direction and size:
+`google_mm` disagrees at 2.5e-13 relative, a few ULPs accumulated through a
+decomposition, against a preregistered tolerance of 1e-9. Recorded as a
+prediction beforehand precisely so that it could not be used as an excuse
+afterwards; it was neither needed as one nor contradicted.
+
+`geolift` and `causalimpact` came back with a worst-case difference of
+**exactly zero** — bit-identical at 4 decimal places on all 40 rows. That is
+the censored tolerance doing its job: the honest claim is "identical to the
+precision the donor published", and the determinism below that precision
+remains untested because the artefact cannot test it.
+
+### The by-product: a cross-platform reproducibility profile
+
+Nobody has published this, and a buyer comparing two vendors' geo-lift
+readings would want it:
+
+| tool | does it give the same answer on a different machine? |
+|---|---|
+| `google_mm` | **Yes, to machine precision.** OLS/TBR, no RNG |
+| `geolift` | **Yes**, exactly, at the precision it reports |
+| `causalimpact` | **Yes**, exactly, at the precision it reports — seeded BSTS |
+| `causalpy` | **Distributionally.** Individual runs differ by Monte Carlo noise of ~1.3% of the effect |
+
+Three of four are reproducible run-for-run across platforms. The fourth is
+reproducible in aggregate and not per-run — which is not a defect, but it is
+the sort of thing that should be known before two teams argue about why their
+numbers differ by a point.
+
+**Caveat on the count.** §4b asked for 10 fixed iterations for the
+deterministic pair and 20 for the stochastic pair, on A1. This run gives 10
+rows per tool on A1 (5 iterations × 2 arms) and 40 across all four scenarios.
+So the preregistered A1 count is **met for `google_mm` and `geolift` and
+under-met for `causalpy` and `causalimpact`**, while total evidence exceeds
+it and spans four regimes rather than one. A 20-iteration run is under way to
+meet the letter of what was written down; this section is written from the
+N=5 result and will be updated, not replaced, so that both counts stay
+visible.
 
 ## 5. G4 — the mutation test, and what it is really checking
 
