@@ -67,7 +67,8 @@ def main() -> int:
     (out / "figures").mkdir(exist_ok=True)
 
     suites = {s: load(runs, s) for s in
-              ["lead", "curves", "ablation", "bayes", "online", "real", "mmm", "smoke"]}
+              ["lead", "curves", "ablation", "bayes", "online", "real", "mmm",
+               "smoke", "rq4", "pie"]}
     lead = pd.concat(
         [suites[s] for s in ("lead", "ablation", "bayes") if len(suites[s])],
         ignore_index=True,
@@ -168,6 +169,29 @@ def main() -> int:
         mb = m.groupby(["regime", "candidate"], dropna=False).agg(agg).reset_index()
         mb.to_csv(out / "leaderboard_mmm.csv", index=False)
         _plot_mmm(mb, out / "figures" / "mmm_regret.png")
+
+    # ---------------- RQ4 focused run ---------------------------------
+    if len(suites["rq4"]):
+        q = suites["rq4"]
+        q = q[q["status"] == "ok"]
+        if len(q):
+            qb = (q.groupby("candidate")[
+                      ["pct_of_oracle_incremental", "net_value_per_1k_leads",
+                       "net_value_per_agent_hour", "share_treated"]]
+                  .mean().sort_values("pct_of_oracle_incremental", ascending=False))
+            qb.to_csv(out / "leaderboard_rq4_campaign_effort.csv")
+
+    # ---------------- PIE campaign-level track ------------------------
+    if len(suites["pie"]):
+        pie = suites["pie"]
+        pie = pie[pie.get("status", "ok") == "ok"]
+        cols = [c for c in ["rmse", "mae", "spearman", "pct_of_oracle_selection"]
+                if c in pie.columns]
+        if len(pie) and cols:
+            pb = (pie.groupby(["share_measured", "candidate"])[cols]
+                  .mean().reset_index()
+                  .sort_values(["share_measured", "rmse"]))
+            pb.to_csv(out / "leaderboard_pie.csv", index=False)
 
     # ---------------- kill criteria -----------------------------------
     if len(lead):
@@ -325,9 +349,11 @@ def _plot_coverage(lead: pd.DataFrame, path: Path) -> None:
     ok = lead[(lead["status"] == "ok") & lead.get("coverage_80", pd.Series(dtype=float)).notna()]
     if not len(ok):
         return
+    cols = [c for c in ("coverage_80", "p_coverage_80") if c in ok.columns]
+    if not cols:
+        return
     fig, ax = plt.subplots(figsize=(8, 4.2))
-    d = ok.groupby("candidate")[["coverage_80", "p_coverage_80"]].mean()
-    d = d.dropna(how="all")
+    d = ok.groupby("candidate")[cols].mean().dropna(how="all")
     if not len(d):
         plt.close()
         return
