@@ -275,20 +275,142 @@ every finding above is about packaging.
 
 ## 4. G3 tolerances, fixed before the replay
 
-Defined in advance so a disagreement cannot be rationalised afterwards. One
-seed from `A1` null and one from `A1` +7.5%, all four tools, comparing
-`att_pct`, `ci_lower`, `ci_upper`, `significant` and available diagnostics.
+Defined in advance so a disagreement cannot be rationalised afterwards.
 
-| tool | expectation | tolerance on `att_pct` |
-|---|---|---|
-| `google_mm` | OLS/TBR, essentially deterministic | tight — any material gap is a real finding |
-| `geolift` | deterministic block-conformal inference per donor | tight |
-| `causalpy` | PyMC MCMC, platform-sensitive | loose, judged against its own MC error |
-| `causalimpact` | BSTS, platform-sensitive | loose, same basis |
+### 4a. A revision made before the replay, and why that is legitimate
 
-The per-method reproducibility profile that falls out of this is worth having
-on its own: "which of these tools gives the same answer on a different
-machine" is a question a buyer would ask and nobody has published.
+An earlier version of this table split the tools into "deterministic, tight"
+(`google_mm`, `geolift`) and "MCMC, platform-sensitive, loose" (`causalpy`,
+`causalimpact`). **That split is wrong, and the donor's own published data
+says so** — no replay required.
+
+The test that shows it needs nothing but `results.jsonl`. Null and effect
+panels of the same iteration share a seed and therefore share their entire
+pre-treatment data; the effect is a multiplicative shift applied to the
+treated geo's post-period alone. So for an estimator that is a deterministic
+function of the panel,
+
+```
+att_level(effect) − att_level(null) − true_att_level(effect)  ==  0
+```
+
+per iteration, exactly. Across `A1`'s 1,000 iterations:
+
+| tool | median residual | max residual | as % of the true effect | A1 / A2 / A3 / A4 |
+|---|---|---|---|---|
+| `google_mm` | **5.7e-14** | 3.4e-13 | 0.0000% | machine epsilon in all four |
+| `geolift` | **2.9e-5** | 9.5e-5 | 0.0000% | 2.9–3.1e-5 in all four |
+| `causalimpact` | **3.0e-5** | 9.5e-5 | 0.0000% | 2.9–3.1e-5 in all four |
+| `causalpy` | **3.69** | 12.67 | **1.30%** | 1.30 / 1.33 / 1.33 / **3.18%** |
+
+`google_mm` sits at machine epsilon — pure linear algebra, as expected.
+
+**`causalimpact` is deterministic despite being BSTS.** `run_tools.py:173`
+passes `--seed <iteration>` and `run_causalimpact.R:98` calls `set.seed()`
+before fitting; R's Mersenne-Twister stream does not vary by platform, so its
+draws should reproduce across macOS and Linux exactly.
+
+**And the 3e-5 floor is not a solver — it is output formatting**, which an
+earlier version of this section got wrong. The giveaway is that the residual
+is a *constant absolute* 3e-5 across two different tools and four scenarios
+spanning very different magnitudes. Reading the decimal places in the
+published text:
+
+| tool | `att_pct` | `att_level` | `ci_lower` | `ci_upper` | `ci_*_level` |
+|---|---|---|---|---|---|
+| `causalimpact` | 20 | **4** | **4** | **4** | **4** |
+| `geolift` | 20 | **4** | **4** | **4** | **4** |
+| `causalpy` | 20 | 17 | 20 | 20 | 16–17 |
+| `google_mm` | 20 | 16 | 20 | 19 | 16 |
+
+The two R adapters round every level and interval to **4 decimal places** on
+output. A half-ULP of that is 5e-5, and the observed residual — which combines
+three such values — has a median of 3e-5 and a maximum of 9.8e-5. That
+accounts for it exactly.
+
+So `geolift` and `causalimpact` are **as deterministic as `google_mm`**; the
+donor simply did not publish enough digits to see it. This has a direct
+consequence for the replay, below: those two cannot be tested more tightly
+than the donor published, and a tolerance tighter than 5e-5 would fail for
+reasons that have nothing to do with reproduction.
+
+`att_pct` looks full-precision for all four, but for the R pair that is an
+illusion — it is computed downstream in Python from the already-rounded level,
+so it carries the same quantisation (about 1e-8 relative, given a
+counterfactual mean near 3,750). Comparisons are made on `att_level`, where
+the precision is visible, rather than on `att_pct`, where it is hidden.
+
+`causalpy` is the only tool carrying genuine Monte Carlo noise in its
+*published point estimate*, at 1.3% of the effect being measured — rising to
+**3.2% on A4**, the short panel with only 30 pre-period days. Less
+pre-period data, wider posterior, noisier predictive mean: the pattern is
+coherent, which is mild evidence for the `y_hat` explanation below.
+
+**The mechanism for `causalpy` is not established.** Two guesses have already
+failed: it is not the seed (`random_seed = iteration`, `run_causalpy.py:100`)
+and it is not standardisation drift (`run_causalpy.py:71–73` standardises on
+the pre-period, which is identical across arms). The remaining candidate is
+that the published rows are all `posterior_type = "y_hat"` — the posterior
+*predictive*, whose mean carries simulated observation noise — while the
+adapter's `"mu"` variant, which would not, was never published. That cannot
+be confirmed from the donor's artefacts, so it is written down as an open
+question and as a specific thing for M5b to test by running both.
+
+Revising a tolerance before seeing any replay output is exactly when it is
+allowed. Recorded here, with its evidence, so the revision is auditable and
+cannot later be mistaken for a tolerance widened to fit a result.
+
+### 4b. The tolerances
+
+Ten fixed iterations per tool for `google_mm` and `geolift`, twenty for
+`causalpy` and `causalimpact`, on `A1`, both arms, comparing `att_pct`,
+`att_level`, `ci_lower`, `ci_upper`, `significant` and available diagnostics.
+
+| tool | class | per-row tolerance on `att_level` | set by | verdict if exceeded |
+|---|---|---|---|---|
+| `google_mm` | exact | **1e-9 relative** | its own machine-epsilon determinism | BLAS/compiler difference — investigate, do not excuse |
+| `geolift` | exact | **5e-5 absolute** | the donor's 4-dp output, not the tool | real finding |
+| `causalimpact` | exact (seeded) | **5e-5 absolute** | the donor's 4-dp output, not the tool | R RNG or BSTS solver differs across platform — a finding |
+| `causalpy` | stochastic | see below | its own posterior | — |
+
+The two 5e-5 entries are **censored tolerances**: they are as tight as the
+published artefact allows, not as tight as the tools deserve. If those two
+agree at 5e-5 the honest statement is "reproduced to the precision the donor
+published", and the residual determinism question stays open. Writing that
+down now prevents it being reported later as a stronger result than it is.
+
+For `causalpy`, a per-row equality test is not meaningful and would fail for
+the right reasons. It is judged on two levels instead, against its own noise
+scale rather than against zero. From the published `A1` runs its sampling SD
+of `att_pct` is **7.22 pp** with a standard error of the mean of **0.228 pp**
+over 1,000 iterations:
+
+- **Level 1, per row** — `|Δatt_pct| ≤ 0.25 ×` its own median CI half-width
+  (10.37 pp for the effect arm), i.e. **2.59 pp**. A row outside that is
+  flagged, not fatal.
+- **Level 2, distribution** — over the 20 fixed iterations: `|Δ mean att_pct|
+  ≤ 2 × SE` on that sample, plus agreement on CI-width distribution, coverage
+  and `significant` rate. **This is the binding test.** Level 1 exists only
+  to catch a tool that has gone somewhere else entirely.
+
+For the three exact tools, `significant` must agree on **every** row. For
+`causalpy`, disagreement is tolerated on rows whose interval bound sits within
+Level 1's tolerance of zero, and counted.
+
+### 4c. Why the profile is worth having anyway
+
+"Which of these tools gives the same answer on a different machine" is a
+question a buyer would ask and nobody has published. The table in §4a is
+already a partial answer derived from the donor's own artefacts: three of four
+are deterministic to at least 1e-7, and the fourth publishes a point estimate
+with 1.3% noise on it. A practitioner comparing two vendors' geo-lift readings
+would want to know that before attributing the gap to the marketing.
+
+**A note on what §4a is not.** It shows that three tools are deterministic
+*on one machine*. Cross-platform determinism is a stronger claim and is
+exactly what the replay tests. Reference BLAS here against Accelerate there
+can move `google_mm`'s machine-epsilon agreement without any of these tools
+being at fault.
 
 ## 5. G4 — the mutation test, and what it is really checking
 
