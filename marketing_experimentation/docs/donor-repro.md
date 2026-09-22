@@ -877,10 +877,22 @@ the label has to encode magnitude (`eff_p020`, `eff_m050`) before any sweep
 runs.
 
 **Handling.** The donor is not patched in place. The mutation runs in the
-disposable clone, and the diff — expected to be roughly three lines: a
-`--effect_sizes` flag, a magnitude-bearing label, and the two plot constants
-read from `metadata.json` — is recorded in this repository as a diff rather
-than as vendored source (D5: no licence).
+disposable clone, and the change is recorded in this repository as a diff
+rather than as vendored source (D5: no licence):
+`repro/recast/theta-mutation.patch`.
+
+It came out larger than the "roughly three lines" estimated here, because
+writing it found a **third** θ-coupling the static audit had missed:
+`plot_ci_gallery.load_results()` filters on `effect_label == "effect"` — a
+literal label, which selects nothing once labels carry magnitude. So the
+audit's own count was an undercount, found only by making the change rather
+than describing it.
+
+The patch is verified rather than sketched: `git apply --check` clean
+against a pristine clone at `5133d37`, both plot files compile after
+applying, `generate_panels.R` parses, and the label function returns
+`null`, `effect`, `eff_p020`, `eff_m050`, `eff_p150` for the values it will
+be given.
 
 ### 5b. θ = −5%, the sign mutation
 
