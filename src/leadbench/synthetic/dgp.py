@@ -283,9 +283,22 @@ def generate(cfg: DGPConfig) -> LeadDataset:
     ) * net_if_kept - cfg.refund_rate * cfg.servicing_cost_per_funded
 
     # ---------------- effort -------------------------------------------------
+    # Handle time varies by lead (via intent) and, when configured, by the
+    # campaign the lead came from. The campaign term is what makes a
+    # campaign-level "profit per agent-hour" report differ from a
+    # campaign-level "profit per lead" report at all.
+    # NB: the draw is skipped entirely when the sd is zero. A zero-variance
+    # `rng.normal` call still consumes generator state, which would silently
+    # change every previously generated dataset and break reproducibility of
+    # runs made before this knob existed.
+    if cfg.sd_campaign_effort > 0:
+        campaign_effort = rng.normal(0, cfg.sd_campaign_effort, cfg.n_campaigns)[campaign]
+    else:
+        campaign_effort = 0.0
     call_minutes = np.exp(
         cfg.call_minutes_mu_log
         + cfg.effort_intent_coef * intent
+        + campaign_effort
         + cfg.call_minutes_sigma_log * rng.standard_normal(n)
     )
     call_minutes = np.clip(call_minutes, 1.0, 90.0)

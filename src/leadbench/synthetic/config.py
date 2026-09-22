@@ -104,6 +104,15 @@ class DGPConfig:
     # Correlation between required effort and conversion propensity. Positive
     # means the good leads are also the expensive ones.
     effort_intent_coef: float = 0.0
+    #: Campaign-level random effect on handle time (log scale).
+    #:
+    #: Default 0.0 keeps the original sweep reproducible. It matters because
+    #: with no campaign-level effort variation, a campaign-aggregated
+    #: "profit per agent-hour" metric is a monotone transform of
+    #: "profit per lead", so the two analytics baselines coincide by
+    #: construction and RQ4 cannot be tested at the analytics level. The
+    #: `campaign_effort_heterogeneity` regime turns it on.
+    sd_campaign_effort: float = 0.0
     sms_direct_cost: float = 0.03
     call_direct_cost: float = 0.06  # telephony only; agent time is separate
 
@@ -212,6 +221,18 @@ REGIMES: dict[str, dict[str, Any]] = {
     "agent_time_heterogeneity": dict(
         effort_intent_coef=0.70,
         call_minutes_sigma_log=0.75,
+        logging_policy="randomized",
+    ),
+    # -- handle time varies by SOURCE, not just by lead --------------------
+    # Some campaigns produce leads that take three times as long to work.
+    # This is the regime in which a campaign-level "profit per agent-hour"
+    # report can differ from a campaign-level "profit per lead" report, and
+    # therefore the only one where RQ4 is testable at the analytics level.
+    "campaign_effort_heterogeneity": dict(
+        sd_campaign_effort=0.55,
+        effort_intent_coef=0.50,
+        call_minutes_sigma_log=0.65,
+        value_sigma_log=1.20,
         logging_policy="randomized",
     ),
     # -- heterogeneous deal value ------------------------------------------

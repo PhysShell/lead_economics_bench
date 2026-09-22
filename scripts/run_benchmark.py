@@ -42,6 +42,7 @@ CORE_REGIMES = [
     "very_rare_outcome",
     "strong_heterogeneity",
     "agent_time_heterogeneity",
+    "campaign_effort_heterogeneity",
     "value_heterogeneity",
     "capacity_value_heterogeneity",
     "observed_confounding",
