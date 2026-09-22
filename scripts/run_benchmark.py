@@ -77,8 +77,12 @@ def _manifest(suite: str, description: str, scenarios: list[dict]) -> Experiment
     ).freeze()
 
 
+#: Set by --out-name so a focused re-run cannot overwrite a full sweep's CSV.
+OUT_NAME_OVERRIDE: str | None = None
+
+
 def _write(df: pd.DataFrame, suite: str, name: str, manifest: ExperimentManifest) -> Path:
-    out = OUT_ROOT / suite
+    out = OUT_ROOT / (OUT_NAME_OVERRIDE or suite)
     out.mkdir(parents=True, exist_ok=True)
     path = out / f"{name}.csv"
     df.to_csv(path, index=False)
@@ -380,7 +384,16 @@ def main() -> None:
     ap.add_argument("--skip-criteo", action="store_true")
     ap.add_argument("--skip-bayesian-mmm", action="store_true")
     ap.add_argument("--meridian", action="store_true", help="include Google Meridian (needs .venv312)")
+    ap.add_argument(
+        "--out-name",
+        default=None,
+        help="write results to reports/runs/<out-name>/ instead of the suite name; "
+             "use it for focused re-runs so they cannot clobber a full sweep",
+    )
     args = ap.parse_args()
+
+    global OUT_NAME_OVERRIDE
+    OUT_NAME_OVERRIDE = args.out_name
 
     names = list(SUITES) if args.suite == "all" else [args.suite]
     for nm in names:
