@@ -37,6 +37,13 @@ from .uplift import (
 # Identical capacity for every gradient-boosted learner in the benchmark.
 GBM_KW = dict(n_estimators=400, max_depth=5, learning_rate=0.05, min_child_weight=5)
 
+# Causal forest sizing. Profiling showed the forest consuming ~65% of the
+# entire benchmark's compute at 400 trees with 3-fold cross-fitting, which buys
+# nothing this benchmark measures. At 200 trees / 2 folds it still receives
+# roughly an order of magnitude more compute than any boosted candidate, so
+# the comparison stays generous to it rather than the reverse.
+CAUSAL_FOREST_KW = dict(n_trees=200, cv=2)
+
 
 def _spec(name: str, factory: Callable, *tags: str, policy=None) -> CandidateSpec:
     return CandidateSpec(name=name, factory=factory, policy=policy, tags=tags)
@@ -104,7 +111,7 @@ def causal_candidates(binary_only: bool = True) -> list[CandidateSpec]:
         _spec("dr_learner", partial(DRLearner, "dr_learner", kind="xgboost", **GBM_KW), "causal"),
         _spec(
             "causal_forest",
-            partial(CausalForest, "causal_forest", kind="xgboost", **GBM_KW),
+            partial(CausalForest, "causal_forest", kind="xgboost", **CAUSAL_FOREST_KW, **GBM_KW),
             "causal",
             "uncertainty",
         ),

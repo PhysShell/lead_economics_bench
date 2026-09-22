@@ -43,6 +43,9 @@ class MMMSpec:
     include_bayesian: bool = True
     bayes_draws: int = 400
     bayes_tune: int = 400
+    #: Run Google Meridian via the isolated Python 3.12 interpreter (slowest).
+    include_meridian: bool = False
+    meridian_python: str = ".venv312/bin/python"
 
 
 # ---------------------------------------------------------------------------
@@ -444,6 +447,86 @@ def _posterior_draws(post, candidates: list[str], max_draws: int = 200) -> np.nd
     raise KeyError(f"none of {candidates} in posterior: {list(post.data_vars)}")
 
 
+class MeridianMMM(MMMCandidate):
+    """Google Meridian, run in an isolated Python 3.12 interpreter.
+
+    Meridian's stack requires Python >=3.12 while the benchmark environment is
+    3.11, so it is driven as a subprocess through ``scripts/run_meridian.py``.
+    The adapter hands back the same steady-state response grid every other MMM
+    candidate exposes, so the shared budget optimiser is unchanged and the
+    comparison stays about response estimation.
+    """
+
+    name, family = "google_meridian", "mmm"
+
+    def __init__(self, python: str = ".venv312/bin/python", draws: int = 400, tune: int = 400):
+        self.python = python
+        self.draws, self.tune = draws, tune
+
+    @staticmethod
+    def available(python: str = ".venv312/bin/python") -> bool:
+        import subprocess
+        from pathlib import Path
+
+        if not Path(python).exists():
+            return False
+        try:
+            r = subprocess.run(
+                [python, "-c", "import meridian"],
+                capture_output=True,
+                timeout=300,
+            )
+            return r.returncode == 0
+        except Exception:
+            return False
+
+    def fit(self, df, channels, seed):
+        import json
+        import subprocess
+        import tempfile
+        from pathlib import Path
+
+        self.channels = channels
+        with tempfile.TemporaryDirectory() as tmp:
+            csv = Path(tmp) / "mmm.csv"
+            out = Path(tmp) / "out.json"
+            df.to_csv(csv, index=False)
+            cmd = [
+                self.python,
+                "scripts/run_meridian.py",
+                "--data", str(csv),
+                "--channels", ",".join(channels),
+                "--out", str(out),
+                "--draws", str(self.draws),
+                "--tune", str(self.tune),
+                "--seed", str(seed),
+            ]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=14_400)
+            if r.returncode != 0 or not out.exists():
+                raise RuntimeError(
+                    f"meridian subprocess failed (rc={r.returncode}): {r.stderr[-400:]}"
+                )
+            payload = json.loads(out.read_text())
+        self._mults = np.asarray(payload["grid_multipliers"], dtype=float)
+        self._grid = np.asarray(payload["grid_response"], dtype=float)
+        self._mean_spend = np.asarray(payload["mean_spend"], dtype=float)
+        self._grid_spend = self._mean_spend[None, :] * self._mults[:, None]
+        self._reported_roi = np.asarray(payload["roi"], dtype=float)
+        return self
+
+    def response(self, spend):
+        s = np.asarray(spend, float)
+        return np.array(
+            [
+                np.interp(s[c], self._grid_spend[:, c], self._grid[:, c])
+                for c in range(len(self.channels))
+            ]
+        )
+
+    def params(self):
+        return {"reported_roi": self._reported_roi}
+
+
 class OracleMMM(MMMCandidate):
     name, family = "oracle", "oracle"
 
@@ -493,6 +576,14 @@ def run_mmm_scenario(spec: MMMSpec, verbose: bool = True) -> pd.DataFrame:
             cal = PyMCMarketingMMM(spec.bayes_draws, spec.bayes_tune, calibrate=True)
             cal.set_truth_for_lift_test(ds)
             candidates.append(cal)
+        if spec.include_meridian:
+            candidates.append(
+                MeridianMMM(
+                    python=spec.meridian_python,
+                    draws=spec.bayes_draws,
+                    tune=spec.bayes_tune,
+                )
+            )
 
         for cand in candidates:
             row: dict[str, Any] = {

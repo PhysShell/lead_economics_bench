@@ -15,6 +15,7 @@ about the gap between them:
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import numpy as np
@@ -31,6 +32,12 @@ from .base import (
     PredictContext,
     ValueModel,
 )
+
+
+#: Thread count for the boosted learners. Set LEADBENCH_NJOBS=1 when running
+#: several benchmark processes in parallel, so they do not fight for cores and
+#: contaminate the wall-time measurements.
+DEFAULT_N_JOBS = int(os.environ.get("LEADBENCH_NJOBS", "2"))
 
 
 def make_classifier(kind: str, seed: int = 0, **kw: Any):
@@ -50,7 +57,7 @@ def make_classifier(kind: str, seed: int = 0, **kw: Any):
             reg_lambda=1.0,
             eval_metric="logloss",
             tree_method="hist",
-            n_jobs=kw.get("n_jobs", 2),
+            n_jobs=kw.get("n_jobs", DEFAULT_N_JOBS),
             random_state=seed,
         )
     if kind == "lightgbm":
@@ -64,7 +71,7 @@ def make_classifier(kind: str, seed: int = 0, **kw: Any):
             subsample=0.8,
             colsample_bytree=0.8,
             min_child_samples=kw.get("min_child_samples", 30),
-            n_jobs=kw.get("n_jobs", 2),
+            n_jobs=kw.get("n_jobs", DEFAULT_N_JOBS),
             random_state=seed,
             verbose=-1,
         )
