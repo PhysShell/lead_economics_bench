@@ -378,6 +378,61 @@ is for a user who must choose a budget. The S0 ranking — an 11× spread — is
 largely a ranking of **how willing each tool is to reject**, and it
 disappears at S1, where the four converge to within 12%.
 
+## B.2 Does the retention result survive the rest of the business plane?
+
+Every figure in §B is computed at **one cell**: prior 0.4, cost ratio 1. If
+"GeoLift keeps 7.8%" became 60% at a different prior, the headline would be a
+coincidence of that cell. Swept over 7 priors × 5 cost ratios = 35 cells.
+
+**Reproduce:** `python marketing_experimentation/scripts/information_ladder.py --sweep`
+
+The first thing the sweep says is not about the ordering at all:
+
+| tool | cells where its bit is worth > $100 | median retention *there* | at 0.4/1.0 |
+|---|---|---|---|
+| `causalimpact` | **12 / 35** | 72.3% | 78.5% |
+| `google_mm` | **12 / 35** | 59.3% | 68.4% |
+| `causalpy` | **6 / 35** | 30.8% | 17.5% |
+| `geolift` | **6 / 35** | 9.9% | 7.8% |
+
+> **In most of the plane the significance bit is worth approximately nothing
+> — for every tool.** It does not move a two-point budget decision at all.
+> For GeoLift the bit is inert across **83%** of the cells examined.
+
+That reframes the compression-tax result rather than contradicting it. The
+retention percentages describe the **minority region where a significance
+test changes the decision**, which is the only region where the question is
+interesting. Outside it, the tax is not 92% — there is nothing to tax.
+
+It also kills a statistic that looked usable. A median retention taken over
+all 35 cells is 0.0% for all four tools, because most cells are zeros, and an
+ordering among those ties would be an artefact of floating-point noise. An
+earlier version of this sweep printed exactly that ordering. It is not in the
+document because it does not mean anything.
+
+### The ordering, tested pairwise where both bits are live
+
+A rank that survives cell by cell is worth more than a rank of aggregates:
+
+| | | holds in |
+|---|---|---|
+| `geolift` | < `causalpy` | **100%** of 5 cells |
+| `geolift` | < `google_mm` | **100%** of 6 |
+| `geolift` | < `causalimpact` | **100%** of 6 |
+| `causalpy` | < `google_mm` | **100%** of 6 |
+| `causalpy` | < `causalimpact` | **100%** of 6 |
+| `google_mm` | < `causalimpact` | 80% of 10 |
+
+Five of six pairwise comparisons hold in every shared cell; the sixth in four
+of five. **The ordering `geolift < causalpy < google_mm < causalimpact` is a
+property of the tools, not of the cell it was first measured in** — and it is
+the same ordering that §B.1 derives independently from the tools' published
+discrimination.
+
+And the headline numbers are representative rather than cherry-picked: at
+0.4/1.0 each tool sits near the median of its own active region (GeoLift 7.8%
+against a median of 9.9%, CausalImpact 78.5% against 72.3%).
+
 ## C. Prior art on the decision layer itself
 
 Decision theory over experiments is emphatically not new, and the landscape

@@ -182,6 +182,8 @@ def main() -> None:
     ap.add_argument("--ratio", type=float, default=1.0)
     ap.add_argument("--seeds", type=int, default=8)
     ap.add_argument("--bandwidth-scan", action="store_true")
+    ap.add_argument("--sweep", action="store_true",
+                    help="does the S0 retention survive the business plane?")
     args = ap.parse_args()
 
     d = tool_labels(pd.DataFrame(
@@ -243,6 +245,72 @@ def main() -> None:
         flag = "ok" if (ok21 and ok10) else "VIOLATION"
         print(f"  {tool:14s} S0 ${s0:>9,.0f}(±{e0:,.0f})  "
               f"S1 ${s1:>9,.0f}(±{e1:,.0f})  S2 ${s2:>9,.0f}(±{e2:,.0f})  {flag}")
+
+    if args.sweep:
+        # Every retention figure above is computed at ONE point of the
+        # business plane: prior 0.4, cost ratio 1. If "GeoLift keeps 7.8% of
+        # its value through the significance bit" becomes 60% at a different
+        # prior, the headline is a coincidence of one cell. Checked here
+        # rather than assumed.
+        print("\n== does the S0 retention survive the business plane? ==")
+        priors = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+        ratios = [0.25, 0.5, 1.0, 2.0, 4.0]
+        prepped = {t: prepare(d, t, args.scenario) for t in tools}
+        ACTIVE = 100.0     # a bit is "doing something" if S0 clears $100
+        cells: list[dict] = []
+        for pi in priors:
+            for ratio in ratios:
+                pr = two_point_problem(pi, ratio * args.c_fn, args.c_fn)
+                row = {"prior": pi, "ratio": ratio}
+                for t in tools:
+                    vals = [ladder_for(pr, prepped[t], s) for s in range(4)]
+                    s0 = float(np.nanmean([v["S0_significance_bit"] for v in vals]))
+                    s1 = float(np.nanmean([v["S1_point_estimate"] for v in vals]))
+                    row[f"{t}|s0"] = s0
+                    row[f"{t}|keep"] = (100 * max(s0, 0.0) / s1
+                                        if np.isfinite(s1) and s1 > 1.0 else np.nan)
+                cells.append(row)
+        C = pd.DataFrame(cells)
+        n = len(C)
+        print(f"   {len(priors)}x{len(ratios)} = {n} cells, 4 splits each\n")
+
+        # The first thing the sweep says is not about ordering at all.
+        print(f"   {'tool':18s} {'bit worth >$100':>16s} {'median|active':>14s} "
+              f"{'max':>7s} {'at 0.4/1.0':>11s}")
+        base = {t: 100 * r.loc[t, "S0_significance_bit"]
+                / r.loc[t, "S1_point_estimate"] for t in tools}
+        act = {}
+        for t in tools:
+            live = C[C[f"{t}|s0"] > ACTIVE]
+            act[t] = live[f"{t}|keep"].dropna()
+            med = f"{act[t].median():.1f}%" if len(act[t]) else "n/a"
+            mx = C[f"{t}|keep"].max()
+            print(f"   {t:18s} {len(live):>7d}/{n:<8d} {med:>14s} "
+                  f"{mx:6.1f}% {base[t]:10.1f}%")
+
+        print("\n   READ THIS BEFORE THE ORDERING. In most cells the "
+              "significance bit is\n   worth ~$0 for every tool -- it does "
+              "not move a two-point decision at\n   all. So a median over "
+              "all cells is a median over mostly-zeros, and an\n   ordering "
+              "among those ties would be an artefact. The retention figures\n"
+              "   in the addendum describe the MINORITY of cells where the "
+              "bit does\n   something, which is where the question is "
+              "interesting.")
+
+        # The sharp test: cell by cell, where BOTH tools' bits are live,
+        # does the ordering hold? A rank that survives pairwise beats a
+        # rank of aggregates.
+        print("\n   pairwise, over cells where both tools' bits clear $100:")
+        for i, a in enumerate(tools):
+            for b in tools[i + 1:]:
+                both = C[(C[f"{a}|s0"] > ACTIVE) & (C[f"{b}|s0"] > ACTIVE)]
+                if both.empty:
+                    print(f"     {a:16s} vs {b:16s} no shared live cells")
+                    continue
+                frac = float((both[f"{a}|keep"] < both[f"{b}|keep"]).mean())
+                lo, hi = (a, b) if frac >= 0.5 else (b, a)
+                print(f"     {lo:16s} < {hi:16s} in "
+                      f"{100 * max(frac, 1 - frac):5.1f}% of {len(both)} cells")
 
     if args.bandwidth_scan:
         print("\n== is any violation information or density estimation? ==")
