@@ -56,3 +56,26 @@ Neither changed a conclusion, but the second would have been quoted.
   within that posture and compares configurations.
 
 Both were caught by the reader, not by me.
+
+## F4. Donor harness defects found at the reproducibility gate
+
+Recorded in full in `donor-repro.md`. Five issues in
+`getrecast/geolift-simulation-study` @ `5133d37`, all found before running
+anything, all of which would have cost compute or confidence later:
+
+- **D1** `.Rprofile` sources `renv/activate.R`, which `.gitignore` excludes
+  and a pristine clone does not contain — R can fail on startup before
+  `renv::restore()` can create it.
+- **D2** README's clone URL (`getrecast/geolift-study.git`) is not the
+  repository.
+- **D3** `VERSIONS.md` leaves R "captured at install time" while `renv.lock`
+  pins 4.5.1.
+- **D4** `pyproject.toml` is loose (`pymc>=5.10`) where `requirements.txt` is
+  frozen (`pymc==5.28.1`), and `make env` installs both, loose second.
+- **D5** no licence of any kind — readable and citable, not forkable.
+
+And one of our own, in the same spirit: R **4.5.1 is unobtainable** from
+either the distribution (4.3.3) or CRAN apt (4.6.1), so the replay runs on a
+different minor series than the donor, with every package rebuilt from
+source. That is now the first suspect if G3 disagrees numerically, ahead of
+the platform difference.
