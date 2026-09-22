@@ -1,271 +1,271 @@
 
 === RQ1  decision model vs end-to-end analytics ===
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k   ci_low  ci_high  rel_pct                   verdict
-    agent_time_heterogeneity      57.90      39.88         18.01     19784.70 12073.03 28185.81     9.62                    BETTER
-capacity_value_heterogeneity      49.62      31.88         17.75     38931.37 18917.90 65982.54     8.84                    BETTER
-               concept_drift     888.31     340.30        548.02      1628.18   291.79  3230.08     2.20                    BETTER
-            delayed_censored      61.72      40.95         20.76     22973.45 16707.81 30190.54    11.07                    BETTER
-             easy_randomized      62.50      39.55         22.94     24863.27 18873.90 31269.37    12.07                    BETTER
-          hidden_confounding      51.52      35.90         15.62     18900.05 10267.69 29328.48     7.54                    BETTER
-      misleading_attribution      62.63      42.84         19.79     20169.82 16509.07 23204.00     9.53                    BETTER
+    agent_time_heterogeneity      57.77      39.45         18.32     19784.70 12073.03 28185.81     9.62                    BETTER
+capacity_value_heterogeneity      50.22      31.54         18.68     38931.37 18917.90 65982.54     8.84                    BETTER
+               concept_drift      71.32      17.01         54.31      1628.18   291.79  3230.08     2.20                    BETTER
+            delayed_censored      61.77      40.70         21.06     22973.45 16707.81 30190.54    11.07                    BETTER
+             easy_randomized      62.05      39.26         22.80     24863.27 18873.90 31269.37    12.07                    BETTER
+          hidden_confounding      51.84      35.31         16.53     18900.05 10267.69 29328.48     7.54                    BETTER
+      misleading_attribution      61.87      42.79         19.09     20169.82 16509.07 23204.00     9.53                    BETTER
 negative_control_null_effect        NaN        NaN           NaN       -14.31   -25.08    -3.47    -0.01 worse but below threshold
-                   noisy_crm      56.41      40.10         16.31     17786.09 12608.76 23024.64     8.62                    BETTER
-        observed_confounding      63.04      35.90         27.15     31322.07 21902.10 42494.24    12.49                    BETTER
-        policy_feedback_loop      60.95      38.32         22.62     24712.63 19113.14 30277.01    12.10                    BETTER
-       propensity_not_uplift      33.65      35.76         -2.11     -1045.43 -5000.57  2533.16    -0.34               no evidence
-                rare_outcome      66.75      35.28         31.47     15426.84 10918.46 21388.09    18.19                    BETTER
-           seasonality_trend      56.74      38.41         18.32     22941.23 16189.55 30299.46     8.97                    BETTER
-              selection_bias      63.22      39.45         23.77     25287.60 21023.48 29615.97    12.27                    BETTER
-                      sparse      60.00      42.81         17.19     20564.04 15469.58 27434.86     9.80                    BETTER
-        strong_heterogeneity      63.37      31.05         32.32     55787.68 49728.79 61632.82    25.66                    BETTER
-         value_heterogeneity      53.82      36.85         16.98     32866.11 23132.10 43019.78    10.08                    BETTER
-           very_rare_outcome      61.03      36.62         24.41      6269.02  3029.55 10101.39    14.26                    BETTER
+                   noisy_crm      56.41      40.10         16.30     17786.09 12608.76 23024.64     8.62                    BETTER
+        observed_confounding      62.70      35.31         27.39     31322.07 21902.10 42494.24    12.49                    BETTER
+        policy_feedback_loop      60.36      37.70         22.66     24712.63 19113.14 30277.01    12.10                    BETTER
+       propensity_not_uplift      35.71      37.15         -1.44     -1045.43 -5000.57  2533.16    -0.34               no evidence
+                rare_outcome      65.11      34.75         30.35     15426.84 10918.46 21388.09    18.19                    BETTER
+           seasonality_trend      56.66      38.13         18.53     22941.23 16189.55 30299.46     8.97                    BETTER
+              selection_bias      62.63      39.45         23.19     25287.60 21023.48 29615.97    12.27                    BETTER
+                      sparse      59.73      42.52         17.21     20564.04 15469.58 27434.86     9.80                    BETTER
+        strong_heterogeneity      63.09      31.13         31.96     55787.68 49728.79 61632.82    25.66                    BETTER
+         value_heterogeneity      52.67      36.52         16.15     32866.11 23132.10 43019.78    10.08                    BETTER
+           very_rare_outcome      62.48      37.21         25.27      6269.02  3029.55 10101.39    14.26                    BETTER
 
 -- strongest causal candidate vs the same baseline --
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k   ci_low  ci_high  rel_pct                   verdict
-    agent_time_heterogeneity      53.50      39.88         13.62     15410.80  8819.31 24045.56     7.49                    BETTER
-capacity_value_heterogeneity      59.45      31.88         27.57     61064.00 35410.00 89012.59    13.87                    BETTER
-               concept_drift     660.56     340.30        320.26       539.59  -325.78  1468.79     0.73               no evidence
-            delayed_censored      57.34      40.95         16.39     18935.39 10354.18 30305.11     9.13                    BETTER
-             easy_randomized      58.24      39.55         18.68     20977.95 13124.19 30066.02    10.19                    BETTER
-          hidden_confounding      51.51      35.90         15.62     19215.70 10580.36 29011.12     7.67                    BETTER
-      misleading_attribution      57.51      42.84         14.66     15300.50 11899.01 19589.07     7.23                    BETTER
+    agent_time_heterogeneity      53.72      39.45         14.27     15410.80  8819.31 24045.56     7.49                    BETTER
+capacity_value_heterogeneity      60.84      31.54         29.30     61064.00 35410.00 89012.59    13.87                    BETTER
+               concept_drift      35.01      17.01         18.00       539.59  -325.78  1468.79     0.73               no evidence
+            delayed_censored      58.07      40.70         17.36     18935.39 10354.18 30305.11     9.13                    BETTER
+             easy_randomized      58.49      39.26         19.23     20977.95 13124.19 30066.02    10.19                    BETTER
+          hidden_confounding      52.12      35.31         16.81     19215.70 10580.36 29011.12     7.67                    BETTER
+      misleading_attribution      57.27      42.79         14.48     15300.50 11899.01 19589.07     7.23                    BETTER
 negative_control_null_effect        NaN        NaN           NaN       -15.51   -23.85    -7.30    -0.01 worse but below threshold
-        observed_confounding      60.21      35.90         24.31     28616.61 18764.91 39709.61    11.42                    BETTER
-        policy_feedback_loop      53.29      38.32         14.97     17837.76  9588.33 26073.35     8.73                    BETTER
-       propensity_not_uplift      48.20      35.76         12.44      8938.61  5040.93 12986.86     2.89                    BETTER
-                rare_outcome      55.77      35.28         20.48      9997.42  5317.53 15169.06    11.79                    BETTER
-           seasonality_trend      56.94      38.41         18.52     23971.93 15498.39 33934.38     9.37                    BETTER
-              selection_bias      61.69      39.45         22.24     24274.85 18886.56 30599.40    11.78                    BETTER
-                      sparse      55.29      42.81         12.48     14712.05  8299.55 21687.13     7.01                    BETTER
-        strong_heterogeneity      67.97      31.05         36.91     64881.85 55590.11 74963.63    29.84                    BETTER
-         value_heterogeneity      50.32      36.85         13.47     29039.06 10483.14 51500.49     8.91                    BETTER
-           very_rare_outcome      43.47      36.62          6.85      2292.02   -75.22  5204.06     5.21               no evidence
+        observed_confounding      60.34      35.31         25.03     28616.61 18764.91 39709.61    11.42                    BETTER
+        policy_feedback_loop      54.05      37.70         16.35     17837.76  9588.33 26073.35     8.73                    BETTER
+       propensity_not_uplift      49.42      37.15         12.27      8938.61  5040.93 12986.86     2.89                    BETTER
+                rare_outcome      54.42      34.75         19.67      9997.42  5317.53 15169.06    11.79                    BETTER
+           seasonality_trend      57.49      38.13         19.37     23971.93 15498.39 33934.38     9.37                    BETTER
+              selection_bias      61.70      39.45         22.26     24274.85 18886.56 30599.40    11.78                    BETTER
+                      sparse      54.83      42.52         12.31     14712.05  8299.55 21687.13     7.01                    BETTER
+        strong_heterogeneity      68.30      31.13         37.17     64881.85 55590.11 74963.63    29.84                    BETTER
+         value_heterogeneity      50.79      36.52         14.27     29039.06 10483.14 51500.49     8.91                    BETTER
+           very_rare_outcome      46.45      37.21          9.24      2292.02   -75.22  5204.06     5.21               no evidence
 
 
 === RQ2  uplift vs ordinary lead scoring ===
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k    ci_low  ci_high  rel_pct                   verdict
-    agent_time_heterogeneity      53.50      37.84         15.67     18820.75   8889.76 30984.25     9.30                    BETTER
-capacity_value_heterogeneity      59.45      26.73         32.72     71933.70  47625.78 96708.60    16.75                    BETTER
-               concept_drift     660.56     619.22         41.34      -794.48  -1561.41   -91.29    -1.05 worse but below threshold
-            delayed_censored      57.34      57.35         -0.01      2143.51  -4084.78 11499.98     0.96               no evidence
-             easy_randomized      58.24      57.81          0.43      2489.80  -3951.32 10871.26     1.11               no evidence
-          hidden_confounding      51.51      47.40          4.12      5362.78    138.67 11704.77     2.03                    BETTER
-      misleading_attribution      57.51      58.53         -1.02        71.23  -4866.05  4939.25     0.03               no evidence
+    agent_time_heterogeneity      53.72      36.30         17.42     18820.75   8889.76 30984.25     9.30                    BETTER
+capacity_value_heterogeneity      60.84      26.33         34.51     71933.70  47625.78 96708.60    16.75                    BETTER
+               concept_drift      35.01      61.51        -26.50      -794.48  -1561.41   -91.29    -1.05 worse but below threshold
+            delayed_censored      58.07      56.10          1.97      2143.51  -4084.78 11499.98     0.96               no evidence
+             easy_randomized      58.49      56.21          2.28      2489.80  -3951.32 10871.26     1.11               no evidence
+          hidden_confounding      52.12      47.43          4.69      5362.78    138.67 11704.77     2.03                    BETTER
+      misleading_attribution      57.27      57.20          0.07        71.23  -4866.05  4939.25     0.03               no evidence
 negative_control_null_effect        NaN        NaN           NaN        -8.35    -17.40    -1.13    -0.01 worse but below threshold
-        observed_confounding      60.21      58.85          1.37      2464.10  -4550.98  8884.83     0.89               no evidence
-        policy_feedback_loop      53.29      55.78         -2.49      -508.17  -5958.41  5560.00    -0.23               no evidence
-       propensity_not_uplift      48.20      26.25         21.95     16383.36  11355.16 22356.97     5.42                    BETTER
-                rare_outcome      55.77      68.48        -12.71     -5303.65  -7744.28 -3233.72    -5.30                     WORSE
-           seasonality_trend      56.94      51.59          5.35      8537.14   -619.13 19350.00     3.15               no evidence
-              selection_bias      61.69      58.67          3.02      5113.03   -598.51 11445.99     2.27               no evidence
-                      sparse      55.29      54.35          0.94       599.25  -3159.39  4955.78     0.27               no evidence
-        strong_heterogeneity      67.97      54.99         12.98     24496.06   8647.40 46053.95     9.50                    BETTER
-         value_heterogeneity      50.32      51.67         -1.35      3563.43 -13398.02 24470.32     1.01               no evidence
-           very_rare_outcome      43.47      63.57        -20.10     -4377.56  -6332.75 -2644.30    -8.65                     WORSE
+        observed_confounding      60.34      58.18          2.15      2464.10  -4550.98  8884.83     0.89               no evidence
+        policy_feedback_loop      54.05      54.52         -0.47      -508.17  -5958.41  5560.00    -0.23               no evidence
+       propensity_not_uplift      49.42      26.93         22.49     16383.36  11355.16 22356.97     5.42                    BETTER
+                rare_outcome      54.42      64.86        -10.44     -5303.65  -7744.28 -3233.72    -5.30                     WORSE
+           seasonality_trend      57.49      50.60          6.90      8537.14   -619.13 19350.00     3.15               no evidence
+              selection_bias      61.70      57.01          4.69      5113.03   -598.51 11445.99     2.27               no evidence
+                      sparse      54.83      54.33          0.50       599.25  -3159.39  4955.78     0.27               no evidence
+        strong_heterogeneity      68.30      54.26         14.03     24496.06   8647.40 46053.95     9.50                    BETTER
+         value_heterogeneity      50.79      49.04          1.75      3563.43 -13398.02 24470.32     1.01               no evidence
+           very_rare_outcome      46.45      64.09        -17.65     -4377.56  -6332.75 -2644.30    -8.65                     WORSE
 
 -- and the economic-but-not-causal rung --
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k   ci_low  ci_high  rel_pct                    verdict
-    agent_time_heterogeneity      57.90      37.84         20.06     23194.65 14548.69 33918.72    11.47                     BETTER
-capacity_value_heterogeneity      49.62      26.73         22.90     49801.07 34592.93 65268.39    11.60                     BETTER
-               concept_drift     888.31     619.22        269.09       294.11  -211.26   910.87     0.39                no evidence
-            delayed_censored      61.72      57.35          4.36      6181.58  1178.52 11486.59     2.76                     BETTER
-             easy_randomized      62.50      57.81          4.68      6375.12  1737.09 11706.05     2.84                     BETTER
-          hidden_confounding      51.52      47.40          4.12      5047.14  1232.30  9333.55     1.91 better but below threshold
-      misleading_attribution      62.63      58.53          4.10      4940.54   788.14  8572.16     2.18                     BETTER
+    agent_time_heterogeneity      57.77      36.30         21.47     23194.65 14548.69 33918.72    11.47                     BETTER
+capacity_value_heterogeneity      50.22      26.33         23.90     49801.07 34592.93 65268.39    11.60                     BETTER
+               concept_drift      71.32      61.51          9.81       294.11  -211.26   910.87     0.39                no evidence
+            delayed_censored      61.77      56.10          5.67      6181.58  1178.52 11486.59     2.76                     BETTER
+             easy_randomized      62.05      56.21          5.85      6375.12  1737.09 11706.05     2.84                     BETTER
+          hidden_confounding      51.84      47.43          4.41      5047.14  1232.30  9333.55     1.91 better but below threshold
+      misleading_attribution      61.87      57.20          4.68      4940.54   788.14  8572.16     2.18                     BETTER
 negative_control_null_effect        NaN        NaN           NaN        -7.15   -17.89     2.79    -0.00                no evidence
-                   noisy_crm      56.41      52.32          4.09      5905.00  -374.62 12408.78     2.71                no evidence
-        observed_confounding      63.04      58.85          4.20      5169.56  1642.40  7994.48     1.87 better but below threshold
-        policy_feedback_loop      60.95      55.78          5.17      6366.70  2312.48 10591.04     2.86                     BETTER
-       propensity_not_uplift      33.65      26.25          7.40      6399.32  2273.22 10324.09     2.12                     BETTER
-                rare_outcome      66.75      68.48         -1.73       125.78 -2047.94  2293.76     0.13                no evidence
-           seasonality_trend      56.74      51.59          5.15      7506.43  2725.12 13313.24     2.77                     BETTER
-              selection_bias      63.22      58.67          4.55      6125.77   783.19 12215.23     2.72                     BETTER
-                      sparse      60.00      54.35          5.65      6451.24  4745.34  8094.56     2.88                     BETTER
-        strong_heterogeneity      63.37      54.99          8.38     15401.90  7156.35 26485.06     5.97                     BETTER
-         value_heterogeneity      53.82      51.67          2.15      7390.49 -3636.64 19174.78     2.10                no evidence
-           very_rare_outcome      61.03      63.57         -2.54      -400.56 -1121.53   412.75    -0.79                no evidence
+                   noisy_crm      56.41      50.99          5.41      5905.00  -374.62 12408.78     2.71                no evidence
+        observed_confounding      62.70      58.18          4.52      5169.56  1642.40  7994.48     1.87 better but below threshold
+        policy_feedback_loop      60.36      54.52          5.84      6366.70  2312.48 10591.04     2.86                     BETTER
+       propensity_not_uplift      35.71      26.93          8.79      6399.32  2273.22 10324.09     2.12                     BETTER
+                rare_outcome      65.11      64.86          0.25       125.78 -2047.94  2293.76     0.13                no evidence
+           seasonality_trend      56.66      50.60          6.06      7506.43  2725.12 13313.24     2.77                     BETTER
+              selection_bias      62.63      57.01          5.62      6125.77   783.19 12215.23     2.72                     BETTER
+                      sparse      59.73      54.33          5.40      6451.24  4745.34  8094.56     2.88                     BETTER
+        strong_heterogeneity      63.09      54.26          8.82     15401.90  7156.35 26485.06     5.97                     BETTER
+         value_heterogeneity      52.67      49.04          3.63      7390.49 -3636.64 19174.78     2.10                no evidence
+           very_rare_outcome      62.48      64.09         -1.61      -400.56 -1121.53   412.75    -0.79                no evidence
 
 
 === RQ3  explicit economics vs a probability score ===
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k   ci_low  ci_high  rel_pct                    verdict
-    agent_time_heterogeneity      57.90      37.84         20.06     23194.65 14548.69 33918.72    11.47                     BETTER
-capacity_value_heterogeneity      49.62      26.73         22.90     49801.07 34592.93 65268.39    11.60                     BETTER
-               concept_drift     888.31     619.22        269.09       294.11  -211.26   910.87     0.39                no evidence
-            delayed_censored      61.72      57.35          4.36      6181.58  1178.52 11486.59     2.76                     BETTER
-             easy_randomized      62.50      57.81          4.68      6375.12  1737.09 11706.05     2.84                     BETTER
-          hidden_confounding      51.52      47.40          4.12      5047.14  1232.30  9333.55     1.91 better but below threshold
-      misleading_attribution      62.63      58.53          4.10      4940.54   788.14  8572.16     2.18                     BETTER
+    agent_time_heterogeneity      57.77      36.30         21.47     23194.65 14548.69 33918.72    11.47                     BETTER
+capacity_value_heterogeneity      50.22      26.33         23.90     49801.07 34592.93 65268.39    11.60                     BETTER
+               concept_drift      71.32      61.51          9.81       294.11  -211.26   910.87     0.39                no evidence
+            delayed_censored      61.77      56.10          5.67      6181.58  1178.52 11486.59     2.76                     BETTER
+             easy_randomized      62.05      56.21          5.85      6375.12  1737.09 11706.05     2.84                     BETTER
+          hidden_confounding      51.84      47.43          4.41      5047.14  1232.30  9333.55     1.91 better but below threshold
+      misleading_attribution      61.87      57.20          4.68      4940.54   788.14  8572.16     2.18                     BETTER
 negative_control_null_effect        NaN        NaN           NaN        -7.15   -17.89     2.79    -0.00                no evidence
-                   noisy_crm      56.41      52.32          4.09      5905.00  -374.62 12408.78     2.71                no evidence
-        observed_confounding      63.04      58.85          4.20      5169.56  1642.40  7994.48     1.87 better but below threshold
-        policy_feedback_loop      60.95      55.78          5.17      6366.70  2312.48 10591.04     2.86                     BETTER
-       propensity_not_uplift      33.65      26.25          7.40      6399.32  2273.22 10324.09     2.12                     BETTER
-                rare_outcome      66.75      68.48         -1.73       125.78 -2047.94  2293.76     0.13                no evidence
-           seasonality_trend      56.74      51.59          5.15      7506.43  2725.12 13313.24     2.77                     BETTER
-              selection_bias      63.22      58.67          4.55      6125.77   783.19 12215.23     2.72                     BETTER
-                      sparse      60.00      54.35          5.65      6451.24  4745.34  8094.56     2.88                     BETTER
-        strong_heterogeneity      63.37      54.99          8.38     15401.90  7156.35 26485.06     5.97                     BETTER
-         value_heterogeneity      53.82      51.67          2.15      7390.49 -3636.64 19174.78     2.10                no evidence
-           very_rare_outcome      61.03      63.57         -2.54      -400.56 -1121.53   412.75    -0.79                no evidence
+                   noisy_crm      56.41      50.99          5.41      5905.00  -374.62 12408.78     2.71                no evidence
+        observed_confounding      62.70      58.18          4.52      5169.56  1642.40  7994.48     1.87 better but below threshold
+        policy_feedback_loop      60.36      54.52          5.84      6366.70  2312.48 10591.04     2.86                     BETTER
+       propensity_not_uplift      35.71      26.93          8.79      6399.32  2273.22 10324.09     2.12                     BETTER
+                rare_outcome      65.11      64.86          0.25       125.78 -2047.94  2293.76     0.13                no evidence
+           seasonality_trend      56.66      50.60          6.06      7506.43  2725.12 13313.24     2.77                     BETTER
+              selection_bias      62.63      57.01          5.62      6125.77   783.19 12215.23     2.72                     BETTER
+                      sparse      59.73      54.33          5.40      6451.24  4745.34  8094.56     2.88                     BETTER
+        strong_heterogeneity      63.09      54.26          8.82     15401.90  7156.35 26485.06     5.97                     BETTER
+         value_heterogeneity      52.67      49.04          3.63      7390.49 -3636.64 19174.78     2.10                no evidence
+           very_rare_outcome      62.48      64.09         -1.61      -400.56 -1121.53   412.75    -0.79                no evidence
 
 
 === RQ4  does modelling capacity change the ranking? ===
 -- profit per agent-hour vs profit per lead (both analytics) --
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k   ci_low  ci_high  rel_pct                   verdict
-    agent_time_heterogeneity      39.88      39.78          0.11       337.65 -1261.96  2527.06     0.16               no evidence
-capacity_value_heterogeneity      31.88      31.79          0.09       195.65 -2378.01  2966.79     0.04               no evidence
-               concept_drift     340.30     340.44         -0.15        -3.22    -9.65     0.00    -0.00               no evidence
-            delayed_censored      40.95      40.95          0.00         0.00     0.00     0.00     0.00               no evidence
-             easy_randomized      39.55      40.06         -0.50      -366.66 -1099.99     0.00    -0.18               no evidence
-          hidden_confounding      35.90      36.38         -0.49      -536.25 -1608.74     0.00    -0.21               no evidence
-      misleading_attribution      42.84      42.60          0.24       262.88     0.00   788.64     0.12               no evidence
+    agent_time_heterogeneity      39.45      39.14          0.31       337.65 -1261.96  2527.06     0.16               no evidence
+capacity_value_heterogeneity      31.54      31.45          0.09       195.65 -2378.01  2966.79     0.04               no evidence
+               concept_drift      17.01      17.12         -0.11        -3.22    -9.65     0.00    -0.00               no evidence
+            delayed_censored      40.70      40.70          0.00         0.00     0.00     0.00     0.00               no evidence
+             easy_randomized      39.26      39.59         -0.34      -366.66 -1099.99     0.00    -0.18               no evidence
+          hidden_confounding      35.31      35.78         -0.47      -536.25 -1608.74     0.00    -0.21               no evidence
+      misleading_attribution      42.79      42.54          0.25       262.88     0.00   788.64     0.12               no evidence
 negative_control_null_effect        NaN        NaN           NaN        -0.68    -1.97     0.00    -0.00               no evidence
-                   noisy_crm      40.10      40.97         -0.87     -1513.27 -4539.81     0.00    -0.73               no evidence
-        observed_confounding      35.90      36.38         -0.49      -536.25 -1608.74     0.00    -0.21               no evidence
-        policy_feedback_loop      38.32      38.35         -0.03       -24.97   -74.91     0.00    -0.01               no evidence
-       propensity_not_uplift      35.76      34.44          1.32       815.31     0.00  2108.11     0.26               no evidence
-                rare_outcome      35.28      36.38         -1.09      -339.15 -1017.44     0.00    -0.40               no evidence
-           seasonality_trend      38.41      39.23         -0.81      -964.18 -2892.53     0.00    -0.38               no evidence
-              selection_bias      39.45      40.06         -0.61      -673.56 -1806.41    -0.44    -0.33 worse but below threshold
-                      sparse      42.81      43.39         -0.59      -506.86 -1574.56   442.61    -0.24               no evidence
-        strong_heterogeneity      31.05      31.60         -0.54      -810.53 -2393.06     0.00    -0.37               no evidence
-         value_heterogeneity      36.85      36.84          0.00         3.71     0.00    11.02     0.00               no evidence
-           very_rare_outcome      36.62      36.31          0.31        34.91     0.00   104.73     0.08               no evidence
+                   noisy_crm      40.10      41.49         -1.39     -1513.27 -4539.81     0.00    -0.73               no evidence
+        observed_confounding      35.31      35.78         -0.47      -536.25 -1608.74     0.00    -0.21               no evidence
+        policy_feedback_loop      37.70      37.72         -0.02       -24.97   -74.91     0.00    -0.01               no evidence
+       propensity_not_uplift      37.15      36.03          1.12       815.31     0.00  2108.11     0.26               no evidence
+                rare_outcome      34.75      35.42         -0.67      -339.15 -1017.44     0.00    -0.40               no evidence
+           seasonality_trend      38.13      38.91         -0.78      -964.18 -2892.53     0.00    -0.38               no evidence
+              selection_bias      39.45      40.06         -0.62      -673.56 -1806.41    -0.44    -0.33 worse but below threshold
+                      sparse      42.52      42.94         -0.42      -506.86 -1574.56   442.61    -0.24               no evidence
+        strong_heterogeneity      31.13      31.59         -0.46      -810.53 -2393.06     0.00    -0.37               no evidence
+         value_heterogeneity      36.52      36.52          0.00         3.71     0.00    11.02     0.00               no evidence
+           very_rare_outcome      37.21      37.07          0.14        34.91     0.00   104.73     0.08               no evidence
 
 -- value-aware allocator vs a plain sorted call list (ablation) --
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k   ci_low  ci_high  rel_pct     verdict
-    agent_time_heterogeneity      58.55      44.90         13.65     16734.29 11026.26 25712.27     7.42      BETTER
-capacity_value_heterogeneity      50.04      35.10         14.94     32344.71 26463.06 38226.36     6.77      BETTER
-       propensity_not_uplift      34.82      34.81          0.01       286.92 -1227.49  1788.87     0.09 no evidence
-                      sparse      60.27      60.78         -0.51      -759.03 -2321.88   406.53    -0.34 no evidence
-         value_heterogeneity      53.38      53.98         -0.60      -837.11 -7248.49  4650.70    -0.22 no evidence
+    agent_time_heterogeneity      58.19      43.83         14.36     16734.29 11026.26 25712.27     7.42      BETTER
+capacity_value_heterogeneity      50.83      36.20         14.63     32344.71 26463.06 38226.36     6.77      BETTER
+       propensity_not_uplift      37.21      36.83          0.37       286.92 -1227.49  1788.87     0.09 no evidence
+                      sparse      59.98      60.59         -0.61      -759.03 -2321.88   406.53    -0.34 no evidence
+         value_heterogeneity      52.46      52.84         -0.38      -837.11 -7248.49  4650.70    -0.22 no evidence
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k   ci_low  ci_high  rel_pct     verdict
-    agent_time_heterogeneity      53.59      48.46          5.13      6114.61  3816.63  9436.27     2.65      BETTER
-capacity_value_heterogeneity      62.73      51.75         10.98     24165.54 16159.05 33411.11     4.70      BETTER
-       propensity_not_uplift      48.27      47.41          0.86       510.29  -365.74  1316.19     0.15 no evidence
-                      sparse      54.13      53.51          0.61       850.87  -420.93  2270.95     0.39 no evidence
-         value_heterogeneity      50.45      50.31          0.14       730.36 -1936.40  3541.80     0.19 no evidence
+    agent_time_heterogeneity      53.86      48.62          5.25      6114.61  3816.63  9436.27     2.65      BETTER
+capacity_value_heterogeneity      63.69      52.76         10.93     24165.54 16159.05 33411.11     4.70      BETTER
+       propensity_not_uplift      49.81      49.14          0.67       510.29  -365.74  1316.19     0.15 no evidence
+                      sparse      53.64      52.96          0.68       850.87  -420.93  2270.95     0.39 no evidence
+         value_heterogeneity      50.88      50.55          0.33       730.36 -1936.40  3541.80     0.19 no evidence
 
 
 === RQ2b  causal families against the simple economic baseline ===
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k   ci_low  ci_high  rel_pct                    verdict
-    agent_time_heterogeneity      60.19      57.90          2.29      3362.70  -285.93  7839.09     1.49                no evidence
-capacity_value_heterogeneity      64.33      49.62         14.70     32739.46 14498.82 54223.19     6.83                     BETTER
-               concept_drift     892.69     888.31          4.38      -587.14 -1423.85   -23.50    -0.78  worse but below threshold
-            delayed_censored      63.85      61.72          2.13      2459.16  1300.25  4061.22     1.07 better but below threshold
-             easy_randomized      64.65      62.50          2.16      3081.50 -1313.95  8813.05     1.34                no evidence
-          hidden_confounding      51.83      51.52          0.31       802.98 -2184.99  4484.32     0.30                no evidence
-      misleading_attribution      61.86      62.63         -0.77     -1065.08 -3527.90  1160.57    -0.46                no evidence
+    agent_time_heterogeneity      60.88      57.77          3.11      3362.70  -285.93  7839.09     1.49                no evidence
+capacity_value_heterogeneity      65.93      50.22         15.71     32739.46 14498.82 54223.19     6.83                     BETTER
+               concept_drift      51.73      71.32        -19.58      -587.14 -1423.85   -23.50    -0.78  worse but below threshold
+            delayed_censored      64.02      61.77          2.25      2459.16  1300.25  4061.22     1.07 better but below threshold
+             easy_randomized      64.88      62.05          2.83      3081.50 -1313.95  8813.05     1.34                no evidence
+          hidden_confounding      52.54      51.84          0.70       802.98 -2184.99  4484.32     0.30                no evidence
+      misleading_attribution      60.87      61.87         -1.01     -1065.08 -3527.90  1160.57    -0.46                no evidence
 negative_control_null_effect        NaN        NaN           NaN       512.80   202.75   827.25     0.32 better but below threshold
-        observed_confounding      63.33      63.04          0.29       582.66 -2205.21  3546.83     0.21                no evidence
-        policy_feedback_loop      61.29      60.95          0.35      1015.93 -1476.47  3713.74     0.44                no evidence
-       propensity_not_uplift      52.39      33.65         18.74     13418.43 10785.06 17021.27     4.35                     BETTER
-                rare_outcome      65.46      66.75         -1.29      -250.76 -1059.22   626.79    -0.25                no evidence
-           seasonality_trend      59.83      56.74          3.10      4789.79   507.32 10535.78     1.72 better but below threshold
-              selection_bias      62.57      63.22         -0.64       -41.20 -2268.52  2574.05    -0.02                no evidence
-                      sparse      58.17      60.00         -1.82     -2290.68 -4380.28  -404.64    -0.99  worse but below threshold
-        strong_heterogeneity      72.85      63.37          9.48     17307.41  8412.27 27440.15     6.33                     BETTER
-         value_heterogeneity      56.19      53.82          2.36      7893.67 -2923.46 21806.53     2.20                no evidence
-           very_rare_outcome      55.23      61.03         -5.80     -1101.59 -1880.39  -393.95    -2.19                      WORSE
+        observed_confounding      63.21      62.70          0.51       582.66 -2205.21  3546.83     0.21                no evidence
+        policy_feedback_loop      61.29      60.36          0.93      1015.93 -1476.47  3713.74     0.44                no evidence
+       propensity_not_uplift      54.14      35.71         18.42     13418.43 10785.06 17021.27     4.35                     BETTER
+                rare_outcome      64.61      65.11         -0.49      -250.76 -1059.22   626.79    -0.25                no evidence
+           seasonality_trend      60.53      56.66          3.87      4789.79   507.32 10535.78     1.72 better but below threshold
+              selection_bias      62.59      62.63         -0.04       -41.20 -2268.52  2574.05    -0.02                no evidence
+                      sparse      57.81      59.73         -1.92     -2290.68 -4380.28  -404.64    -0.99  worse but below threshold
+        strong_heterogeneity      73.00      63.09          9.91     17307.41  8412.27 27440.15     6.33                     BETTER
+         value_heterogeneity      56.55      52.67          3.88      7893.67 -2923.46 21806.53     2.20                no evidence
+           very_rare_outcome      58.04      62.48         -4.44     -1101.59 -1880.39  -393.95    -2.19                      WORSE
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k    ci_low  ci_high  rel_pct                   verdict
-    agent_time_heterogeneity      53.50      57.90         -4.39     -4373.90  -7605.31 -1733.54    -1.94 worse but below threshold
-capacity_value_heterogeneity      59.45      49.62          9.82     22132.63  10223.11 35761.10     4.62                    BETTER
-               concept_drift     660.56     888.31       -227.75     -1088.59  -2107.91  -277.49    -1.44 worse but below threshold
-            delayed_censored      57.34      61.72         -4.38     -4038.06  -8500.76  1161.09    -1.75               no evidence
-             easy_randomized      58.24      62.50         -4.26     -3885.32  -7115.44  -244.81    -1.68 worse but below threshold
-          hidden_confounding      51.51      51.52         -0.01       315.65  -2242.33  3039.70     0.12               no evidence
-      misleading_attribution      57.51      62.63         -5.12     -4869.32  -9228.16  -648.21    -2.10                     WORSE
+    agent_time_heterogeneity      53.72      57.77         -4.05     -4373.90  -7605.31 -1733.54    -1.94 worse but below threshold
+capacity_value_heterogeneity      60.84      50.22         10.62     22132.63  10223.11 35761.10     4.62                    BETTER
+               concept_drift      35.01      71.32        -36.31     -1088.59  -2107.91  -277.49    -1.44 worse but below threshold
+            delayed_censored      58.07      61.77         -3.70     -4038.06  -8500.76  1161.09    -1.75               no evidence
+             easy_randomized      58.49      62.05         -3.56     -3885.32  -7115.44  -244.81    -1.68 worse but below threshold
+          hidden_confounding      52.12      51.84          0.28       315.65  -2242.33  3039.70     0.12               no evidence
+      misleading_attribution      57.27      61.87         -4.61     -4869.32  -9228.16  -648.21    -2.10                     WORSE
 negative_control_null_effect        NaN        NaN           NaN        -1.20    -11.27     7.71    -0.00               no evidence
-        observed_confounding      60.21      63.04         -2.83     -2705.46  -7541.37  1350.95    -0.96               no evidence
-        policy_feedback_loop      53.29      60.95         -7.66     -6874.87 -10367.42 -3524.19    -3.00                     WORSE
-       propensity_not_uplift      48.20      33.65         14.55      9984.04   6624.97 13702.26     3.24                    BETTER
-                rare_outcome      55.77      66.75        -10.98     -5429.42  -8041.87 -2916.30    -5.42                     WORSE
-           seasonality_trend      56.94      56.74          0.20      1030.70  -5005.20  7509.98     0.37               no evidence
-              selection_bias      61.69      63.22         -1.53     -1012.74  -4230.21  2481.12    -0.44               no evidence
-                      sparse      55.29      60.00         -4.71     -5851.99  -9239.59 -2139.63    -2.54                     WORSE
-        strong_heterogeneity      67.97      63.37          4.60      9094.16    659.45 19747.49     3.33                    BETTER
-         value_heterogeneity      50.32      53.82         -3.51     -3827.06 -17033.73 10892.68    -1.07               no evidence
-           very_rare_outcome      43.47      61.03        -17.56     -3977.00  -5743.02 -2481.24    -7.92                     WORSE
+        observed_confounding      60.34      62.70         -2.37     -2705.46  -7541.37  1350.95    -0.96               no evidence
+        policy_feedback_loop      54.05      60.36         -6.30     -6874.87 -10367.42 -3524.19    -3.00                     WORSE
+       propensity_not_uplift      49.42      35.71         13.71      9984.04   6624.97 13702.26     3.24                    BETTER
+                rare_outcome      54.42      65.11        -10.68     -5429.42  -8041.87 -2916.30    -5.42                     WORSE
+           seasonality_trend      57.49      56.66          0.83      1030.70  -5005.20  7509.98     0.37               no evidence
+              selection_bias      61.70      62.63         -0.93     -1012.74  -4230.21  2481.12    -0.44               no evidence
+                      sparse      54.83      59.73         -4.90     -5851.99  -9239.59 -2139.63    -2.54                     WORSE
+        strong_heterogeneity      68.30      63.09          5.21      9094.16    659.45 19747.49     3.33                    BETTER
+         value_heterogeneity      50.79      52.67         -1.88     -3827.06 -17033.73 10892.68    -1.07               no evidence
+           very_rare_outcome      46.45      62.48        -16.03     -3977.00  -5743.02 -2481.24    -7.92                     WORSE
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k    ci_low  ci_high  rel_pct                   verdict
-    agent_time_heterogeneity      58.11      57.90          0.21      1311.61  -3286.12  6014.67     0.58               no evidence
-capacity_value_heterogeneity      64.94      49.62         15.31     32503.57  19586.85 46238.50     6.78                    BETTER
-               concept_drift     979.80     888.31         91.48      -793.59  -1962.27   -26.81    -1.05 worse but below threshold
-            delayed_censored      57.77      61.72         -3.95     -3671.78  -5937.59 -1197.92    -1.59 worse but below threshold
-             easy_randomized      59.81      62.50         -2.69     -1558.80  -5791.07  3700.44    -0.68               no evidence
-          hidden_confounding      51.30      51.52         -0.22        -4.21  -3114.95  3454.45    -0.00               no evidence
-      misleading_attribution      57.84      62.63         -4.79     -4971.73  -6825.84 -3138.90    -2.14                     WORSE
+    agent_time_heterogeneity      58.99      57.77          1.21      1311.61  -3286.12  6014.67     0.58               no evidence
+capacity_value_heterogeneity      65.82      50.22         15.60     32503.57  19586.85 46238.50     6.78                    BETTER
+               concept_drift      44.85      71.32        -26.47      -793.59  -1962.27   -26.81    -1.05 worse but below threshold
+            delayed_censored      58.40      61.77         -3.37     -3671.78  -5937.59 -1197.92    -1.59 worse but below threshold
+             easy_randomized      60.62      62.05         -1.43     -1558.80  -5791.07  3700.44    -0.68               no evidence
+          hidden_confounding      51.84      51.84         -0.00        -4.21  -3114.95  3454.45    -0.00               no evidence
+      misleading_attribution      57.17      61.87         -4.70     -4971.73  -6825.84 -3138.90    -2.14                     WORSE
 negative_control_null_effect        NaN        NaN           NaN        -1.02     -7.42     3.58    -0.00               no evidence
-        observed_confounding      58.37      63.04         -4.68     -4844.43 -10314.12   719.57    -1.72               no evidence
-        policy_feedback_loop      52.71      60.95         -8.24     -7313.52 -11501.05 -2962.16    -3.19                     WORSE
-       propensity_not_uplift      45.46      33.65         11.81      7859.27   5306.22 10228.44     2.55                    BETTER
-                rare_outcome      53.31      66.75        -13.43     -5975.48  -7845.20 -4329.83    -5.96                     WORSE
-           seasonality_trend      56.00      56.74         -0.74      -184.31  -4292.06  3910.65    -0.07               no evidence
-              selection_bias      59.10      63.22         -4.12     -3865.95  -7257.62    33.64    -1.67               no evidence
-                      sparse      54.87      60.00         -5.12     -6081.66 -11156.46 -1574.79    -2.64                     WORSE
-        strong_heterogeneity      71.06      63.37          7.70     14131.92   5631.85 23893.83     5.17                    BETTER
-         value_heterogeneity      51.70      53.82         -2.12      -926.62 -13252.07 13472.38    -0.26               no evidence
-           very_rare_outcome      41.03      61.03        -20.00     -4623.71  -6883.75 -2459.15    -9.21                     WORSE
+        observed_confounding      58.47      62.70         -4.24     -4844.43 -10314.12   719.57    -1.72               no evidence
+        policy_feedback_loop      53.65      60.36         -6.71     -7313.52 -11501.05 -2962.16    -3.19                     WORSE
+       propensity_not_uplift      46.50      35.71         10.79      7859.27   5306.22 10228.44     2.55                    BETTER
+                rare_outcome      53.35      65.11        -11.76     -5975.48  -7845.20 -4329.83    -5.96                     WORSE
+           seasonality_trend      56.51      56.66         -0.15      -184.31  -4292.06  3910.65    -0.07               no evidence
+              selection_bias      59.09      62.63         -3.54     -3865.95  -7257.62    33.64    -1.67               no evidence
+                      sparse      54.64      59.73         -5.09     -6081.66 -11156.46 -1574.79    -2.64                     WORSE
+        strong_heterogeneity      71.18      63.09          8.09     14131.92   5631.85 23893.83     5.17                    BETTER
+         value_heterogeneity      52.21      52.67         -0.46      -926.62 -13252.07 13472.38    -0.26               no evidence
+           very_rare_outcome      43.84      62.48        -18.64     -4623.71  -6883.75 -2459.15    -9.21                     WORSE
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k    ci_low   ci_high  rel_pct                    verdict
-    agent_time_heterogeneity      51.64      57.90         -6.26     -5717.33  -9904.13  -1392.42    -2.54                      WORSE
-capacity_value_heterogeneity      62.79      49.62         13.17     28601.96  14010.45  45594.64     5.97                     BETTER
-               concept_drift    1343.74     888.31        455.43      -888.14  -1908.30   -144.66    -1.17  worse but below threshold
-            delayed_censored      53.67      61.72         -8.05     -7764.17 -10645.61  -4160.89    -3.37                      WORSE
-             easy_randomized      53.83      62.50         -8.66     -8085.70 -13566.18  -2573.30    -3.50                      WORSE
-          hidden_confounding      49.84      51.52         -1.68     -2091.36  -5807.06   1072.32    -0.78                no evidence
-      misleading_attribution      50.54      62.63        -12.09    -12203.74 -17495.67  -7161.91    -5.27                      WORSE
+    agent_time_heterogeneity      52.48      57.77         -5.29     -5717.33  -9904.13  -1392.42    -2.54                      WORSE
+capacity_value_heterogeneity      63.95      50.22         13.72     28601.96  14010.45  45594.64     5.97                     BETTER
+               concept_drift      41.69      71.32        -29.62      -888.14  -1908.30   -144.66    -1.17  worse but below threshold
+            delayed_censored      54.65      61.77         -7.12     -7764.17 -10645.61  -4160.89    -3.37                      WORSE
+             easy_randomized      54.64      62.05         -7.41     -8085.70 -13566.18  -2573.30    -3.50                      WORSE
+          hidden_confounding      50.01      51.84         -1.83     -2091.36  -5807.06   1072.32    -0.78                no evidence
+      misleading_attribution      50.32      61.87        -11.55    -12203.74 -17495.67  -7161.91    -5.27                      WORSE
 negative_control_null_effect        NaN        NaN           NaN       361.78     73.57    717.69     0.22 better but below threshold
-        observed_confounding      53.43      63.04         -9.61    -10595.48 -14952.02  -5915.70    -3.76                      WORSE
-        policy_feedback_loop      42.11      60.95        -18.84    -20168.81 -27132.14 -13228.97    -8.81                      WORSE
-       propensity_not_uplift      41.24      33.65          7.59      5174.09   3113.87   7057.66     1.68 better but below threshold
-                rare_outcome      41.61      66.75        -25.14    -11839.09 -14878.56  -9124.68   -11.81                      WORSE
-           seasonality_trend      50.27      56.74         -6.47     -7448.98 -10901.35  -4292.23    -2.67                      WORSE
-              selection_bias      49.69      63.22        -13.53    -13169.15 -16480.67  -9954.37    -5.69                      WORSE
-                      sparse      51.50      60.00         -8.50     -9862.83 -14323.07  -5898.44    -4.28                      WORSE
-        strong_heterogeneity      65.89      63.37          2.52      4976.64   -895.11  11456.92     1.82                no evidence
-         value_heterogeneity      41.58      53.82        -12.25    -19954.36 -32640.78  -5733.26    -5.56                      WORSE
-           very_rare_outcome      35.48      61.03        -25.55     -6732.15 -10467.65  -3290.08   -13.40                      WORSE
+        observed_confounding      53.44      62.70         -9.27    -10595.48 -14952.02  -5915.70    -3.76                      WORSE
+        policy_feedback_loop      41.86      60.36        -18.49    -20168.81 -27132.14 -13228.97    -8.81                      WORSE
+       propensity_not_uplift      42.82      35.71          7.10      5174.09   3113.87   7057.66     1.68 better but below threshold
+                rare_outcome      41.81      65.11        -23.29    -11839.09 -14878.56  -9124.68   -11.81                      WORSE
+           seasonality_trend      50.64      56.66         -6.02     -7448.98 -10901.35  -4292.23    -2.67                      WORSE
+              selection_bias      50.56      62.63        -12.07    -13169.15 -16480.67  -9954.37    -5.69                      WORSE
+                      sparse      51.48      59.73         -8.25     -9862.83 -14323.07  -5898.44    -4.28                      WORSE
+        strong_heterogeneity      65.94      63.09          2.85      4976.64   -895.11  11456.92     1.82                no evidence
+         value_heterogeneity      42.86      52.67         -9.80    -19954.36 -32640.78  -5733.26    -5.56                      WORSE
+           very_rare_outcome      35.34      62.48        -27.14     -6732.15 -10467.65  -3290.08   -13.40                      WORSE
                        group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k    ci_low  ci_high  rel_pct                   verdict
-    agent_time_heterogeneity      52.50      57.90         -5.40     -4911.60  -9264.35  -684.01    -2.18                     WORSE
-capacity_value_heterogeneity      64.39      49.62         14.77     32441.62  18114.54 48162.10     6.77                    BETTER
-               concept_drift    1235.43     888.31        347.11      -908.70  -1962.42   -77.55    -1.20 worse but below threshold
-            delayed_censored      55.06      61.72         -6.65     -6258.45  -9925.23 -3519.51    -2.72                     WORSE
-             easy_randomized      54.63      62.50         -7.86     -6983.58 -12011.36 -1938.06    -3.03                     WORSE
-          hidden_confounding      49.16      51.52         -2.36     -2760.58  -6925.83   966.33    -1.02               no evidence
-      misleading_attribution      55.12      62.63         -7.51     -8147.60 -11390.21 -5357.67    -3.52                     WORSE
+    agent_time_heterogeneity      53.22      57.77         -4.55     -4911.60  -9264.35  -684.01    -2.18                     WORSE
+capacity_value_heterogeneity      65.79      50.22         15.57     32441.62  18114.54 48162.10     6.77                    BETTER
+               concept_drift      41.01      71.32        -30.31      -908.70  -1962.42   -77.55    -1.20 worse but below threshold
+            delayed_censored      56.03      61.77         -5.74     -6258.45  -9925.23 -3519.51    -2.72                     WORSE
+             easy_randomized      55.65      62.05         -6.40     -6983.58 -12011.36 -1938.06    -3.03                     WORSE
+          hidden_confounding      49.43      51.84         -2.41     -2760.58  -6925.83   966.33    -1.02               no evidence
+      misleading_attribution      54.16      61.87         -7.71     -8147.60 -11390.21 -5357.67    -3.52                     WORSE
 negative_control_null_effect        NaN        NaN           NaN        42.35     -5.93   109.55     0.03               no evidence
-        observed_confounding      55.01      63.04         -8.03     -8876.83 -13732.64 -3895.81    -3.15                     WORSE
-        policy_feedback_loop      49.72      60.95        -11.23    -11365.30 -14871.79 -7760.41    -4.96                     WORSE
-       propensity_not_uplift      43.95      33.65         10.30      6992.95   4522.58  9257.78     2.27                    BETTER
-                rare_outcome      50.72      66.75        -16.03     -7600.26 -11328.75 -4293.12    -7.58                     WORSE
-           seasonality_trend      52.08      56.74         -4.66     -5485.59 -11317.37  -405.97    -1.97 worse but below threshold
-              selection_bias      52.72      63.22        -10.50     -9826.16 -14064.31 -6386.96    -4.25                     WORSE
-                      sparse      51.27      60.00         -8.72     -9939.76 -14753.48 -5776.99    -4.32                     WORSE
-        strong_heterogeneity      66.46      63.37          3.09      5884.46  -2699.64 14439.20     2.15               no evidence
-         value_heterogeneity      41.82      53.82        -12.01    -19715.06 -30710.93 -8961.58    -5.50                     WORSE
-           very_rare_outcome      55.33      61.03         -5.70     -1867.51  -3897.01    17.06    -3.72               no evidence
+        observed_confounding      54.94      62.70         -7.76     -8876.83 -13732.64 -3895.81    -3.15                     WORSE
+        policy_feedback_loop      49.94      60.36        -10.42    -11365.30 -14871.79 -7760.41    -4.96                     WORSE
+       propensity_not_uplift      45.31      35.71          9.60      6992.95   4522.58  9257.78     2.27                    BETTER
+                rare_outcome      50.15      65.11        -14.95     -7600.26 -11328.75 -4293.12    -7.58                     WORSE
+           seasonality_trend      52.23      56.66         -4.43     -5485.59 -11317.37  -405.97    -1.97 worse but below threshold
+              selection_bias      53.62      62.63         -9.01     -9826.16 -14064.31 -6386.96    -4.25                     WORSE
+                      sparse      51.41      59.73         -8.32     -9939.76 -14753.48 -5776.99    -4.32                     WORSE
+        strong_heterogeneity      66.46      63.09          3.37      5884.46  -2699.64 14439.20     2.15               no evidence
+         value_heterogeneity      42.98      52.67         -9.69    -19715.06 -30710.93 -8961.58    -5.50                     WORSE
+           very_rare_outcome      54.95      62.48         -7.53     -1867.51  -3897.01    17.06    -3.72               no evidence
 
 
 === RQ5  does Bayesian uncertainty pay? ===
                 group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k    ci_low  ci_high  rel_pct     verdict
-   hidden_confounding      46.83      50.75         -3.92     -5511.67 -18728.27  6694.87    -2.11 no evidence
-propensity_not_uplift      54.73      41.42         13.32     11993.09   3282.99 20703.20     4.08      BETTER
-               sparse      61.18      55.33          5.85      5966.67  -1987.88 17285.71     2.19 no evidence
-    very_rare_outcome      55.76      65.42         -9.66     -1824.15  -3803.17  -211.09    -3.65       WORSE
+   hidden_confounding      48.39      53.46         -5.07     -5511.67 -18728.27  6694.87    -2.11 no evidence
+propensity_not_uplift      53.75      40.00         13.75     11993.09   3282.99 20703.20     4.08      BETTER
+               sparse      58.35      54.20          4.15      5966.67  -1987.88 17285.71     2.19 no evidence
+    very_rare_outcome      62.53      72.03         -9.51     -1824.15  -3803.17  -211.09    -3.65       WORSE
 
 -- Bayesian vs a bootstrapped frequentist interval --
                 group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k    ci_low  ci_high  rel_pct     verdict
-   hidden_confounding      46.83      50.75         -3.92     -5511.67 -18728.27  6694.87    -2.11 no evidence
-propensity_not_uplift      54.73      41.42         13.32     11993.09   3282.99 20703.20     4.08      BETTER
-               sparse      61.18      55.33          5.85      5966.67  -1987.88 17285.71     2.19 no evidence
-    very_rare_outcome      55.76      65.42         -9.66     -1824.15  -3803.17  -211.09    -3.65       WORSE
+   hidden_confounding      48.39      53.46         -5.07     -5511.67 -18728.27  6694.87    -2.11 no evidence
+propensity_not_uplift      53.75      40.00         13.75     11993.09   3282.99 20703.20     4.08      BETTER
+               sparse      58.35      54.20          4.15      5966.67  -1987.88 17285.71     2.19 no evidence
+    very_rare_outcome      62.53      72.03         -9.51     -1824.15  -3803.17  -211.09    -3.65       WORSE
 
 -- risk-averse (lower credible bound) vs posterior mean --
                 group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k    ci_low  ci_high  rel_pct     verdict
-   hidden_confounding      45.91      46.83         -0.92     -1489.90  -7083.16  2010.90    -0.58 no evidence
-propensity_not_uplift      53.10      54.73         -1.64     -1707.90  -4933.32   429.09    -0.56 no evidence
-               sparse      61.74      61.18          0.56       102.15 -10115.38  7262.09     0.04 no evidence
-    very_rare_outcome      57.62      55.76          1.87        62.24  -2212.85  2365.55     0.13 no evidence
+   hidden_confounding      47.02      48.39         -1.37     -1489.90  -7083.16  2010.90    -0.58 no evidence
+propensity_not_uplift      51.79      53.75         -1.96     -1707.90  -4933.32   429.09    -0.56 no evidence
+               sparse      58.42      58.35          0.07       102.15 -10115.38  7262.09     0.04 no evidence
+    very_rare_outcome      62.85      62.53          0.32        62.24  -2212.85  2365.55     0.13 no evidence
 
 -- interval honesty (empirical coverage of a stated 80% interval) --
                                        coverage_80  p_coverage_80  interval_width_80
@@ -285,10 +285,10 @@ propensity_ev_gbm_bootstrap_lcb25            0.319          0.388            280
 
 === RQ6  hierarchical pooling vs complete pooling ===
                 group  oracle%_a  oracle%_b  oracle%_diff  diff_$per1k   ci_low  ci_high  rel_pct     verdict
-   hidden_confounding      46.83      44.75          2.08      3035.86 -2689.01  8760.74     1.20 no evidence
-propensity_not_uplift      54.73      43.95         10.78      8378.80  1440.20 15317.40     2.81      BETTER
-               sparse      61.18      48.90         12.28     14364.09  4365.49 32688.08     5.43      BETTER
-    very_rare_outcome      55.76      46.77          8.99      1560.71   367.78  3176.01     3.35      BETTER
+   hidden_confounding      48.39      45.60          2.79      3035.86 -2689.01  8760.74     1.20 no evidence
+propensity_not_uplift      53.75      44.14          9.61      8378.80  1440.20 15317.40     2.81      BETTER
+               sparse      58.35      48.35         10.00     14364.09  4365.49 32688.08     5.43      BETTER
+    very_rare_outcome      62.53      54.39          8.13      1560.71   367.78  3176.01     3.35      BETTER
 
 
 === RQ7  bandits vs a frozen or retrained offline model ===

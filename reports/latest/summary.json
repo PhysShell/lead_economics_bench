@@ -5,32 +5,40 @@
   "kill_criteria": [
     {
       "criterion": "K3 kill lead-level decisioning",
-      "test": "analytics baseline >= 80% of Oracle achievable gain",
-      "value": 50.64410341484047,
+      "test": "best analytics baseline (hist_conversion_rate) >= 80% of Oracle achievable gain",
+      "value": 38.581693017533006,
       "threshold": 80.0,
       "triggered": false,
       "compute_multiple": NaN
     },
     {
       "criterion": "K5 kill product hypothesis",
-      "test": "best model within 2% (absolute pct-of-oracle) of analytics baseline",
-      "value": 75.17052801972798,
+      "test": "best model (s_learner) beats best analytics (hist_conversion_rate) by <=2% of net value per 1k (paired)",
+      "value": 10.879971250031707,
       "threshold": 2.0,
       "triggered": false,
       "compute_multiple": NaN
     },
     {
-      "criterion": "K2 kill uplift",
-      "test": "best causal model fails to beat propensity_ev by >2 pct-of-oracle points",
-      "value": 34.34434419687959,
+      "criterion": "K2 kill uplift (all regimes)",
+      "test": "best causal (s_learner) fails to beat propensity_ev_logit by >2% of net value per 1k",
+      "value": 1.4805598648177913,
       "threshold": 2.0,
-      "triggered": false,
+      "triggered": true,
+      "compute_multiple": NaN
+    },
+    {
+      "criterion": "K2 kill uplift (randomized only)",
+      "test": "best causal (s_learner) fails to beat propensity_ev_logit by >2% of net value per 1k",
+      "value": -0.1989446765094217,
+      "threshold": 2.0,
+      "triggered": true,
       "compute_multiple": NaN
     },
     {
       "criterion": "K1 kill Bayesian complexity",
-      "test": "Bayesian within 2 pts of best non-Bayesian AND >10x compute",
-      "value": 1.3948065696150707,
+      "test": "Bayesian beats best non-Bayesian (propensity_ev_gbm) by <=2% of net value per 1k AND costs >10x compute",
+      "value": 1.2104900403976016,
       "threshold": 2.0,
       "triggered": true,
       "compute_multiple": 47.018308362360244

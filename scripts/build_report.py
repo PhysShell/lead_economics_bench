@@ -225,7 +225,12 @@ def main() -> int:
 
     # ---------------- kill criteria -----------------------------------
     if len(lead):
-        kc = _kill_criteria(lead, suites["mmm"], suites["bayes"])
+        # The main lead sweep only. `lead` also carries the ablation and
+        # bayes suites, which run at a different dataset size over a
+        # different regime set with a different candidate list; pooling
+        # them changes every paired comparison the criteria depend on.
+        kc = _kill_criteria(suites["lead"] if len(suites["lead"]) else lead,
+                            suites["mmm"], suites["bayes"])
         kc.to_csv(out / "kill_criteria.csv", index=False)
         summary["kill_criteria"] = kc.to_dict("records")
 
@@ -247,54 +252,95 @@ def main() -> int:
 def _kill_criteria(lead: pd.DataFrame, mmm: pd.DataFrame, bayes: pd.DataFrame) -> pd.DataFrame:
     """Evaluate each preregistered criterion against the evidence."""
     rows = []
-    ok = lead[lead["status"] == "ok"]
+    ok = ok_rows(lead)
 
     def mean_of(cand, metric="pct_of_oracle_incremental", df=None):
         d = ok if df is None else df
         v = pd.to_numeric(d.loc[d["candidate"] == cand, metric], errors="coerce")
         return float(v.mean()) if len(v) else float("nan")
 
-    # K3 / K5: analytics sufficiency
-    analytics = mean_of("hist_profit_per_agent_hour")
-    best_model = np.nanmax([
-        mean_of(c) for c in
-        ["propensity_ev_gbm", "t_learner", "dr_learner", "x_learner", "causal_forest",
-         "funnel_ev_gbm", "s_learner", "bayes_hierarchical"]
-    ])
+    def share_of(cand, df=None):
+        """Stable Oracle share: ratio of means over the regimes every candidate
+        completed. `pct_of_oracle_incremental` averaged per row explodes where
+        the Oracle's own gain is small (aggregate.oracle_share)."""
+        s = oracle_share(ok if df is None else df)
+        if cand not in s.index:
+            return float("nan")
+        common = s.dropna(axis=1, how="any")
+        return float(common.loc[cand].mean()) if common.shape[1] else float("nan")
+
+    def paired_rel(a_cand, b_cand, df=None):
+        """Preregistered scale: paired difference in net value per 1,000 leads,
+        as a percentage of the reference. This is what the decision rule is
+        written on; Oracle-share points are a presentation scale."""
+        d = ok if df is None else df
+        key = ["scenario", "seed"]
+        if not set(key) <= set(d.columns):
+            return float("nan")
+        d = d.drop_duplicates(subset=[*key, "candidate"], keep="first")
+        left = d[d["candidate"] == a_cand].set_index(key)[PRIMARY]
+        right = d[d["candidate"] == b_cand].set_index(key)[PRIMARY]
+        shared = left.index.intersection(right.index)
+        if len(shared) < 4:
+            return float("nan")
+        diff = (left.loc[shared] - right.loc[shared]).mean()
+        base = abs(right.loc[shared].mean())
+        return float(100.0 * diff / base) if base > 1e-9 else float("nan")
+
+    MODELS = ["propensity_ev_logit", "propensity_ev_gbm", "t_learner", "dr_learner",
+              "x_learner", "causal_forest", "funnel_ev_gbm", "s_learner"]
+    CAUSAL = ["t_learner", "dr_learner", "x_learner", "causal_forest", "s_learner"]
+    ANALYTICS = ["hist_conversion_rate", "hist_profit_per_agent_hour",
+                 "hist_net_profit", "hist_roas", "last_click_attribution"]
+
+    # K3 / K5: analytics sufficiency. The analytics reference is the *best*
+    # analytics baseline on the data, not the one nominated in advance -- a
+    # falsification study compares against the strongest available.
+    shares = {c: share_of(c) for c in MODELS + ANALYTICS}
+    best_analytics = max(ANALYTICS, key=lambda c: (shares[c] if shares[c] == shares[c] else -1e9))
+    best_model = max(MODELS, key=lambda c: (shares[c] if shares[c] == shares[c] else -1e9))
     rows.append({
         "criterion": "K3 kill lead-level decisioning",
-        "test": "analytics baseline >= 80% of Oracle achievable gain",
-        "value": analytics,
+        "test": f"best analytics baseline ({best_analytics}) >= 80% of Oracle achievable gain",
+        "value": shares[best_analytics],
         "threshold": 80.0,
-        "triggered": bool(analytics >= 80.0),
+        "triggered": bool(shares[best_analytics] >= 80.0),
     })
+    k5 = paired_rel(best_model, best_analytics)
     rows.append({
         "criterion": "K5 kill product hypothesis",
-        "test": "best model within 2% (absolute pct-of-oracle) of analytics baseline",
-        "value": float(best_model - analytics),
+        "test": f"best model ({best_model}) beats best analytics ({best_analytics}) "
+                f"by <=2% of net value per 1k (paired)",
+        "value": k5,
         "threshold": 2.0,
-        "triggered": bool((best_model - analytics) < 2.0),
+        "triggered": bool(k5 <= 2.0),
     })
 
-    # K2: uplift
-    causal = np.nanmax([mean_of(c) for c in
-                        ["t_learner", "dr_learner", "x_learner", "causal_forest", "s_learner"]])
-    pev = mean_of("propensity_ev_gbm")
-    rows.append({
-        "criterion": "K2 kill uplift",
-        "test": "best causal model fails to beat propensity_ev by >2 pct-of-oracle points",
-        "value": float(causal - pev),
-        "threshold": 2.0,
-        "triggered": bool((causal - pev) <= 2.0),
-    })
+    # K2: uplift, on the preregistered paired scale rather than Oracle-share
+    # points, and against the simple economic model it has to justify itself
+    # over. Reported twice: pooled, and on the clean randomized regime the
+    # criterion actually names.
+    best_causal = max(CAUSAL, key=lambda c: (shares[c] if shares[c] == shares[c] else -1e9))
+    for label, frame in (("all regimes", ok),
+                         ("randomized only", ok[ok["regime"] == "easy_randomized"])):
+        v = paired_rel(best_causal, "propensity_ev_logit", frame)
+        rows.append({
+            "criterion": f"K2 kill uplift ({label})",
+            "test": f"best causal ({best_causal}) fails to beat propensity_ev_logit "
+                    f"by >2% of net value per 1k",
+            "value": v,
+            "threshold": 2.0,
+            "triggered": bool(v <= 2.0),
+        })
 
     # K1: Bayesian
     if len(bayes):
         b = bayes[bayes["status"] == "ok"]
-        bay = mean_of("bayes_hierarchical", df=b)
-        nonbay = np.nanmax([mean_of(c, df=b) for c in
-                            ["propensity_ev_gbm", "t_learner",
-                             "propensity_ev_gbm_bootstrap"]])
+        nonbay_cands = ["propensity_ev_gbm", "t_learner", "propensity_ev_gbm_bootstrap"]
+        best_nonbay = max(nonbay_cands,
+                          key=lambda c: (share_of(c, b) if share_of(c, b) == share_of(c, b)
+                                         else -1e9))
+        bay = paired_rel("bayes_hierarchical", best_nonbay, b)
         bt = pd.to_numeric(b.loc[b["candidate"] == "bayes_hierarchical", "fit_seconds"],
                            errors="coerce").mean()
         nt = pd.to_numeric(b.loc[b["candidate"] == "propensity_ev_gbm", "fit_seconds"],
@@ -302,11 +348,12 @@ def _kill_criteria(lead: pd.DataFrame, mmm: pd.DataFrame, bayes: pd.DataFrame) -
         ratio = float(bt / nt) if nt and nt > 0 else float("nan")
         rows.append({
             "criterion": "K1 kill Bayesian complexity",
-            "test": "Bayesian within 2 pts of best non-Bayesian AND >10x compute",
-            "value": float(bay - nonbay),
+            "test": f"Bayesian beats best non-Bayesian ({best_nonbay}) by <=2% of "
+                    f"net value per 1k AND costs >10x compute",
+            "value": bay,
             "threshold": 2.0,
             "compute_multiple": ratio,
-            "triggered": bool((bay - nonbay) < 2.0 and (ratio or 0) > 10.0),
+            "triggered": bool(bay <= 2.0 and (ratio or 0) > 10.0),
         })
 
     # K4: MMM. Split calibrated from uncalibrated, because an SMB that has

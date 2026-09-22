@@ -1,8 +1,9 @@
 criterion,test,value,threshold,triggered,compute_multiple
-K3 kill lead-level decisioning,analytics baseline >= 80% of Oracle achievable gain,50.64410341484047,80.0,False,
-K5 kill product hypothesis,best model within 2% (absolute pct-of-oracle) of analytics baseline,75.17052801972798,2.0,False,
-K2 kill uplift,best causal model fails to beat propensity_ev by >2 pct-of-oracle points,34.34434419687959,2.0,False,
-K1 kill Bayesian complexity,Bayesian within 2 pts of best non-Bayesian AND >10x compute,1.3948065696150707,2.0,True,47.018308362360244
+K3 kill lead-level decisioning,best analytics baseline (hist_conversion_rate) >= 80% of Oracle achievable gain,38.581693017533006,80.0,False,
+K5 kill product hypothesis,best model (s_learner) beats best analytics (hist_conversion_rate) by <=2% of net value per 1k (paired),10.879971250031707,2.0,False,
+K2 kill uplift (all regimes),best causal (s_learner) fails to beat propensity_ev_logit by >2% of net value per 1k,1.4805598648177913,2.0,True,
+K2 kill uplift (randomized only),best causal (s_learner) fails to beat propensity_ev_logit by >2% of net value per 1k,-0.1989446765094217,2.0,True,
+K1 kill Bayesian complexity,Bayesian beats best non-Bayesian (propensity_ev_gbm) by <=2% of net value per 1k AND costs >10x compute,1.2104900403976016,2.0,True,47.018308362360244
 K4 kill MMM for SMB (no experiments),best UNCALIBRATED MMM regret at SMB data sizes > 10%,3.9691530606525833,10.0,False,
 K4b MMM for SMB WITH lift tests,best MMM regret including experiment-calibrated variants > 10%,0.9297366259724624,10.0,False,
 K4c uncalibrated MMM barely beats an equal split,best uncalibrated MMM captures < 25% of the gain an Oracle has over equal allocation,35.80310912258029,25.0,False,

@@ -81,10 +81,20 @@ def paired(df: pd.DataFrame, a: str, b: str, metric: str = PRIMARY,
             "n_seeds": len(common),
             "verdict": _verdict(float(np.mean(d)), lo, hi, rel),
         }
-        if SECONDARY in ga.columns:
-            sa = float(ga.loc[common, SECONDARY].mean())
-            sb = float(gb.loc[common, SECONDARY].mean())
-            row.update({"oracle%_a": sa, "oracle%_b": sb, "oracle%_diff": sa - sb})
+        # Oracle share as a ratio of means, never the mean of the per-seed
+        # ratio. The per-row column divides by the Oracle's gain on that seed,
+        # and under concept_drift that denominator is ~3% of its size in other
+        # regimes, which reported 888% of Oracle for a mid-table candidate.
+        if "incremental_net_value_per_1k" in g.columns:
+            ref = g[g["candidate"] == "oracle"]
+            den = float(ref["incremental_net_value_per_1k"].sum()) if len(ref) else 0.0
+            if abs(den) > 1e-9:
+                col = "incremental_net_value_per_1k"
+                sa = 100.0 * float(ga.loc[common, col].sum()) / den * (
+                    len(ref) / max(len(common), 1))
+                sb = 100.0 * float(gb.loc[common, col].sum()) / den * (
+                    len(ref) / max(len(common), 1))
+                row.update({"oracle%_a": sa, "oracle%_b": sb, "oracle%_diff": sa - sb})
         rows.append(row)
     return pd.DataFrame(rows)
 
