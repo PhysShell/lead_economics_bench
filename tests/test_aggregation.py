@@ -168,3 +168,19 @@ def test_oracle_share_excludes_failed_cells():
     share = oracle_share(frame)
     # One good cell of 50 against two oracle cells of 100 -> 25%, not NaN.
     assert share.loc["cand", "r"] == pytest.approx(25.0)
+
+
+def test_oracle_share_is_nan_where_the_oracle_gains_nothing():
+    """`negative_control_null_effect` is built so that acting on anybody loses
+    money and the Oracle's gain over doing nothing is exactly zero. There is no
+    share of zero to take, so the regime must drop out of any mean rather than
+    divide by zero."""
+    rows = [("null", "oracle", 0, 0.0), ("null", "oracle", 1, 0.0),
+            ("null", "cand", 0, -1425.0), ("null", "cand", 1, -1425.0),
+            ("easy", "oracle", 0, 100.0), ("easy", "oracle", 1, 100.0),
+            ("easy", "cand", 0, 60.0), ("easy", "cand", 1, 60.0)]
+    share = oracle_share(_share_frame(rows))
+    assert np.isnan(share.loc["cand", "null"])
+    assert share.loc["cand", "easy"] == pytest.approx(60.0)
+    # A mean over the regimes with a defined share is unaffected by the null one.
+    assert share.loc["cand"].dropna().mean() == pytest.approx(60.0)

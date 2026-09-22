@@ -62,8 +62,14 @@ def oracle_share(
     num = ok[ok["candidate"] != oracle].groupby(["candidate", *keys])[value_col].sum()
     if num.empty or ref.empty:
         return pd.DataFrame()
-    den = num.index.droplevel("candidate").map(ref)
-    share = 100.0 * num.to_numpy() / np.asarray(den, dtype=float)
+    den = np.asarray(num.index.droplevel("candidate").map(ref), dtype=float)
+    # Where the Oracle itself gains nothing there is no share to take. That is
+    # not a defect: `negative_control_null_effect` is built so the best policy
+    # is to act on nobody, and the Oracle's gain over doing nothing is exactly
+    # zero. The regime is scored on raw value instead, and returning NaN here
+    # keeps it out of any mean rather than dividing by zero into infinity.
+    share = np.divide(100.0 * num.to_numpy(), den,
+                      out=np.full(len(num), np.nan), where=den != 0)
     out = pd.Series(share, index=num.index, name="share").reset_index()
     return out.pivot(index="candidate", columns=keys[0] if len(keys) == 1 else keys,
                      values="share")
