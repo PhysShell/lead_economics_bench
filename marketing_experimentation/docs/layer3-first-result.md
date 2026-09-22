@@ -154,3 +154,92 @@ not a claim about estimators at all.
 Vendor archaeology is paused until these are done. The landscape told us where
 the gap is; continuing to read vendor documentation will not tell us whether
 it is worth anything.
+
+---
+
+# Addendum: the information ladder, and a claim of mine it refutes
+
+**Reproduce:** `python marketing_experimentation/scripts/information_ladder.py --bandwidth-scan`
+
+## A. The overstatement, retracted
+
+I wrote that GeoLift's "wide, conservative interval still moves the posterior
+enough to change a budget decision". **The code did not show that and now
+shows it is not detectable.** `voi_v2.py` built its likelihood from `att_pct`
+alone; the interval of any individual run never entered it. The claim was an
+interpretation dressed as a result.
+
+Measuring it properly, by adding the interval width as a second signal
+dimension:
+
+| rung the decision sees | causalimpact | causalpy | geolift | google_mm |
+|---|---|---|---|---|
+| **S0** significant / not | $40,800 | $8,200 | $3,600 | $35,100 |
+| **S1** point estimate | $51,967 | $46,825 | $46,445 | $51,335 |
+| **S2** estimate + CI width | $51,040 | $46,920 | $46,272 | $49,860 |
+| **S3** + tool diagnostic | n/a | $51,325 | $45,945 | $50,378 |
+
+`S1 → S2` is worth between **−$1,475 and +$96**, against a per-cell standard
+deviation of $2–3k across 8 fit/evaluate splits. And the bandwidth scan shows
+the *sign flips*: +$1.2k at bw=0.3, −$1.7k at Scott's rule, +$1.9k at bw=1.5.
+So it is not a small effect, it is an undetectable one, and no direction can
+be claimed.
+
+**The interval adds nothing measurable on top of the point estimate here.**
+
+## B. What is actually true, and it is stronger
+
+The whole compression tax sits at one rung — **S0 → S1** — and it is enormous
+and strikingly unequal between tools:
+
+| tool | share of its own decision value that survives the significance bit |
+|---|---|
+| `geolift` | **7.8%** |
+| `causalpy` | 17.5% |
+| `google_mm` | 70.4% |
+| `causalimpact` | 79.9% |
+
+GeoLift does not have a weak estimator. **It has an informative estimator
+behind a gate that discards 92% of what it knows.** That is a property of the
+reporting interface, not of the synthetic control underneath it.
+
+And the convergence result holds at every continuous rung: the four tools span
+**11×** at S0 and about **12%** at S1–S2 ($46.3k–$52.0k against a $200k EVPI
+ceiling). Whatever separates these tools in an FPR/FNR table largely stops
+separating them once the estimate updates a belief instead of passing a
+threshold.
+
+Monotonicity `EVSI(S2) ≥ EVSI(S1) ≥ EVSI(S0)` holds for all four tools within
+two standard deviations, so the ladder is behaving as a coarsening hierarchy
+should and the S1→S2 null is not a density-estimation artefact.
+
+## C. Prior art on the decision layer itself
+
+Decision theory over experiments is emphatically not new, and the landscape
+document now says so:
+
+- **"A Decision Theoretic Approach to A/B Testing"**, arXiv
+  [1710.03410](https://arxiv.org/pdf/1710.03410) (2017) — loss, actions and
+  Bayes risk in place of a universal `p < .05`, demonstrated on eBay data.
+- **Imbens & Ng, "Scalable Decisions Using a Bayesian Decision-Theoretic
+  Approach"**, arXiv [2601.20031](https://arxiv.org/abs/2601.20031)
+  (27 Jan 2026) — experimenter-defined loss functions, hierarchical priors
+  from history, applied to Amazon supply-chain experiments.
+- **"Profit over Proxies: A Scalable Bayesian Decision Framework for
+  Optimizing Multi-Variant Online Experiments"**, arXiv
+  [2509.22677](https://arxiv.org/pdf/2509.22677).
+
+So the claim available to us is not "decision theory applied to experiments".
+It is narrower and, on this evidence, unoccupied:
+
+> Empirical likelihoods of *real geo-experiment implementations*, combined
+> with business utilities and experiment cost, to price what conventional
+> reporting throws away and to choose design and method accordingly.
+
+## D. What the bug turned out to be worth
+
+The v1 error did not find bad statistics. It found a bad interface between
+statistics and decisions — and the corrected measurement puts a number on it:
+for two of four tools, **more than 80% of the decision value of the
+experiment is destroyed at the moment the result is converted to a
+significance verdict.**
