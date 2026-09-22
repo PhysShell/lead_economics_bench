@@ -12,14 +12,31 @@ erased.
 
 ## Two lanes, deliberately separate
 
-| | repro lane | robustness lane |
+| | **version-matched lane** | robustness lane |
 |---|---|---|
 | R | **4.5.1** (donor's `renv.lock`) | 4.6.1 (CRAN apt, current) |
 | Python | **3.12.8** (donor's `.python-version`) | 3.11.15 (host) |
 | deps | `requirements.txt` frozen, then `-e . --no-deps` | same |
-| question | *can we reproduce the donor?* | *is the donor sensitive to a current environment?* |
+| question | *how closely can we reproduce the donor?* | *is the donor sensitive to a current environment?* |
 
 Mixing them would make a numerical disagreement uninterpretable.
+
+### Why "version-matched" and not "donor-exact"
+
+An earlier version of this file called the first lane *donor-exact*. It is
+not, and cannot be shown to be. Matching R and Python versions still leaves:
+
+| | donor | here |
+|---|---|---|
+| OS / arch | macOS ARM64 (Darwin) | Linux x86_64 |
+| compiler / toolchain | unpublished | gcc 13.3.0 |
+| system libraries, libc | Darwin | glibc 2.39 |
+| BLAS / LAPACK | unpublished (Accelerate, presumably) | reference BLAS via `--with-blas --with-lapack` |
+| `./configure` invocation | unpublished | recorded in `build-r-451.sh` |
+
+The donor published neither its configure line, its compiler versions nor its
+BLAS backend, so "exact" is not a claim anyone could verify. **Version-matched
+is what we can demonstrate, so version-matched is what it is called.**
 
 ## Getting R 4.5.1
 
@@ -80,14 +97,45 @@ and then `pip install -e .`, and `pyproject.toml` carries ranges
 loose install runs second and can move a pinned version out from under the
 published results.
 
+## Never run `make smoke` in the reference clone
+
+The donor's smoke target begins with `make clean`, and
+
+```make
+clean:
+	rm -rf panels/ results/ figures/
+```
+
+`results/raw/results.jsonl` is the 32,000-row published artefact that every
+golden comparison is measured against. It is git-tracked, so it is
+recoverable — but an acceptance test whose first act is deleting the thing it
+is meant to accept against is not a habit worth acquiring.
+
+**Rule:** the reference clone is read-only and never runs `make`.
+
+```
+/home/user/getrecast/geolift-simulation-study   reference, results/ chmod a-w
+/home/user/donor-smoke                          disposable, cloned --shared
+```
+
+Smoke and replay run in the disposable clone. It is re-cloned rather than
+cleaned when in doubt.
+
 ## Turning the mismatch into an experiment
 
-Once the repro lane passes G3, the same handful of fixtures runs across a
-2×2 of runtimes — not a full benchmark, 10–20 fixed seeds:
+**Deferred, deliberately.** If the version-matched lane passes the golden
+replay within tolerance, that is enough to proceed, and the θ-atlas is worth
+more than a runtime matrix. This runs only if G3 shows material drift, or if a
+portability claim later needs supporting — otherwise the project starts
+researching its own instrumentation instead of the marketing question, which
+it already has a talent for.
+
+If it does run: the same handful of fixtures across a 2×2 of runtimes — not a
+full benchmark, 10–20 fixed seeds:
 
 | | Python 3.12.8 | Python 3.11 |
 |---|---|---|
-| **R 4.5.1** | E0 donor-exact | E2 |
+| **R 4.5.1** | E0 version-matched | E2 |
 | **R 4.6.1** | E1 | E3 |
 
 measuring, per tool: Δ`att_pct`, Δ CI bounds, Δ`significant`, outright
