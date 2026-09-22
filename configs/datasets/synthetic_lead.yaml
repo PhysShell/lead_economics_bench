@@ -58,6 +58,7 @@ defaults:
   call_minutes_sigma_log: 0.55
   sms_minutes: 0.25
   effort_intent_coef: 0.0
+  sd_campaign_effort: 0.0
   sms_direct_cost: 0.03
   call_direct_cost: 0.06
   cpl_mu: 42.0
@@ -130,6 +131,12 @@ regimes:
   agent_time_heterogeneity:
     effort_intent_coef: 0.7
     call_minutes_sigma_log: 0.75
+    logging_policy: randomized
+  campaign_effort_heterogeneity:
+    sd_campaign_effort: 0.55
+    effort_intent_coef: 0.5
+    call_minutes_sigma_log: 0.65
+    value_sigma_log: 1.2
     logging_policy: randomized
   value_heterogeneity:
     value_sigma_log: 1.35

@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # One thread per learner: the runners are small and oversubscribing them
+      # makes the wall-time numbers meaningless as well as slow.
+      OMP_NUM_THREADS: "1"
+      LEADBENCH_NJOBS: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Create environment
+        run: |
+          uv venv --python 3.11 .venv
+          uv pip install --python .venv/bin/python -e ".[ml,dev]"
+
+      - name: Tests
+        run: PYTHONPATH=src .venv/bin/python -m pytest tests/ -q
+
+      - name: Smoke benchmark (end to end)
+        run: PYTHONPATH=src .venv/bin/python scripts/run_benchmark.py --suite smoke
+
+      - name: Report builder runs on the smoke output
+        run: PYTHONPATH=src .venv/bin/python scripts/build_report.py --runs reports/runs --out /tmp/ci-report
+
+      - name: Configs are regenerated, not hand-edited
+        run: |
+          PYTHONPATH=src .venv/bin/python scripts/export_configs.py
+          if ! git diff --quiet -- configs/; then
+            echo "::error::configs/ is out of date. Run scripts/export_configs.py and commit."
+            git --no-pager diff -- configs/
+            exit 1
+          fi
+
+      - name: Upload smoke artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-results
+          path: |
+            reports/runs/smoke/
+            /tmp/ci-report/
+          if-no-files-found: ignore
