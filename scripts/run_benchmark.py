@@ -235,9 +235,12 @@ def suite_bayes(args) -> None:
         + bayes_ablation_candidates()
         + risk_policy_variants()
     )
+    sizes = tuple(int(x) for x in str(args.bayes_sizes).split(","))
     specs = []
-    for r in ["sparse", "propensity_not_uplift", "very_rare_outcome", "hidden_confounding"]:
-        for n in (5_000, 20_000):
+    for r in args.regimes or [
+        "sparse", "propensity_not_uplift", "very_rare_outcome", "hidden_confounding"
+    ]:
+        for n in sizes:
             specs.append(
                 ScenarioSpec(
                     name=f"bayes_{r}_n{n}",
@@ -389,6 +392,8 @@ def main() -> None:
     ap.add_argument("--regimes", nargs="*", default=None)
     ap.add_argument("--criteo-rows", type=int, default=2_000_000)
     ap.add_argument("--online-periods", type=int, default=12)
+    ap.add_argument("--bayes-sizes", default="5000,20000",
+                    help="comma-separated dataset sizes for the bayes suite")
     ap.add_argument("--skip-criteo", action="store_true")
     ap.add_argument("--skip-bayesian-mmm", action="store_true")
     ap.add_argument("--meridian", action="store_true", help="include Google Meridian (needs .venv312)")
