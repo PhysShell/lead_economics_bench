@@ -194,6 +194,68 @@ be claimed.
 
 **The interval adds nothing measurable on top of the point estimate here.**
 
+### A.1 The obvious objection, tested and rejected
+
+Every number above passes through one Gaussian KDE, and a KDE is exactly the
+estimator that degrades when a dimension is added. So the null had an
+alternative explanation that the bandwidth scan alone could not rule out:
+**the second dimension might carry information the estimator cannot see.**
+
+**Reproduce:** `python marketing_experimentation/scripts/likelihood_models.py`
+
+Four likelihood families, each fitted on half the runs and scored on the
+other half by held-out log-likelihood — a proper scoring rule, so no family
+can win by flexibility alone. `S2 − S1` under each:
+
+| tool | kde | gauss | student-t | gmm |
+|---|---|---|---|---|
+| `causalimpact` | −$927 | **+$475** | −$1,321 | **+$651** |
+| `causalpy` | +$96 | +$1,330 | −$1,579 | +$2,120 |
+| `geolift` | −$173 | +$1,850 | −$1,220 | +$4,681 |
+| `google_mm` | −$1,475 | +$126 | −$903 | +$403 |
+
+Per-cell standard deviations run $1,800–$4,000, so every entry is inside one.
+And:
+
+> **Tools where all four families agree even on the *sign*: 0 of 4.**
+
+The decisive entry is `gauss`. A full-covariance Gaussian has five parameters
+in two dimensions and cannot be starved by the extra dimension the way a KDE
+can — if the CI width carried information that the KDE was too thin to see,
+the Gaussian would see it. It finds nothing either. **The null is a property
+of the data, not of the density estimator**, and the ladder result stands.
+
+The one entry worth naming: GeoLift under `gmm`, +$4,681 against a $2,511
+standard deviation — 1.9σ, the largest anywhere in the table, and in the
+direction my retracted claim guessed. It is contradicted in sign by two of
+the other three families and does not survive as evidence. Recorded rather
+than buried, because if θ ranges widely at M7 and it reappears, it was the
+first sign.
+
+### A.2 A caveat this comparison exposes, which the ladder did not
+
+The *level* of EVSI is strongly family-dependent, even though the
+differences are not:
+
+| family | S1 range across the four tools | spread |
+|---|---|---|
+| `kde` | $46,445 – $51,967 | 11.9% |
+| `gauss` | $54,621 – $60,695 | 11.1% |
+| `student_t` | $60,971 – $67,386 | 10.5% |
+| `gmm` | $49,485 – $56,694 | 14.6% |
+
+So the headline EVSI figures in §3 and §B are **KDE figures**, and a
+Student-t density would put them 30% higher. They should be read as
+"of this order", not as estimates. That the published ones happen to be the
+lowest is luck, not caution, and is noted so that a later switch of density
+cannot look like an improvement.
+
+**The convergence claim is unaffected, and that is the one that mattered.**
+The four tools span 10.5–14.6% at S1 under every family, against **11× at
+S0**. Whatever separates these tools in an FPR/FNR table stops separating
+them once the estimate updates a belief — and that conclusion does not
+depend on how the belief is updated.
+
 ## B. What is actually true, and it is stronger
 
 The whole compression tax sits at one rung — **S0 → S1** — and it is enormous

@@ -6,3 +6,5 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 reports/runs/
+likelihood_models_results.json
+replay_check_results.json
