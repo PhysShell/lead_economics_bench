@@ -796,11 +796,12 @@ The deliverable of this section is a map a business can apply to itself
 |---|---|---|
 | < ~5,000 resolved leads | **`propensity_ev_logit`**, or a historical profit-per-agent-hour heuristic while you collect | data-size curve: simple economics 39.2 / 48.4 vs dr_learner 31.5 at 2k |
 | 5k–25k resolved leads, homogeneous response | **`propensity_ev_logit`**. Causal adds nothing | s_learner −0.2% on `easy_randomized`, −2.8% on `sparse` |
-| > 25k leads **and** response heterogeneity | **`s_learner`** (one GBM, treatment as a feature) | +9.2% and +10.4% in the two heterogeneity regimes |
-| Outcome rate below ~1% | **`propensity_ev_logit`**. Causal learners are actively harmful | dr_learner −13.4%, x_learner −9.2% on `very_rare_outcome` |
+| > 25k leads **and** response heterogeneity | **`s_learner`** (one GBM, treatment as a feature) — the only causal candidate worth running | +10.4% `strong_heterogeneity`, +9.2% `capacity_value_heterogeneity`, +4.4% `propensity_not_uplift`; it wins 3 regimes of 18 and loses 2, while `dr_learner` loses 12 |
+| Outcome rate below ~1% | **`propensity_ev_logit`**. Causal learners are actively harmful | on `very_rare_outcome`: dr_learner −16.0%, x_learner −12.0%, t_learner −10.7%, causal_forest −6.7%, s_learner −5.2% |
+| **Missing values anywhere in the features** (i.e. any real CRM export) | **`propensity_ev_logit` or `propensity_ev_gbm`.** The EconML causal family cannot run at all without an imputation step the economic models do not need | `noisy_crm`: every causal learner fails with `Input X contains NaN` on 8/8 seeds; `propensity_ev_logit` scores 59.9% |
 | Deal value varies, response does not | **`propensity_ev_logit`** — level with the best | 55.1% vs 56.5 (s_learner), 52.2 (x_learner), 42.9 (dr_learner) |
 | Handle time varies, response does not | **`propensity_ev_logit`** — best in the study here | 61.0% vs 59.0 (x_learner), 53.7 (t_learner), 52.5 (dr_learner) |
-| Sales capacity ≥ demand | **No model.** Fix something else | every method converges to 85–88% at 100% capacity |
+| Sales capacity ≥ demand | **No model** for total profit; a model still cuts cost | every method converges to 85–88% of Oracle at 100% capacity, but net value per agent-hour still ranges $3,687–$5,620 (§6) |
 | **Randomized treatment logs exist** (an A/B holdout, or logged propensities) | **Causal estimands are identified.** `s_learner` if response heterogeneity is present, `propensity_ev_logit` otherwise — and OPE becomes available, so you can score a policy you never deployed | the real-data track (§4.2) is only possible because Hillstrom and Criteo are randomized |
 | **Observational CRM only, no randomization** | **`propensity_ev_logit`, and do not claim causality.** Uplift estimates are identified only under an untestable assumption, and the observational regimes show the cost: `class_transformation` drops to 13.9% under `observed_confounding` against 37.2% on average | `observed_confounding`, `hidden_confounding`, `selection_bias` regimes |
 | No logged action propensity | **Nothing causal is identified and OPE is impossible.** Fix the logging first — one float per decision | positivity diagnostics flag 51% violations under `policy_feedback_loop` |
@@ -1165,7 +1166,7 @@ by the rung below it failing.
 | Rung | What ships | Needs | Beats | Evidence |
 |---|---|---|---|---|
 | **0** | Profit-per-agent-hour reporting by campaign/source | CRM export with effort and realised value | last-click dashboards (+3.9%) | §5 |
-| **1** | **`propensity_ev_logit`** — calibrated P(convert) × predicted value ÷ predicted minutes, under a capacity constraint | ~1–5k resolved leads, effort logging | lead scoring by +5.0%, analytics by +10.7% | §5 |
+| **1** | **`propensity_ev_logit`** — calibrated P(convert) × predicted value ÷ predicted minutes, under a capacity constraint | ~1–5k resolved leads, effort logging | lead scoring by +4.3%, the strongest analytics baseline by +9.3%, last-click by +14.3% | §5 |
 | **2** | Randomised holdout (5–10%) with logged propensity, permanently | product decision, not a model | makes everything above measurable | §15 |
 | **3** | **`s_learner`** — one GBM with treatment as a feature | ~25k resolved leads **and** a measured response-heterogeneity signal | rung 1 by +1.5% overall (below threshold), but by +4.4% to +10.4% in the three heterogeneity regimes | §5, §1 |
 | **3b** | **Partial pooling across segments** — mixed-effects or empirical-Bayes shrinkage; **not** PyMC | many small segments (campaigns, sources, regions) with thin data each | removing pooling costs −3.2% [−5.9, −1.2], but full MCMC still only ties rung 1's GBM at 42× the cost | §8.1 |
@@ -1238,7 +1239,7 @@ Accessed 2026-09-22; vendor capability claims marked *vendor-reported*.
   *allocate scarce agent-hours to maximise contribution margin*.
 
 The capability gap at layer B is real, and this benchmark measures it at
-+5.0% of net value over a gradient-boosted lead score. The uncomfortable
++4.3% of net value over a gradient-boosted lead score. The uncomfortable
 corollary is that a gap persisting in a large, competitive market is evidence
 about value as much as about opportunity.
 
@@ -1582,7 +1583,7 @@ the value is proven first*.
 Three candidates, in descending order of confidence:
 (i) **the economic objective itself** — incremental effect × predicted
 contribution margin ÷ predicted handle time under an explicit capacity
-constraint, which is measurably worth +5.0% over lead scoring and which no
+constraint, which is measurably worth +4.3% over lead scoring and which no
 mainstream CRM computes;
 (ii) **the data contract and the permanent randomised holdout** — a defensible
 position precisely because it is operational discipline rather than an
@@ -1600,20 +1601,23 @@ named condition.**
 Continue if, and only if, a design partner has: sales capacity materially below
 the effort needed to work every lead; heterogeneous deal value; and the
 willingness to log effort and action propensity. In that setting the evidence
-for the economic layer is strong (+10.7% over analytics, +5.0% over lead
-scoring, intervals nowhere near zero) and it is buildable with a logistic
+for the economic layer is strong (+9.3% over the strongest analytics baseline,
++4.3% over a gradient-boosted lead score, intervals nowhere near zero) and it is buildable with a logistic
 regression in a few hundred lines.
 
 Do **not** continue as proposed if the plan is a Bayesian-causal decision
 platform sold as a general answer. Most of that plan is falsified by its own
 benchmark: kill criterion K2 fired on the aggregate — on synthetic randomized
 data and across 42 of 48 real-data comparisons — the doubly-robust learner
-finished 10th of 21, the causal forest spent 51% of the compute to land below a
-logistic regression, bandits bought nothing, and quantified uncertainty changed
-decisions by ±0.3 points while its 80% intervals covered 23%, and K1 fired too
-— the full hierarchical Bayesian model tied a gradient-boosted Propensity-EV
-costing 1/42 as much. The causal upgrade is real but conditional, carried
-entirely by a minority of regimes, and it should be gated behind a measured
+finished 10th of 21 and lost 12 regimes of 18, the causal forest spent 46% of
+the benchmark's compute to land 8 points below a logistic regression, the whole
+EconML family could not run at all on the dirty-CRM regime, bandits bought
+nothing, and quantified uncertainty changed decisions by ±0.3 points while its
+80% intervals covered 23%. K1 fired too: the full hierarchical Bayesian model
+tied a gradient-boosted Propensity-EV costing 1/42 as much. Above all, the best
+causal learner **did not clear the preregistered threshold against a logistic
+regression** (+1.5%, CI [+0.4%, +2.7%]). The causal upgrade is real but
+conditional, carried by 3 regimes of 18, and it should be gated behind a measured
 test for response heterogeneity rather than shipped by default.
 
 **One piece of the ambitious plan is worth a second look, and it is smaller
