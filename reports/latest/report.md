@@ -433,16 +433,28 @@ results (~3,600 events, intervals +2.4% to +7.1%) are the ones to trust.
 | `bandit_epsilon_greedy` | 47.1 | 49.3 | 53.0 | 33.7 | 45.8 |
 | `random` | 22.5 | 25.7 | 25.7 | 24.1 | 24.5 |
 
-Paired differences vs the frozen offline model: thompson −0.7, greedy −0.8,
-linucb −1.4, epsilon-greedy −5.3, periodic retraining **+0.2**.
+Paired differences against the frozen offline model, in Oracle-share points and
+in the primary metric (% of net value per 1,000 leads):
 
-Three independent readings, all pointing the same way:
+| competitor | Δ Oracle-share pts | Δ % net value |
+|---|---|---|
+| `retrained_propensity_ev` | **+0.2** | **+0.13%** |
+| `bandit_thompson` | −0.7 | −0.21% |
+| `bandit_greedy_online` | −0.8 | −0.21% |
+| `bandit_linucb` | −1.4 | −0.39% |
+| `bandit_epsilon_greedy` | −5.3 | −1.56% |
+| `random` | −26.6 | −8.20% |
 
-- **online updating of a strong learner buys nothing**: retrained vs frozen = +0.2;
+Three independent readings, all pointing the same way, and none of them close
+to the 2% practical threshold:
+
+- **online updating of a strong learner buys nothing**: retrained vs frozen =
+  +0.2 points / +0.13% of net value;
 - **exploration buys nothing**: linucb / thompson / epsilon vs `greedy_online`
-  (same linear learner, only the exploration rule differs) = −0.6 / +0.1 / −4.5;
+  (same linear learner, only the exploration rule differs) = −0.6 / +0.1 / −4.5
+  points, i.e. −0.18% / +0.01% / −1.35% of net value;
 - **learner capacity beats online-ness**: the linear bandits lose to a boosted
-  offline model **even under concept drift** (−6 to −13).
+  offline model **even under concept drift** (−6 to −13 points).
 
 The one place bandits win is `propensity_not_uplift` (+4 to +9), where the
 offline Propensity-EV is *structurally* biased — it values the control arm at
