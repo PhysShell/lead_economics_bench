@@ -258,22 +258,23 @@ def suite_bayes(args) -> None:
 def suite_online(args) -> None:
     from leadbench.evaluation.online import OnlineSpec, run_online_scenario
 
+    regimes = args.regimes or [
+        "easy_randomized",
+        "concept_drift",
+        "propensity_not_uplift",
+        "policy_feedback_loop",
+        "sparse",
+    ]
     specs = [
         OnlineSpec(
             name=f"online_{r}",
             regime=r,
-            n_leads=30_000,
+            n_leads=args.n_leads,
             capacity_ratio=DEFAULT_CAPACITY,
             seeds=tuple(range(min(args.seeds, 5))),
-            n_periods=12,
+            n_periods=args.online_periods,
         )
-        for r in [
-            "easy_randomized",
-            "concept_drift",
-            "propensity_not_uplift",
-            "policy_feedback_loop",
-            "sparse",
-        ]
+        for r in regimes
     ]
     man = _manifest("online", "Bandits vs frozen vs retrained offline models (RQ7)", [s.name for s in specs])
     frames = []
@@ -381,6 +382,7 @@ def main() -> None:
     ap.add_argument("--n-leads", type=int, default=DEFAULT_N)
     ap.add_argument("--regimes", nargs="*", default=None)
     ap.add_argument("--criteo-rows", type=int, default=2_000_000)
+    ap.add_argument("--online-periods", type=int, default=12)
     ap.add_argument("--skip-criteo", action="store_true")
     ap.add_argument("--skip-bayesian-mmm", action="store_true")
     ap.add_argument("--meridian", action="store_true", help="include Google Meridian (needs .venv312)")
