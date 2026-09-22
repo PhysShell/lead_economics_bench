@@ -132,6 +132,39 @@ The question is no longer "which estimator should this business use". It is:
 That is a harder claim for a head-to-head leaderboard to kill, because it is
 not a claim about estimators at all.
 
+## 4a. The provenance of every number above, which changed after they were written
+
+Everything in §§1–4 was computed from Recast's published `results.jsonl`,
+taken on trust. That is the normal standard in this field and it is weaker
+than it looks: it means the conclusions inherit any error in an artefact
+nobody outside the authors has executed.
+
+**That artefact has since been independently reproduced end to end** — see
+`donor-repro.md` §4d. R 4.5.1 and Python 3.12.8 assembled to the donor's own
+pins, the harness run unmodified on Linux x86_64 with reference BLAS against
+a study produced on macOS ARM64:
+
+| | |
+|---|---|
+| DGP (`true_att_level`) | 80/80 exact to 1e-9 |
+| `google_mm` | 40/40 within 1e-9 relative, worst 2.5e-13 |
+| `geolift`, `causalimpact` | 40/40, worst difference **exactly 0** |
+| `causalpy` | mean Δ +0.0010pp against 2×SE 0.0122pp |
+
+So the likelihoods underneath the EVSI figures are built on data that has
+been regenerated and re-estimated, not merely downloaded. **The decision-layer
+conclusions stand on a reproduced substrate.**
+
+Two things this does *not* fix, and they are the same two as before: the DGP
+is still synthetic and still two-point. Reproducing a simulation faithfully
+says nothing about whether the simulation resembles a real marketing
+experiment. §5 still applies in full.
+
+One thing it does fix, and it is worth naming because it was a real risk:
+the alternative was to build a decision layer on top of numbers that might
+not have survived contact with an interpreter, and to discover that after
+M7 rather than before it.
+
 ## 5. What this still cannot establish
 
 - **A two-point prior.** θ ∈ {0, +7.5%} is all the published data supports,
