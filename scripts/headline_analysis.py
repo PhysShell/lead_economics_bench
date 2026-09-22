@@ -119,10 +119,29 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=20260922)
     args = ap.parse_args()
 
-    d = pd.read_csv(Path(args.runs) / "results.csv")
+    raw = pd.read_csv(Path(args.runs) / "results.csv")
     rng = np.random.default_rng(args.seed)
+
+    # Failed cells carry NaN in every metric. They must be dropped rather than
+    # averaged: a single NaN poisons a paired difference into NaN, and a mean
+    # that silently skips them compares candidates over different regime sets.
+    d = raw[raw.get("status", "ok") == "ok"] if "status" in raw.columns else raw
+    failures = raw[raw.status != "ok"] if "status" in raw.columns else raw.iloc[:0]
     regimes = sorted(d.regime.unique())
-    print(f"{len(d)} rows, {len(regimes)} regimes, {d.seed.nunique()} seeds\n")
+    print(f"{len(d)} rows, {len(regimes)} regimes, {d.seed.nunique()} seeds")
+    if len(failures):
+        print(f"\n!! {len(failures)} FAILED cells excluded — these are a result, not noise:")
+        summary = (failures.groupby(["regime", "candidate", "status"])
+                   .size().rename("cells").reset_index())
+        print(summary.to_string(index=False))
+        # A candidate missing a whole regime is not comparable on the mean.
+        per_regime = d.groupby("candidate").regime.nunique()
+        short = per_regime[per_regime < len(regimes)]
+        if len(short):
+            print("\n   candidates scored on fewer regimes than the full set "
+                  f"({len(regimes)}), so their MEAN is not comparable:")
+            print(short.to_string())
+    print()
 
     print("=" * 78)
     print("LEADERBOARD — % of the Oracle's achievable gain")
