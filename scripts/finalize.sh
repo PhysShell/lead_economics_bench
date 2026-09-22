@@ -16,9 +16,12 @@ PY=.venv/bin/python
 # The incumbent step rewrites reports/runs/<suite>/results.csv in place. A
 # suite that is still running rewrites the same file after each scenario, so
 # running this mid-flight silently loses the appended rows.
-if pgrep -f "run_benchmark.py|run_pie_track" > /dev/null; then
+# Match the interpreter, not any shell whose command line happens to mention
+# the script (waiters and monitors do).
+RUNNING='python[^ ]* scripts/run_(benchmark|pie_track)\.py'
+if pgrep -f "$RUNNING" > /dev/null; then
   echo "ERROR: benchmark suites are still running:" >&2
-  pgrep -af "run_benchmark.py|run_pie_track" | sed 's/^/  /' >&2
+  pgrep -af "$RUNNING" | cut -c1-110 | sed 's/^/  /' >&2
   echo "Wait for them to finish, or pass --force to skip this guard." >&2
   [ "${1:-}" = "--force" ] || exit 1
   echo "--force given; continuing anyway" >&2
