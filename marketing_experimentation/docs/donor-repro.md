@@ -11,14 +11,23 @@ gate before it produces a single new number.
 ```
 G0  pristine clone, environment recorded
  ↓
-G1  dependency bootstrap                      <- blocked, see §3
+G1  two lanes assembled, not one
+      REPRO LANE       R 4.5.1 + Python 3.12.8 + frozen reqs + exact SHAs
+      ROBUSTNESS LANE  host: R 4.6.1 + Python 3.11.15
  ↓
-G2  upstream `make smoke`, N=5, all four estimators
+G2  upstream `make smoke`, N=5, all four estimators, in the repro lane
  ↓
-G3  reproduce one exact published cell (DGP -> estimator -> raw output)
+G3  golden replay: DGP -> estimator -> raw output, against published rows
  ↓
 G4  theta mutation at +2%, N=20-50
 ```
+
+The two lanes answer different questions and must not be mixed:
+
+| lane | question |
+|---|---|
+| **repro** | can we reproduce the donor at all? |
+| **robustness** | how sensitive is the donor to a current environment? |
 
 Only after G4 does an effect-size sweep begin. Two of the milestones below are
 already passed and they are the reason the gate exists: reproducing
@@ -34,7 +43,10 @@ already passed and they are the reason the gate exists: reproducing
 | M1 | decision-theory invariants (`0 ≤ EVSI ≤ EVPI`, free info never hurts) | **PASS** |
 | M2 | significance-gate bug isolated and relabelled | **PASS** |
 | M3 | information ladder on two-point θ | **PASS**, conclusion limited to S0→S1 |
-| M4 | clean upstream environment | **IN PROGRESS** |
+| M4a | pristine-clone audit (defects D1–D5 below) | **PASS** |
+| M4b | donor-exact runtime assembled (R 4.5.1, Py 3.12.8) | **IN PROGRESS** |
+| M4c | upstream smoke in the exact lane | blocked on M4b |
+| M4d | host-drift smoke in the robustness lane | R 4.6.1 restore running |
 | M5 | end-to-end upstream golden replay | blocked on M4 |
 | M6 | θ mutation (+2%) as a pipeline mutation test | blocked on M5 |
 | M7 | coarse θ likelihood atlas | blocked on M6 |
@@ -58,13 +70,23 @@ Pinned tool versions the replay must match: CausalPy 0.8.0, PyMC 5.28.1,
 ArviZ 0.23.4, CausalImpact 1.4.1, `google/matched_markets` @ `5e3cd95`,
 `facebookincubator/GeoLift` @ `4d2afd4`, `augsynth` @ `65c5a6f`.
 
-R 4.5.1 could not be obtained from either package source: the distribution
-ships 4.3.3 and the CRAN repository serves the current 4.6.1. Pinning it
-exactly would mean building R from source or using `rig`. We proceed on 4.6.1
-and record it, because 4.5 → 4.6 is a new minor series and R packages are not
-binary-compatible across it — every `renv` package will be rebuilt from
-source against 4.6.1 rather than restored as the donor built them. **If G3
-disagrees numerically, this is the first suspect, ahead of the platform.**
+**Correction to an earlier version of this document.** It said R 4.5.1 "could
+not be obtained". That was wrong: it checked two *package* sources and
+declared the search exhausted. R 4.5.1 is available from at least two ordinary
+routes — the official source tarball
+`https://cran.r-project.org/src/base/R-4/R-4.5.1.tar.gz` (released 13 June
+2025, confirmed reachable here, HTTP 200), and `rocker/r-ver:4.5.1`, which
+publishes a linux/amd64 image (digest `sha256:55be3ae296dd…`).
+
+So 4.6.1 is **not** accepted as the reproduction environment. It becomes the
+robustness lane instead — see §2a.
+
+A second correction, to a claim that was too strong: "4.5 → 4.6 is a new minor
+series and R packages are not binary-compatible across it". The accurate
+statement is narrower — **R 4.6.1 is not the runtime the lockfile was created
+on, and compiled dependencies are rebuilt or fetched for a different R minor
+series, so this is an environment perturbation rather than an exact
+reproduction.** It does not follow that any given package behaves differently.
 
 **The platform difference is not a defect, but it must be recorded**, because
 it is the most likely explanation for any numerical disagreement at G3 — and
