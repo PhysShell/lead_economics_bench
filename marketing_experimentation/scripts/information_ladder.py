@@ -62,10 +62,28 @@ DIAGNOSTIC = {
 }
 
 
-def prepare(d: pd.DataFrame, tool: str, scenario: str) -> pd.DataFrame:
-    g = d[(d.tool == tool) & (d.scenario == scenario)].copy()
+def tool_labels(d: pd.DataFrame) -> pd.DataFrame:
+    """A tool's identity includes its posterior type.
+
+    CausalPy can emit `mu` (parameter uncertainty) or `y_hat` (posterior
+    predictive, which adds observation noise). Recast published only `y_hat`,
+    so on the published file this is a no-op. On any file containing both,
+    pooling them would average two different signals into one likelihood and
+    the EVSI would describe neither.
+    """
+    if "posterior_type" not in d.columns:
+        d = d.assign(posterior_type="")
+    d = d.copy()
+    d["posterior_type"] = d["posterior_type"].fillna("")
+    d["tool_label"] = d.tool + d.posterior_type.map(
+        lambda s: f"[{s}]" if s else "")
+    return d
+
+
+def prepare(d: pd.DataFrame, tool_label: str, scenario: str) -> pd.DataFrame:
+    g = d[(d.tool_label == tool_label) & (d.scenario == scenario)].copy()
     g["ci_width"] = g.ci_upper - g.ci_lower
-    diag = DIAGNOSTIC.get(tool)
+    diag = DIAGNOSTIC.get(g.tool.iloc[0] if len(g) else "")
     if diag and diag in g.columns and g[diag].notna().any():
         g["diagnostic"] = pd.to_numeric(g[diag], errors="coerce")
     else:
@@ -73,11 +91,27 @@ def prepare(d: pd.DataFrame, tool: str, scenario: str) -> pd.DataFrame:
     return g
 
 
+def arms(g: pd.DataFrame) -> list[str]:
+    """The two arms, ordered null-first, read from the data.
+
+    Not hard-coded as ("null", "effect"): that is the pair of labels one
+    particular theta happens to produce, and reading a magnitude off a label
+    is the defect recorded as D7. Ordered by effect size so index 0 is always
+    the null state the decision problem expects.
+    """
+    order = (g.groupby("effect_label").effect_pct.median()
+             .sort_values().index.tolist())
+    return order
+
+
 def split(g: pd.DataFrame, cols: list[str], seed: int, frac_fit: float = 0.5):
     """Fit/evaluate split, per truth, so no density scores its own points."""
     rng = np.random.default_rng(seed)
     fit, ev = {}, {}
-    for j, label in enumerate(("null", "effect")):
+    labels = arms(g)
+    if len(labels) != 2:
+        return None, None
+    for j, label in enumerate(labels):
         sub = g[g.effect_label == label]
         X = sub[cols].to_numpy(dtype=float)
         X = X[np.isfinite(X).all(axis=1)]
@@ -109,9 +143,9 @@ def evsi_continuous(problem, fit, ev, bw: float | str = "scott") -> float:
 
 def evsi_binary(problem, g: pd.DataFrame) -> float:
     """EVSI for the one-bit significance signal, used optimally."""
+    labels = arms(g)
     p_sig = np.array([
-        float(g[g.effect_label == "null"].significant.mean()),
-        float(g[g.effect_label != "null"].significant.mean()),
+        float(g[g.effect_label == lab].significant.mean()) for lab in labels
     ])
     like = np.vstack([1.0 - p_sig, p_sig])
     marg = like @ problem.prior
@@ -150,8 +184,9 @@ def main() -> None:
     ap.add_argument("--bandwidth-scan", action="store_true")
     args = ap.parse_args()
 
-    d = pd.DataFrame([json.loads(l) for l in Path(args.results).open()])
-    tools = sorted(d.tool.unique())
+    d = tool_labels(pd.DataFrame(
+        [json.loads(l) for l in Path(args.results).open()]))
+    tools = sorted(d.tool_label.unique())
     problem = two_point_problem(args.prior, args.ratio * args.c_fn, args.c_fn)
 
     print(f"scenario {args.scenario} | prior P(effect)={args.prior} | "
