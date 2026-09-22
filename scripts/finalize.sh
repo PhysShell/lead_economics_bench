@@ -13,6 +13,17 @@ export PYTHONPATH=src
 export OMP_NUM_THREADS=1
 PY=.venv/bin/python
 
+# The incumbent step rewrites reports/runs/<suite>/results.csv in place. A
+# suite that is still running rewrites the same file after each scenario, so
+# running this mid-flight silently loses the appended rows.
+if pgrep -f "run_benchmark.py|run_pie_track" > /dev/null; then
+  echo "ERROR: benchmark suites are still running:" >&2
+  pgrep -af "run_benchmark.py|run_pie_track" | sed 's/^/  /' >&2
+  echo "Wait for them to finish, or pass --force to skip this guard." >&2
+  [ "${1:-}" = "--force" ] || exit 1
+  echo "--force given; continuing anyway" >&2
+fi
+
 echo "==> incumbent policy replay"
 $PY scripts/add_incumbent_baseline.py --runs reports/runs/lead || true
 $PY scripts/add_incumbent_baseline.py --runs reports/runs/rq4 || true
