@@ -93,10 +93,17 @@ real sales floor when the day ends.
 Twenty regimes, all listed in `src/leadbench/synthetic/config.py`:
 `easy_randomized`, `sparse`, `rare_outcome`, `very_rare_outcome`,
 `strong_heterogeneity`, `propensity_not_uplift`, `agent_time_heterogeneity`,
-`value_heterogeneity`, `capacity_value_heterogeneity`, `delayed_censored`,
+`campaign_effort_heterogeneity`, `value_heterogeneity`,
+`capacity_value_heterogeneity`, `delayed_censored`,
 `seasonality_trend`, `concept_drift`, `observed_confounding`,
 `hidden_confounding`, `selection_bias`, `policy_feedback_loop`, `noisy_crm`,
 `misleading_attribution`, `negative_control_null_effect`.
+
+`campaign_effort_heterogeneity` was added mid-project, after noticing that
+handle time varied only at the lead level, which made a campaign-aggregated
+"profit per agent-hour" baseline a monotone transform of "profit per lead" and
+left RQ4 untestable at the analytics layer. It is reported as a separate
+experiment id rather than folded into the original sweep.
 
 Counterfactual coherence comes from **common random numbers**: one uniform
 draw per funnel stage per lead, so a potential outcome under action `a` is
