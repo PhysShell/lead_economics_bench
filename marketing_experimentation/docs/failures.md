@@ -212,3 +212,43 @@ That watcher polls a log file for a completion marker instead.
 
 Not a research failure. Recorded because process failures that nearly
 repeat are worth the four lines.
+
+## F11. Two-lane isolation asserted, not verified — and only a broken library exposed it
+
+**What was wrong.** The whole point of the version-matched / robustness split
+is that a numerical disagreement is interpretable. I set the lane by passing
+`RSCRIPT=/opt/R/4.5.1/bin/Rscript` to the donor's `make`, and wrote in
+`donor-repro.md` that the smoke ran in the version-matched lane.
+
+It did not. The Makefile's `RSCRIPT` governs only `make panels`. GeoLift and
+CausalImpact run as subprocesses from `run_tools.py`, which hardcodes the
+string `"Rscript"` (lines 115 and 162). PATH resolved that to the *other*
+R — 4.6.1, the robustness lane. So the run generated data on 4.5.1 and
+estimated with two of four tools on 4.6.1: precisely the mixing the two-lane
+design exists to prevent.
+
+**What it would have changed.** Everything downstream. A G3 disagreement
+would have been attributed to the platform, or to a tool, when the cause was
+that half the pipeline was in the wrong lane. And the R1 PASS and the
+`google_mm` result — both genuine — would have been published alongside two
+numbers from a mixed environment, in one table, indistinguishable.
+
+**Why it was caught, and it was not by me.** The other R's renv library was
+empty, because its restore had been rolled back by the same all-or-nothing
+mechanism as D8. So both adapters died in zero seconds and wrote 40 nulls
+each, and the donor's own `smoke_test.py` failed loudly.
+
+**Had that library been complete, this would have produced plausible numbers
+and nothing would have complained.** The detection was luck. The mistake was
+asserting an isolation property instead of testing it — the same shape as
+F5 (declaring a search exhausted after two places) and F9 (assuming the donor
+shipped artefacts it does not).
+
+**How it is prevented now.** `PATH` is set to the lane's R for the whole run,
+and the run script prints which `Rscript` it actually resolved before doing
+anything. The lane is evidenced on every run instead of assumed once. The
+donor-side half is recorded as **D11**.
+
+**The general rule this earns:** an environment property that matters to a
+conclusion gets asserted by the run itself, in its own output, every time —
+not established once in a setup step and trusted thereafter.

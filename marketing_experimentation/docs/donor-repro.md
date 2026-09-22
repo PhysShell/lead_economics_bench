@@ -456,6 +456,53 @@ compiled in and `capabilities()["cairo"]` is `TRUE`. Fixed in
 donor. It is a property of the version-matched lane's R, recorded with the
 rest of the build provenance, and it would not occur on the donor's macOS.
 
+### D11 — the Makefile's `RSCRIPT` variable is a false affordance
+
+`Makefile` parameterises the R interpreter:
+
+```make
+RSCRIPT := Rscript
+panels:
+	$(RSCRIPT) src/R/generate_panels.R --n_iterations $(N_ITERATIONS)
+```
+
+which reads as an invitation to point the pipeline at a chosen R. It governs
+**only** `make panels`. The GeoLift and CausalImpact stages run as
+subprocesses from the Python layer, and both hardcode the string:
+
+```python
+run_tools.py:115   "Rscript", "src/R/run_geolift.R", ...
+run_tools.py:162   "Rscript", "src/R/run_causalimpact.R", ...
+```
+
+So `make smoke RSCRIPT=/path/to/R` generates data with the R you chose and
+estimates with whatever `Rscript` PATH happens to resolve. Two of the four
+tools silently leave the environment you specified.
+
+**Low severity on a machine with one R. Total on a machine with two**, which
+is the situation any reproducibility comparison is in by construction.
+
+**How it surfaced, which is the part worth keeping.** It did not surface as a
+wrong number. It surfaced as `att_pct: null` on 40 of 40 rows for both R
+tools, with `runtime_seconds: 0` — the subprocesses died instantly because
+the *other* R's renv library was empty (its restore had been rolled back by
+the same D8 mechanism). The donor's own `smoke_test.py` caught it:
+
+```
+[FAIL] causalimpact has non-null att_pct — 40 records, all null
+[FAIL] geolift has non-null att_pct — 40 records, all null
+```
+
+**Had that other library been complete, this would have produced plausible
+numbers from a mixed environment and nothing would have complained.** A
+broken library made a silent contamination loud. That is luck, and it is
+recorded as `F11` in `failures.md` because the mistake was ours: the
+two-lane isolation was asserted and not verified.
+
+**Our handling.** `PATH=/opt/R/4.5.1/bin:$PATH` for the whole run, and the
+run script now prints which `Rscript` it resolved before starting, so the
+lane is evidenced on every run rather than assumed once.
+
 ### Audit summary
 
 | | issue | severity | our workaround | upstream would need to change? |
@@ -470,13 +517,14 @@ rest of the build provenance, and it would not occur on the donor's macOS.
 | D8 | GeoLift + augsynth resolvable only via `api.github.com` tarball; restore is all-or-nothing, rolls back all 92 | **blocking** where that API is restricted | build from `git` at the pinned SHA, write `Remote*` fields, `renv::activate()` by hand | yes — hashes, a vendored copy, or a documented CRAN-only subset |
 | D9 | `arrow` satisfies the lockfile but built minimal: no Parquet, the study's own panel format | **blocking, and silent** — installs clean, reports the pinned version | rebuild with `LIBARROW_MINIMAL=false`, outside the shared cache | yes — record the build flags, or test the capability |
 | D10 | `make panels` aborts on a `png()` failure after writing every panel correctly | low — but total where it fires | `options(bitmapType="cairo")` in our R build; cause was ours, not the donor's | yes — `tryCatch`, or move the figure to the `figures` target |
+| D11 | `RSCRIPT` governs only `make panels`; two adapters hardcode `"Rscript"` | low with one R, **total with two** | set `PATH` for the whole run and print the resolved interpreter | yes — thread the interpreter through, or read it from config |
 
-Eight of the ten are one-line or one-file fixes. That is the characteristic
+Nine of the eleven are one-line or one-file fixes. That is the characteristic
 shape of reproducibility failure in this field: not deep methodological
 error, but a handful of unguarded lines that make a correct study hard to
 re-run. Worth stating plainly — **the donor's statistics have survived every
-one of these intact. All ten are about packaging**, and one of them, D10,
-turned out on inspection to be ours rather than the donor's.
+one of these intact. All eleven are about packaging**, and one of them,
+D10, turned out on inspection to be ours rather than the donor's.
 
 The two that are not one-line are the two that matter most, and they are the
 same failure seen twice: **D1 and D8 are both "the environment cannot
