@@ -651,7 +651,10 @@ The deliverable of this section is a map a business can apply to itself
 | Deal value varies, response does not | **`propensity_ev_logit`** — best in the study here | 56.4% vs 51.7 (x_learner), 50.3 (t_learner) |
 | Handle time varies, response does not | **`propensity_ev_logit`** — best in the study here | 61.3% vs 58.1 (x_learner), 53.5 (t_learner) |
 | Sales capacity ≥ demand | **No model.** Fix something else | every method converges to 85–88% at 100% capacity |
-| No logged action propensity | **Nothing causal is identified.** Fix the logging first | positivity diagnostics flag 51% violations under `policy_feedback_loop` |
+| **Randomized treatment logs exist** (an A/B holdout, or logged propensities) | **Causal estimands are identified.** `s_learner` if response heterogeneity is present, `propensity_ev_logit` otherwise — and OPE becomes available, so you can score a policy you never deployed | the real-data track (§4.2) is only possible because Hillstrom and Criteo are randomized |
+| **Observational CRM only, no randomization** | **`propensity_ev_logit`, and do not claim causality.** Uplift estimates are identified only under an untestable assumption, and the observational regimes show the cost: `class_transformation` drops to 13.9% under `observed_confounding` against 37.2% on average | `observed_confounding`, `hidden_confounding`, `selection_bias` regimes |
+| No logged action propensity | **Nothing causal is identified and OPE is impossible.** Fix the logging first — one float per decision | positivity diagnostics flag 51% violations under `policy_feedback_loop` |
+| Decisions made sequentially, online | **Still an offline model, retrained periodically.** Use a bandit only to *generate* logged propensities, not to make better decisions | exploration is worth −0.6 / +0.1 / −4.5 against the same greedy learner (§4.3) |
 | Channel budget, no lift tests | **Equal split beats an uncalibrated MMM** | 6.2% regret vs 14.9% |
 | Channel budget, with lift tests | **Ridge with adstock+saturation**, or a calibrated MMM you monitor | 3.98% vs 5.90% mean regret |
 

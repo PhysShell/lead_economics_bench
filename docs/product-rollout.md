@@ -164,6 +164,26 @@ representation of what a model with 4 resolved outcomes knows. Second, the
 benchmark measures whether abstention actually pays (profit versus coverage),
 so the UX is backed by a number rather than a philosophy.
 
+### The label "80% range" is not currently earned
+
+Measured against per-lead truth on the benchmark's own data, **80% nominal
+intervals achieved 23% coverage (hierarchical Bayesian) and 32% (bootstrap)**.
+That is a harsh test — the posterior covers parameter uncertainty, not model
+misspecification, and not the point-estimated value and effort models feeding
+the EV — but a customer reading "80%" will not make that distinction, and a
+regulator will not either.
+
+So until a calibration study on partner data says otherwise, the range in that
+mock should be labelled by what it is, not by a confidence level it does not
+deliver: *"plausible range"*, or better, dropped in favour of the evidence
+block underneath, which is honest and needs no calibration argument. The
+evidence counts — comparable leads, resolved outcomes, campaign age — and the
+positivity/support diagnostics are the parts of this UX the benchmark actually
+supports. Ship those first.
+
+The abstention panel is unaffected: it keys off evidence counts and logged
+propensity support, not off interval width.
+
 ## 5. Design partner profile
 
 The ideal first partner:
