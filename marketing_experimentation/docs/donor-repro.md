@@ -408,11 +408,53 @@ the project library directly rather than through the renv cache — a
 differently-configured build of the same version must not be shared with the
 robustness lane, or the two lanes stop being independent.
 
+After the rebuild (5 minutes, using the prebuilt binary the first attempt
+never reached):
+
+```
+arrow 23.0.1.2
+parquet TRUE | dataset TRUE | snappy TRUE | gzip TRUE | zstd TRUE
+round-trip of a panel-shaped frame: TRUE
+```
+
 **Recorded as a limit on the version-matched claim**, alongside BLAS. The
 donor published neither its libarrow build flags nor its BLAS backend, so
-neither is matched, and neither can be. What can be stated is that the
-capability the pipeline needs is present and round-trips a panel-shaped
-frame.
+neither is matched, and neither can be. What can be stated is narrower and
+is now stated that way: the version is the pinned one, and the capability
+the pipeline needs is present and verified by round-trip rather than assumed
+from the version string.
+
+**The general lesson, which is the reusable part.** A version check is not a
+capability check. `arrow 23.0.1.2` was true both before and after the
+rebuild; only one of those two could open a Parquet file. Any environment
+audit that stops at versions will pass a build like the first one. The
+capability probe — write a frame shaped like the study's data, read it back —
+costs three lines and is the only thing that caught it.
+
+### D10 — data generation aborts on a graphics failure
+
+Minor, and separable. `make panels` runs `generate_panels.R`, which writes
+the 40 Parquet panels **and then** a `scenario_timeseries.png`. On a headless
+R without a working bitmap device the `png()` call fails, the script halts
+non-zero, and `make smoke` stops — *after* every panel has already been
+written correctly to disk.
+
+So a graphics device is a hard dependency of the **data** stage, which has
+nothing to do with plotting. On a minimal or containerised R, the study
+cannot generate its own data.
+
+Low severity and a one-line fix upstream (wrap the figure in `tryCatch`, or
+move it to the `figures` target where it belongs). Recorded because it is a
+third instance of the same pattern as D1 and D8: an incidental coupling that
+turns a cosmetic failure into a total one.
+
+**And the cause here was ours, not the donor's**, which is why it is worth
+being precise. This R was configured `--with-x=no` (no X11 headers in the
+container), which leaves `bitmapType` at `"Xlib"` even though cairo is
+compiled in and `capabilities()["cairo"]` is `TRUE`. Fixed in
+`Rprofile.site` of this build — `options(bitmapType = "cairo")` — not in the
+donor. It is a property of the version-matched lane's R, recorded with the
+rest of the build provenance, and it would not occur on the donor's macOS.
 
 ### Audit summary
 
@@ -427,12 +469,14 @@ frame.
 | D7 | plots hard-code 7.5% truth | latent → **material on any θ ≠ 7.5%** | read `metadata.json` in the mutation diff | yes, two constants |
 | D8 | GeoLift + augsynth resolvable only via `api.github.com` tarball; restore is all-or-nothing, rolls back all 92 | **blocking** where that API is restricted | build from `git` at the pinned SHA, write `Remote*` fields, `renv::activate()` by hand | yes — hashes, a vendored copy, or a documented CRAN-only subset |
 | D9 | `arrow` satisfies the lockfile but built minimal: no Parquet, the study's own panel format | **blocking, and silent** — installs clean, reports the pinned version | rebuild with `LIBARROW_MINIMAL=false`, outside the shared cache | yes — record the build flags, or test the capability |
+| D10 | `make panels` aborts on a `png()` failure after writing every panel correctly | low — but total where it fires | `options(bitmapType="cairo")` in our R build; cause was ours, not the donor's | yes — `tryCatch`, or move the figure to the `figures` target |
 
-Seven of the nine are one-line or one-file fixes. That is the characteristic
+Eight of the ten are one-line or one-file fixes. That is the characteristic
 shape of reproducibility failure in this field: not deep methodological
 error, but a handful of unguarded lines that make a correct study hard to
 re-run. Worth stating plainly — **the donor's statistics have survived every
-one of these intact. All nine findings are about packaging.**
+one of these intact. All ten are about packaging**, and one of them, D10,
+turned out on inspection to be ours rather than the donor's.
 
 The two that are not one-line are the two that matter most, and they are the
 same failure seen twice: **D1 and D8 are both "the environment cannot
