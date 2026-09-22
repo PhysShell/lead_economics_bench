@@ -966,6 +966,78 @@ Paired against the un-ablated model, on the primary metric:
    We did not predict this, it is the largest single ablation effect in the
    table, and it argues for shrinking the value model toward its mean rather
    than trusting it per-lead. It was not investigated further and should be.
+
+### 8.2 Follow-up: can the useful parts be had cheaply? (RQ5 follow-up)
+
+Two questions the main study left open, each answered by a dedicated run.
+`reports/runs/pooling/` (6 regimes × 6 seeds, n=5,000) and
+`reports/runs/pooling_vshrink/` (2 regimes × 6 seeds, n=30,000).
+
+#### Partial pooling without MCMC — yes, and it is free
+
+K1 fired because the hierarchical Bayesian model ties a gradient-boosted
+Propensity-EV at 42× the compute. But removing its pooling costs 3.2%, so the
+pooling *is* doing work — it is just trapped inside something unshippable. So:
+pool the same `campaign_id`/`geo_id` by closed-form empirical Bayes instead,
+and by a variational mixed-effects logistic, with the one-hot dummies removed
+so the contrast is pooling against no-pooling rather than against nothing.
+
+| candidate | vs the no-pooling logistic | fit (s) | verdict |
+|---|---|---|---|
+| **`propensity_ev_pooled_eb`** | **+2.1%** [+0.2, +4.9] | **0.47** | **WIN** |
+| `propensity_ev_pooled_glmm` | +1.9% [+0.0, +4.8] | 2.62 | just misses |
+| `propensity_ev_gbm_pooled_eb` | +0.5% [−1.7, +3.2] | 0.73 | nothing |
+| *(for reference)* `bayes_hierarchical` vs `propensity_ev_gbm` | +1.2% [−1.3, +3.9] | 36.5 | K1 fires |
+
+**Closed-form empirical-Bayes shrinkage clears the preregistered threshold at
+the same cost as a plain logistic regression — 0.47 seconds against 0.47.**
+It also tops the six-regime leaderboard (53.5% of Oracle) ahead of both the
+plain logistic (50.3) and the boosted model (49.2). The win is concentrated
+where a hierarchy should help: `sparse` **+4.4%** [+1.9, +7.2], the only
+regime with an interval clear of zero.
+
+Two negatives worth as much as the positive: the variational GLMM costs 5.6×
+more than EB and does slightly *worse*, and pooling adds nothing on the
+boosted learner (+0.5%) because trees already absorb high-cardinality
+categoricals. **So the answer to "do we need PyMC" is no, and the answer to
+"do we need a GLMM" is also no. We need a groupby.**
+
+#### Value-model shrinkage — the ablation's surprise is real, and the optimum is halfway
+
+The ablation found that deleting the per-lead margin *improved*
+`capacity_value_heterogeneity` (50.8 → 61.7% of Oracle). Re-run on the same
+model and the same sample size, that replicates exactly — 50.8 → 61.7 — so it
+was not a one-cell artefact. The mechanism is that a predicted margin
+multiplies whatever error is in the response estimate, and multiplies it
+hardest on precisely the big-ticket leads that dominate the objective.
+
+% of Oracle across the shrinkage curve (`shrink=1` is the shipped model,
+`shrink=0` is the ablation):
+
+| shrink | capacity_value_het | value_het | MEAN | paired vs shrink=1 |
+|---|---|---|---|---|
+| 0.00 | **61.7** | 49.3 | 55.5 | +1.9% [−1.1, +5.2] |
+| 0.25 | 61.0 | 50.7 | 55.9 | +2.1% [−0.5, +4.8] |
+| **0.50** | 59.4 | **52.5** | **55.9** | **+2.1% [+0.4, +4.0] — WIN** |
+| 0.75 | 54.5 | 52.5 | 53.5 | +0.9% [−0.1, +1.9] |
+| 1.00 (shipped) | 50.8 | 52.5 | 51.6 | — |
+
+Per regime, `shrink=0` against the shipped model:
+`capacity_value_heterogeneity` **+4.7%** [+1.0, +8.4] (win),
+`value_heterogeneity` −1.8% [−4.4, +0.8] (no difference, trending negative).
+
+**Neither endpoint is right, and the middle is.** Deleting the value model
+wins big in one regime and loses in the other; keeping it at face value
+forfeits the first. Shrinking it halfway is the only setting that clears the
+preregistered threshold with its interval excluding zero, because it captures
+most of the gain where the margin is dangerous without paying the cost where
+the margin is informative.
+
+This changes what rung 1 of the product ladder ships: not `P(convert) ×
+predicted margin ÷ predicted minutes`, but the same expression with the
+margin **shrunk halfway toward its mean**. It is a one-line change worth
++2.1% of net value.
+
 <!-- ABLATIONS_END -->
 
 This lines up with the capacity curve in §7.3 from the other direction. There,
@@ -1191,7 +1263,7 @@ than asserted.
 
 | # | Criterion | Trigger | Status |
 |---|---|---|---|
-| K1 | Kill Bayesian complexity | Bayesian within 2% of best non-Bayesian at >10× compute | **TRIGGERED** — `bayes_hierarchical` − `propensity_ev_gbm` = +1.2% [−1.3, +3.9] over 4 regimes at n=5,000, at **42× compute** (36.5s vs 0.87s). Ship the simple model |
+| K1 | Kill Bayesian complexity | Bayesian within 2% of best non-Bayesian at >10× compute | **TRIGGERED** — `bayes_hierarchical` − `propensity_ev_gbm` = +1.2% [−1.3, +3.9] at **42× compute**. And the follow-up (§8.2) closes it completely: empirical-Bayes pooling recovers the benefit at **+2.1% [+0.2, +4.9] for 0.47s**, so the useful part of the hierarchy is available without the hierarchy |
 | K2 | Kill uplift | Causal fails to beat the simple economic model by >2% **on randomized data** | **TRIGGERED, on every reading.** Pooled over 19 regimes: best causal − `propensity_ev_logit` = **+1.48%**. On `easy_randomized` alone: **−0.20%**. On **real** randomized data (§4.2): of 48 comparisons, 41 show no meaningful difference, 1 favours propensity, and all 6 causal wins sit in one campaign arm. **Not** triggered within that arm |
 | K3 | Kill lead-level decisioning | Best analytics baseline reaches ≥80% of Oracle | **NOT triggered** — the best analytics baseline of any kind reaches **38.6%**; `hist_profit_per_agent_hour` reaches 36.2% |
 | K4 | Kill MMM for SMB | MMM allocation regret >10% at SMB sizes | **NOT triggered at SMB sizes** — calibrated MMM 0.61% regret on `smb_short` (52 weeks) and 1.25% on `very_short` (30 weeks), both well under 10%. **But it fails the criterion at 260 weeks** (25.1%), which is the opposite of the expected direction and is treated as an open failure in §9 |
@@ -1240,23 +1312,24 @@ by the rung below it failing.
 | Rung | What ships | Needs | Beats | Evidence |
 |---|---|---|---|---|
 | **0** | Profit-per-agent-hour reporting by campaign/source | CRM export with effort and realised value | last-click dashboards (+3.9%) | §5 |
-| **1** | **`propensity_ev_logit`** — calibrated P(convert) × predicted value ÷ predicted minutes, under a capacity constraint | ~1–5k resolved leads, effort logging | lead scoring by +4.3%, the strongest analytics baseline by +9.3%, last-click by +14.3% | §5 |
+| **1** | **`propensity_ev_logit`** — calibrated P(convert) × predicted value ÷ predicted minutes, under a capacity constraint, with the **margin shrunk halfway to its mean** and **empirical-Bayes pooled** campaign effects | ~1–5k resolved leads, effort logging | lead scoring by +4.3%, the strongest analytics baseline by +9.3%, last-click by +14.3%; pooling adds +2.1% and margin shrinkage +2.1%, both free | §5, §8.2 |
 | **2** | Randomised holdout (5–10%) with logged propensity, permanently | product decision, not a model | makes everything above measurable | §15 |
 | **3** | **`s_learner`** — one GBM with treatment as a feature | ~25k resolved leads **and** a measured response-heterogeneity signal | rung 1 by +1.5% overall (below threshold), but by +4.4% to +10.4% in the three heterogeneity regimes | §5, §1 |
-| **3b** | **Partial pooling across segments** — mixed-effects or empirical-Bayes shrinkage; **not** PyMC | many small segments (campaigns, sources, regions) with thin data each | removing pooling costs −3.2% [−5.9, −1.2], but full MCMC still only ties rung 1's GBM at 42× the cost | §8.1 |
+| ~~3b~~ | **Folded into rung 1.** Empirical-Bayes pooling costs 0.47s — the same as no pooling — so there is no rung to climb | — | +2.1% [+0.2, +4.9] over the unpooled logistic; a variational GLMM costs 5.6× more and does worse | §8.2 |
 | **4** | Uncertainty surfacing / abstention | posterior or bootstrap intervals | **not demonstrated** — see §2.6, §2.9, §8.1 | — |
 | **5** | Budget allocation: ridge with adstock+saturation first, calibrated MMM only with monitoring | a running lift-test programme | equal split, 3.98% vs 6.16% regret | §4.4 |
 
-Rung 3b is conditional and modest: pooling contributes (−3.2% when removed,
-interval excluding zero) but the only implementation benchmarked here — full
-MCMC — fires kill criterion K1 by tying a model that costs 1/42 as much. Build
-it only if a partner's data really is dominated by thin segments, and build it
-with shrinkage rather than sampling. Benchmarking the cheap alternatives is the
-clearest piece of unfinished work in this study. Rung 4 has no evidence behind
-it and should not be built until it does — the intervals measured here cover
-23% against a nominal 80%. Rung 5 should not be built before a partner is
-running lift tests, because without them the MMM is worse than an equal
-split.
+Rung 3b has been dissolved rather than deferred. Pooling contributes (−3.2%
+when removed) and the MCMC implementation fires K1 by tying a model costing
+1/42 as much — but empirical-Bayes shrinkage recovers the benefit for the same
+0.47 seconds a plain logistic takes (§8.2), so there is no separate rung to
+climb and no build decision to make. It folds into rung 1 alongside the
+halfway margin shrinkage, and both are one-line changes.
+
+Rung 4 has no evidence behind it and should not be built until it does — the
+intervals measured here cover 23% against a nominal 80%. Rung 5 should not be
+built before a partner is running lift tests, because without them the MMM is
+worse than an equal split.
 
 ### 11.4 Day-one value, before any model has data
 
@@ -1518,10 +1591,13 @@ specifically is worth nothing: every risk-aware policy landed within ±0.3% of
 its own point-estimate version, the bootstrap variant's interval is literally
 [+0.0, +0.0], and the intervals under-cover badly (80% nominal → 23% actual).
 Second, the *hierarchy* is not nothing: removing partial pooling costs −3.2%
-[−5.9%, −1.2%], so pooling genuinely contributes — it simply is not enough to
-clear a model costing 1/42 as much. If a partner's data is dominated by many
-thin segments, pooling is worth having; get it from mixed effects or
-empirical-Bayes shrinkage, which this study did not benchmark and should have.
+[−5.9%, −1.2%], so pooling genuinely contributes. **That part is now settled
+and it settles the question** (§8.2): closed-form empirical-Bayes shrinkage
+recovers it at **+2.1% [+0.2, +4.9]** over the unpooled logistic, clearing the
+preregistered threshold, for **0.47 seconds of fit — the same as no pooling at
+all**. A variational mixed-effects GLMM costs 5.6× more and does slightly
+worse. So: we need pooling, we do not need Bayes, and we do not need a GLMM
+either. It is a groupby.
 
 **4. Where is causal uplift genuinely more useful than propensity?**
 **Only where treatment response is heterogeneous — and overall, on this
@@ -1564,12 +1640,19 @@ what makes everything else measurable.
 **6. What is the simplest model family we would actually ship?**
 **Calibrated logistic regression, multiplied by a predicted contribution
 margin, divided by predicted handle time, allocated under an explicit capacity
-constraint.** That is `propensity_ev_logit`: **0.98 seconds to fit, 60.7% of
-Oracle, tied for first on the entire leaderboard** with a causal metalearner
-costing 2.3× as much, and no worse than its own gradient-boosted twin
-(−0.5%, CI [−0.9%, −0.1%], inside the threshold). It is also the only one of
-the two that runs at all on data with missing values. The intelligence is in
-the objective, not the estimator.
+constraint — with two one-line refinements that the follow-up run paid for.**
+That is `propensity_ev_logit`: **0.98 seconds to fit, 60.7% of Oracle, tied
+for first on the entire leaderboard** with a causal metalearner costing 2.3×
+as much, and no worse than its own gradient-boosted twin (−0.5%, CI [−0.9%,
+−0.1%], inside the threshold). It is also the only one of the two that runs at
+all on data with missing values.
+
+The two refinements, each free and each clearing the threshold on its own
+(§8.2): **pool the campaign effects by empirical Bayes** rather than one-hot
+encoding them (+2.1%, and it costs nothing — 0.47s against 0.47s), and
+**shrink the predicted margin halfway toward its mean** rather than trusting
+it per lead (+2.1%). The intelligence is in the objective and in two lines of
+shrinkage, not in the estimator.
 
 **7. At what data volume does it start being useful?**
 **~1,000–5,000 resolved leads** for the economics wrapper — it is the *best*
@@ -1694,15 +1777,19 @@ regression** (+1.5%, CI [+0.4%, +2.7%]). The causal upgrade is real but
 conditional, carried by 3 regimes of 18, and it should be gated behind a measured
 test for response heterogeneity rather than shipped by default.
 
-**One piece of the ambitious plan is worth a second look, and it is smaller
-than it first appeared**: hierarchical partial pooling. Removing it costs
-−3.2% [−5.9%, −1.2%], so it does real work — but the model carrying it still
-only ties the cheap baseline, so the work is not worth 42× the compute *as
-implemented*. The open question is whether mixed effects or empirical-Bayes
-shrinkage capture most of that −3.2% for near-zero cost. This study did not
-run that comparison and should have; it is the clearest unfinished work here.
-If shrinkage does capture it, the answer to this whole question is a logistic
-regression with pooled segment effects, and the platform was never needed.
+**One piece of the ambitious plan survived, and the follow-up run shrank it
+to its useful size**: hierarchical partial pooling. It does real work —
+removing it costs −3.2% [−5.9%, −1.2%] — but the model carrying it ties the
+cheap baseline at 42× the compute. The obvious test was whether the pooling
+survives without the Bayes, and it does: closed-form empirical-Bayes
+shrinkage delivers **+2.1% [+0.2, +4.9]** over the unpooled logistic for
+**0.47 seconds**, the same as no pooling at all (§8.2). The same run found
+that shrinking the predicted margin halfway toward its mean is worth another
+**+2.1% [+0.4, +4.0]**.
+
+So the answer to this whole question really is a logistic regression with
+pooled segment effects and a shrunk margin, and the platform was never
+needed.
 
 And if the partner's sales team has capacity to call everyone: **stop.** At 100%
 capacity every method in this study converges to 85–88% of Oracle, and the most
