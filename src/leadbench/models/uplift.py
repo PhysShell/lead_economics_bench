@@ -175,9 +175,13 @@ class XLearner(_CausalBase):
         y = train[ctx.outcome_column].to_numpy(dtype=int)
         t = train["action"].to_numpy(dtype=int)
         base = ProbaRegressor(kind=self.kind, seed=ctx.seed, **self.model_kw)
+        # EconML wants one estimator per arm *including control* for both
+        # `models` and `cate_models`. The outcome models predict a probability,
+        # so a classifier wrapper is right; the cate models regress on a
+        # continuous pseudo-effect, so they must be genuine regressors.
         self._est = _X(
             models=[clone(base) for _ in range(ctx.n_actions)],
-            cate_models=[clone(base) for _ in range(ctx.n_actions - 1)],
+            cate_models=[_final_regressor(ctx.seed + i) for i in range(ctx.n_actions)],
             propensity_model=make_classifier(
                 "logistic" if self.kind == "logistic" else "lightgbm", seed=ctx.seed
             ),
@@ -246,9 +250,13 @@ class CausalForest(_CausalBase):
 
     has_uncertainty = True
 
-    def __init__(self, *args: Any, n_estimators: int = 400, cv: int = 3, **kw: Any) -> None:
+    def __init__(self, *args: Any, n_trees: int = 400, cv: int = 3, **kw: Any) -> None:
+        # Deliberately named `n_trees`, not `n_estimators`: the latter is also a
+        # base-learner hyperparameter and silently swallowing it here would give
+        # the forest's base learners different capacity from every other family.
         super().__init__(*args, **kw)
-        self.n_estimators = n_estimators
+        # EconML requires the forest size to be divisible by subforest_size (4).
+        self.n_trees = int(np.ceil(n_trees / 4) * 4)
         self.cv = cv
 
     def _fit(self, ctx: FitContext) -> None:
@@ -264,7 +272,7 @@ class CausalForest(_CausalBase):
             model_y=ProbaRegressor(kind=self.kind, seed=ctx.seed, **self.model_kw),
             model_t=make_classifier("lightgbm", seed=ctx.seed, n_estimators=200),
             discrete_treatment=True,
-            n_estimators=self.n_estimators,
+            n_estimators=self.n_trees,
             min_samples_leaf=20,
             cv=self.cv,
             random_state=ctx.seed,
