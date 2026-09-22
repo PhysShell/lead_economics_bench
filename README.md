@@ -79,8 +79,26 @@ docs/
   benchmark-spec.md     preregistered hypotheses, metrics, kill criteria
   data-contract.md      what a business must start collecting today
   methodology.md        design decisions, what broke, limitations
+  product-rollout.md    shadow mode, pilot power analysis, MVP architecture
   research/             market, open-source and patent landscapes
+scripts/
+  run_benchmark.py      every suite behind one entrypoint
+  build_report.py       leaderboards, comparisons, kill criteria, figures
+  answer_research_questions.py   per-RQ verdicts under the preregistered rule
+  run_meridian.py       Google Meridian, in an isolated Python 3.12 runtime
+  run_pie_track.py      PyMC-Marketing PIE, campaign-level track
+  finalize.sh           assemble reports/latest in one command
 ```
+
+### Data quality checks you can point at a real CRM export
+
+`leadbench.evaluation.diagnostics` runs the adversarial checks on any
+dataframe, not just the synthetic regimes: Simpson's paradox (sign reversal
+between marginal and within-segment treatment differences), target leakage,
+future-dated columns used as features, positivity/overlap, and duplicate
+entities. On this benchmark's own regimes they correctly flag 51% positivity
+violations under the policy-feedback regime and 2.9% duplicate people in the
+dirty-CRM regime, and stay quiet on clean randomized data.
 
 ## Design decisions that matter
 
