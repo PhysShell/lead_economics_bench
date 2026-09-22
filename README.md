@@ -16,7 +16,11 @@ advance.
 **Read the findings in [`reports/latest/report.md`](reports/latest/report.md).**
 
 The short version, after 19 synthetic regimes, two real randomized experiments
-and 6,800 scored cells:
+and **6,183 scored cells** (rows across the nine suites the report draws on;
+the CI smoke fixture and two superseded pilot runs are excluded, which is why
+`reports/runs/` holds 6,608 rows in total — the number is written by
+`build_report.py` into `reports/latest/summary.json` rather than typed by
+hand):
 
 - **Explicit economics wins decisively.** `P(convert) x predicted margin /
   predicted handle time`, under a capacity constraint, beats the strongest

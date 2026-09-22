@@ -88,6 +88,7 @@ class _SupervisedBase(Candidate):
         calibrate: bool = False,
         value_mode: str = "model",
         effort_mode: str = "model",
+        value_shrink: float = 1.0,
         n_bootstrap: int = 0,
         **model_kw: Any,
     ) -> None:
@@ -96,6 +97,8 @@ class _SupervisedBase(Candidate):
         self.calibrate = calibrate
         self.value_mode = value_mode
         self.effort_mode = effort_mode
+        #: Weight on the per-lead predicted margin; see ValueModel.shrink.
+        self.value_shrink = value_shrink
         self.n_bootstrap = n_bootstrap
         self.model_kw = model_kw
         self._value: ValueModel | None = None
@@ -111,7 +114,9 @@ class _SupervisedBase(Candidate):
     def _fit_nuisance(self, ctx: FitContext, train: pd.DataFrame) -> None:
         enc = self.encoder(ctx)
         Xt = enc.transform_tree(train)
-        self._value = ValueModel(mode=self.value_mode, seed=ctx.seed).fit(train, Xt)
+        self._value = ValueModel(
+            mode=self.value_mode, seed=ctx.seed, shrink=self.value_shrink
+        ).fit(train, Xt)
         self._effort = EffortModel(mode=self.effort_mode, seed=ctx.seed).fit(
             train, Xt, call_action=ctx.n_actions - 1
         )

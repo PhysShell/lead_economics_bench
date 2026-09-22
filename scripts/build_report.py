@@ -70,13 +70,25 @@ def main() -> int:
 
     suites = {s: load(runs, s) for s in
               ["lead", "curves", "ablation", "bayes", "online", "real", "mmm",
-               "smoke", "rq4", "pie"]}
+               "smoke", "rq4", "pie", "pie_interactions"]}
     lead = pd.concat(
         [suites[s] for s in ("lead", "ablation", "bayes") if len(suites[s])],
         ignore_index=True,
     ) if any(len(suites[s]) for s in ("lead", "ablation", "bayes")) else pd.DataFrame()
 
     summary: dict[str, object] = {}
+
+    # One canonical count, derived rather than asserted. `smoke` is the CI
+    # fixture, `pie` and `lead_pilot_8seed_40k` are superseded by
+    # `pie_interactions` and the final lead sweep; none of the three back any
+    # claim in the report, so counting them would inflate the headline.
+    STUDY_SUITES = ["lead", "curves", "ablation", "bayes", "online", "real",
+                    "mmm", "rq4", "pie_interactions"]
+    summary["scored_cells"] = int(sum(
+        len(suites[s]) for s in STUDY_SUITES if len(suites[s])))
+    summary["scored_cells_definition"] = (
+        "rows across " + ", ".join(STUDY_SUITES)
+        + "; excludes the CI smoke fixture and superseded pilot runs")
 
     # ---------------- leaderboards ------------------------------------
     if len(lead):

@@ -258,6 +258,58 @@ def suite_bayes(args) -> None:
         _write(pd.concat(frames, ignore_index=True), "bayes", "results", man)
 
 
+def suite_pooling(args) -> None:
+    """RQ5-followup: partial pooling without MCMC, and value-model shrinkage.
+
+    Both questions the completed study left open, in one suite. Run at the
+    same n and on the same regimes as `--suite bayes` so the pooling results
+    are directly comparable with `bayes_hierarchical`, plus the two
+    value-heterogeneity regimes where shrinking the margin unexpectedly helped.
+    """
+    from leadbench.models.registry import (
+        oracle_candidate,
+        pooling_candidates,
+        value_shrinkage_candidates,
+        _spec,
+    )
+    from functools import partial
+    from leadbench.models.naive import HistoricalProfitPerAgentHourPolicy
+
+    cands = (
+        oracle_candidate()
+        + [_spec("hist_profit_per_agent_hour", HistoricalProfitPerAgentHourPolicy,
+                 "analytics")]
+        + pooling_candidates()
+        + value_shrinkage_candidates()
+    )
+    sizes = tuple(int(x) for x in str(args.bayes_sizes).split(","))
+    regimes = args.regimes or [
+        # The four the bayes suite used, so pooling is comparable like-for-like.
+        "sparse", "propensity_not_uplift", "very_rare_outcome", "hidden_confounding",
+        # Plus the two where the value-model ablation produced its surprise.
+        "capacity_value_heterogeneity", "value_heterogeneity",
+    ]
+    specs = [
+        ScenarioSpec(
+            name=f"pool_{r}_n{n}",
+            regime=r,
+            n_leads=n,
+            capacity_ratio=DEFAULT_CAPACITY,
+            seeds=tuple(range(min(args.seeds, 6))),
+        )
+        for r in regimes
+        for n in sizes
+    ]
+    man = _manifest("pooling",
+                    "Cheap partial pooling and value-model shrinkage (RQ5 follow-up)",
+                    [s.name for s in specs])
+    frames = []
+    for s in specs:
+        print(f"\n=== {s.name} ===")
+        frames.append(run_scenario(s, cands))
+        _write(pd.concat(frames, ignore_index=True), "pooling", "results", man)
+
+
 def suite_online(args) -> None:
     from leadbench.evaluation.online import OnlineSpec, run_online_scenario
 
@@ -378,6 +430,7 @@ SUITES = {
     "curves": suite_curves,
     "ablation": suite_ablation,
     "bayes": suite_bayes,
+    "pooling": suite_pooling,
     "online": suite_online,
     "real": suite_real,
     "mmm": suite_mmm,

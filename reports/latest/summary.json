@@ -1,4 +1,6 @@
 {
+  "scored_cells": 6183,
+  "scored_cells_definition": "rows across lead, curves, ablation, bayes, online, real, mmm, rq4, pie_interactions; excludes the CI smoke fixture and superseded pilot runs",
   "n_lead_rows": 4204,
   "n_comparisons": 1498,
   "n_failed_cells": 40,

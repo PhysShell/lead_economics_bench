@@ -346,3 +346,64 @@ def get_tier(name: str) -> list[CandidateSpec]:
     if name not in TIERS:
         raise KeyError(f"unknown tier {name!r}; known: {sorted(TIERS)}")
     return TIERS[name]()
+
+
+def pooling_candidates() -> list[CandidateSpec]:
+    """RQ5-followup: can partial pooling be had without MCMC?
+
+    K1 fired because the hierarchical Bayesian model merely ties a
+    gradient-boosted Propensity-EV at 42x the compute -- yet removing its
+    partial pooling costs 3.2% of net value, so the pooling itself is doing
+    real work. These candidates isolate that work and price it: same
+    objective, same nuisances, same allocator, only the treatment of the
+    grouping columns differs.
+    """
+    from .pooled import MixedEffectsPropensityEV, PooledPropensityEV
+
+    return [
+        # The no-pooling reference: per-campaign dummies, L2 only.
+        _spec("propensity_ev_logit", partial(PropensityEV, "propensity_ev_logit",
+                                             kind="logistic"), "economic"),
+        # Closed-form empirical-Bayes shrinkage. Costs a groupby.
+        _spec("propensity_ev_pooled_eb",
+              partial(PooledPropensityEV, "propensity_ev_pooled_eb",
+                      kind="logistic"),
+              "economic", "pooling"),
+        # Variational mixed-effects logistic.
+        _spec("propensity_ev_pooled_glmm",
+              partial(MixedEffectsPropensityEV, "propensity_ev_pooled_glmm",
+                      kind="logistic"),
+              "economic", "pooling"),
+        # And the same idea on the boosted learner, since the K1 reference is
+        # the boosted one.
+        _spec("propensity_ev_gbm", partial(PropensityEV, "propensity_ev_gbm",
+                                           kind="xgboost", **GBM_KW), "economic"),
+        _spec("propensity_ev_gbm_pooled_eb",
+              partial(PooledPropensityEV, "propensity_ev_gbm_pooled_eb",
+                      kind="xgboost", **GBM_KW),
+              "economic", "pooling"),
+    ]
+
+
+def value_shrinkage_candidates(
+    weights: tuple[float, ...] = (0.0, 0.25, 0.5, 0.75, 1.0),
+) -> list[CandidateSpec]:
+    """The ablation's surprise, turned into a measurement.
+
+    Removing the per-lead value model *improved* `capacity_value_heterogeneity`
+    (propensity_ev_gbm 50.8 -> 61.7% of Oracle): a predicted margin multiplies
+    whatever error is in the response estimate, hardest on exactly the
+    big-ticket leads that dominate the objective. `shrink=1` is the shipped
+    model, `shrink=0` is the ablation, and the points between are the question
+    nobody asked yet.
+    """
+    out = []
+    for w in weights:
+        tag = f"{int(round(w * 100)):03d}"
+        out.append(_spec(
+            f"propensity_ev_logit_vshrink{tag}",
+            partial(PropensityEV, f"propensity_ev_logit_vshrink{tag}",
+                    kind="logistic", value_shrink=w),
+            "economic", "value_shrinkage",
+        ))
+    return out

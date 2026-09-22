@@ -202,9 +202,18 @@ class ValueModel:
     for everybody, which is what most lead-scoring products implicitly assume.
     """
 
-    def __init__(self, mode: str = "model", seed: int = 0) -> None:
+    def __init__(self, mode: str = "model", seed: int = 0,
+                 shrink: float = 1.0) -> None:
         self.mode = mode
         self.seed = seed
+        #: Weight on the per-lead prediction, 0 = global mean for everybody.
+        #: The ablation found that removing the value model entirely *improved*
+        #: `capacity_value_heterogeneity` (50.8 -> 61.7% of Oracle), because a
+        #: per-lead margin multiplies whatever error is in the response
+        #: estimate and multiplies it hardest on exactly the big-ticket leads
+        #: that dominate the objective. Shrinking toward the mean is the
+        #: obvious middle ground and `shrink` is how it gets measured.
+        self.shrink = float(shrink)
         self._global = 0.0
         self._model = None
 
@@ -224,9 +233,12 @@ class ValueModel:
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        if self._model is None:
+        if self._model is None or self.shrink <= 0.0:
             return np.full(len(X), self._global)
-        return self._model.predict(X)
+        pred = self._model.predict(X)
+        if self.shrink >= 1.0:
+            return pred
+        return self.shrink * pred + (1.0 - self.shrink) * self._global
 
 
 class EffortModel:
