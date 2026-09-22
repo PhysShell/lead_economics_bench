@@ -9,3 +9,4 @@ reports/runs/
 likelihood_models_results.json
 replay_check_results.json
 theta_atlas_results.json
+continuous_ladder_results.json
