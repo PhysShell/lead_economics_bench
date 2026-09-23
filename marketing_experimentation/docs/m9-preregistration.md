@@ -201,3 +201,127 @@ and a far better one than "geo tests are too expensive".
 * New estimator benchmarks.
 * Any claim of real-world external validity. The DGP is synthetic and — as §1
   establishes — does not even contain the economic object being priced.
+
+---
+
+# M9-A RESULT — the price of information, as a rate
+
+**Reproduce:** `python marketing_experimentation/scripts/m9a_break_even.py`
+
+Horizon declared, not inherited: **L = 1 decision, ρ = 1, no discounting.**
+
+## Linearity, verified rather than assumed
+
+`EVPI/spend` over six decades (1e4 → 1e9): constant to **6.9e−18**. A dollar
+figure is a statement about the budget it was computed at; the transportable
+quantity is a rate.
+
+## The price
+
+Share of the spend the decision governs, per decision. 2,000 cluster-bootstrap
+draws, conditioned prior, validated `q(θ)`.
+
+| tool | VERDICT | BIT | **V − B** | V−B 95% credible |
+|---|---|---|---|---|
+| `causalimpact` | **0.2579%** | 0.1472% | 0.1088% | [0.0639%, 0.1657%] |
+| `causalpy[y_hat]` | **0.2130%** | 0.0000% | 0.2129% | [0.1546%, 0.3459%] |
+| `google_mm` | **0.1504%** | 0.0315% | 0.1064% | [0.0666%, 0.1991%] |
+| `geolift` | 0.0214% | 0.0000% | 0.0214% | [0.0000%, 0.0749%] |
+| *EVPI ceiling* | *2.2120%* | | | |
+
+## Break-even, which is EVSI restated
+
+The largest **net economic cost** at which the signed-verdict experiment
+still pays. No cost model is required to state a threshold — that is the
+point of the inversion.
+
+| governed spend | `causalimpact` | `causalpy` | `google_mm` | `geolift` |
+|---|---|---|---|---|
+| $250,000 | $645 | $533 | $376 | $53 |
+| $1,000,000 | $2,579 | $2,130 | $1,504 | $214 |
+| $5,000,000 | $12,893 | $10,651 | $7,522 | $1,068 |
+| $20,000,000 | $51,574 | $42,605 | $30,088 | $4,272 |
+| $100,000,000 | $257,868 | $213,023 | $150,442 | $21,359 |
+
+Read the other way, which is the form the outside world can answer:
+
+    a $5,000 net-cost experiment breaks even at  $1.9M – $23.4M governed spend
+    a $20,000 net-cost experiment breaks even at $7.8M – $93.6M
+    a $50,000 net-cost experiment breaks even at $19.4M – $234M
+
+(one decision; the range spans the four estimators, `geolift` at the far end)
+
+## What M9-A hands over, and to whom
+
+The simulation prices the information. **Whether real geo experiments cost
+more than these thresholds is an external-data question** — and the figure to
+compare against is the *net economic* cost, not the ad spend perturbed, which
+differs in sign as well as magnitude.
+
+Not an ENBS (no cost model, deliberately). Not a design frontier. Not a
+lifetime value. Not external validity.
+
+---
+
+# M9-B — axes frozen, not yet run
+
+## Three corrections to the proposed axes, from reading the generator
+
+**1. The G knob is the donor pool — confirmed, and the guardrail was needed.**
+`generate_panels.R:35-36`:
+
+```r
+n_treated <- 1   # Number of treated geos (always 1 in this study)
+n_control <- 20  # Number of control/donor geos
+```
+
+`n_treated` is hardcoded to 1. The axis is therefore **`G_c` = control/donor
+pool size**, and scenario A3 is `n_control = 9`. `{5, 9, 20, 40}` maps to
+scarce / A3 anchor / A1 default / saturation probe. Varying *treated* geos
+would be a different intervention-design question and is not available.
+
+**2. The T anchor is 15, not 14.** Defaults are `total_days = 105,
+pre_days = 90`, so post-days = **15**. Using 15 makes the anchor exact and
+free rather than approximately free. **Frozen: T ∈ {15, 21, 28, 42}
+post-days**, with `pre_days = 90` held fixed — which satisfies the 2× rule at
+every point (2 × 42 = 84 ≤ 90), so the pre-period never becomes a stealth
+second axis. 56 and 70 are excluded for exactly that reason.
+
+**3. Scenario A4 is not a duration variant.** It is `total_days = 45,
+pre_days = 30` — post-days **15**, the same test length as A1, with a
+*shorter calibration window*. Treating it as the short-duration arm would
+have swept pre-period under a duration label. It is excluded from M9-B.
+
+## Frozen design
+
+    T (post-days)      15, 21, 28, 42      pre_days = 90 throughout
+    G_c (donor pool)    5,  9, 20, 40      n_treated = 1 throughout
+    theta               the 16 M8 truths
+    scenario            S1/A1 regime ONLY -- not crossed with A2-A4,
+                        which answer robustness rather than marginal-
+                        information questions
+    iterations          25, clusters (scenario, iteration) as before
+
+**Estimand:** `r_EVSI(T, G_c) = EVSI(T, G_c) / S_governed`, and hence the
+break-even surface `C*(T, G_c, S) = r_EVSI(T, G_c) · S`. Not ENBS — there is
+still no cost model, and M9-B does not invent one.
+
+**Monotonicity is descriptive, not an acceptance criterion.** More data can
+improve the experiment while an estimator's own calibration moves
+differently; the donor study already shows tool-specific rather than uniform
+behaviour. No threshold is attached to it, and none will be invented after
+seeing the surface.
+
+## Cost, and the two cells already paid for
+
+16 cells × 16 truths × 4 tools × 25 iterations = **25,600 rows**. But
+`(T=15, G_c=20)` is A1 and `(T=15, G_c=9)` is A3, both already at 25
+iterations over all 16 truths in the merged M8 file. So **14 new cells,
+22,400 rows**.
+
+M8 ran 3,600 rows in 6,911s. Mean panel size across the grid is close to the
+M8 baseline (mean `n_geos` 19.5 against 21; mean `total_days` 116.5 against
+105), so the central estimate is **~12 CPU-hours**, with real uncertainty
+upward since CausalPy dominates and scales with panel size.
+
+That is ~6× the largest run in this project so far. **Not launched.**
