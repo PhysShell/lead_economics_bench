@@ -124,8 +124,8 @@ Only after G4 does an effect-size sweep begin.
 | M5a | R1 — DGP reproduced via `true_att_level` | **PASS** — 320/320 exact to 1e-9 (§4d.1) |
 | M5b | R2 — golden estimator replay against published rows | **PASS** — 160 rows/tool, clears the preregistered count (§4d.1) |
 | M6a | θ mutation +2% (six PASS criteria, §5) | **PASS 6/6** (§5c); figure fix verified separately |
-| M6b | θ mutation −5% (sign mutation) | running, arms `null` / `eff_m050` |
-| M7 | coarse θ likelihood atlas | queued: θ ∈ {−10,−5,0,+2,+5,+7.5,+15}%, N=25 |
+| M6b | θ mutation −5% (sign mutation) | **PASS 6/6** (§5b.1); 65.9% of estimates negative |
+| M7 | coarse θ likelihood atlas | running: θ ∈ {−10,−5,0,+2,+5,+7.5,+15}%, N=25, 4 scenarios |
 | M8 | continuous prior + richer action set | blocked on M7 |
 | M9 | business VOI / RUN–DON'T-RUN | blocked on M8 |
 | M10 | regime map / method selection | blocked on M9 |
@@ -1015,6 +1015,31 @@ The two-point world cannot surface this, because both of its truths are ≥ 0.
 mutation test with its own pass condition: the sign of the recorded true ATT,
 the direction of every interval, and the meaning of `significant` must all
 survive a negative truth.
+
+### 5b.1 M6b result — θ = −5%, G4 PASS 6/6
+
+640 rows, arms `null` and `eff_m050` on disk. All six criteria pass, with
+criterion 2 the one that matters here: **median `true_att_pct` = −0.050000**,
+sign and magnitude both carried through. The metrics layer records
+−5.000pp and the bias identity holds to 0.0000pp, so nothing downstream
+takes an absolute value or assumes lift.
+
+**The sign-specific check:** `65.9%` of estimates come back negative at
+θ = −5%. A pipeline that quietly assumed lift would show that near 0%. It is
+not near 100% either, and should not be — at −5% against a sampling SD of
+roughly 6–7 pp, a majority-negative distribution is what a working estimator
+looks like, not a failing one.
+
+**What this does and does not establish.** It shows the harness survives a
+negative truth end to end. It does **not** establish that the estimators are
+sign-symmetric: that needs matched `+x / −x` pairs, and the M6b run has only
+one truth. The atlas grid contains exactly one such pair, −5%/+5%, and the
+symmetry test is deferred to it (`theta_atlas.py`, Q4).
+
+The two mutations together answer the question G4 was built for: **the donor
+is parameterised in θ in magnitude and in sign**, and the only thing that
+was not — the figure layer — is the part the static audit predicted and the
+patch fixes.
 
 ## 6. Then a two-stage sweep, not a uniform one
 
