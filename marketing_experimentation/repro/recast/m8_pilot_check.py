@@ -62,7 +62,7 @@ from leadbench_mx.decision import action_boundaries  # noqa: E402
 
 EXPECTED_THETAS = [-0.15, -0.03125, -0.02, -0.01, 0.01, 0.0125, 0.051875,
                    0.10, 0.104375]
-EXPECTED_ITERATIONS = 10
+EXPECTED_ITERATIONS = 10   # overridden by --iterations
 SEEDED_TOOLS = {"causalpy", "causalimpact"}
 
 #: How close the cross-arm residual correlation must be to 1 for the panels
@@ -90,14 +90,18 @@ def report(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def main() -> None:
+    global EXPECTED_ITERATIONS
     ap = argparse.ArgumentParser()
     ap.add_argument("--pilot", default="/tmp/results_m8_pilot.jsonl")
     ap.add_argument("--atlas", default="/tmp/results_atlas.jsonl")
     ap.add_argument("--seeds", default="/tmp/panel_seeds_m8_pilot.csv")
     ap.add_argument("--baseline", default="/tmp/results_m8_pilot_rounded.jsonl",
                     help="the pre-fix run, kept as an F17 control")
+    ap.add_argument("--iterations", type=int, default=EXPECTED_ITERATIONS,
+                    help="iterations per cell this run should carry")
     args = ap.parse_args()
 
+    EXPECTED_ITERATIONS = args.iterations
     p = load(args.pilot)
     p_df = p
     a = load(args.atlas)
@@ -129,7 +133,9 @@ def main() -> None:
                  f"seeds {seed_theta}\n          results {res_theta}")
 
     print("\n== 2. identity: is the pilot the shape it was preregistered as? ==")
-    ok &= report("row count", len(p) == 1440, f"{len(p)} rows, expected 1,440")
+    want = 9 * 4 * 4 * EXPECTED_ITERATIONS
+    ok &= report("row count", len(p) == want,
+                 f"{len(p)} rows, expected {want:,}")
     got = sorted(float(t) for t in p.effect_pct.unique())
     ok &= report("nine new truths, exactly",
                  len(got) == 9 and np.allclose(got, sorted(EXPECTED_THETAS)),
@@ -270,11 +276,11 @@ def main() -> None:
     print(f"   {len(thetas)} truths: {[round(100*t, 4) for t in thetas]}")
     try:
         gated = require_complete_clusters(merged, thetas,
-                                          expect_iterations=range(1, 11))
-        ok &= report("merged file gates to iterations 1-10 (C7)", True,
+                                          expect_iterations=range(1, EXPECTED_ITERATIONS + 1))
+        ok &= report(f"merged file gates to iterations 1-{EXPECTED_ITERATIONS} (C7)", True,
                      f"{len(gated):,} rows kept of {len(merged):,}")
     except SystemExit as e:
-        ok &= report("merged file gates to iterations 1-10 (C7)", False,
+        ok &= report(f"merged file gates to iterations 1-{EXPECTED_ITERATIONS} (C7)", False,
                      str(e).split("\n")[0])
 
     if args.baseline and Path(args.baseline).exists():

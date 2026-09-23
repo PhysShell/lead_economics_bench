@@ -209,3 +209,60 @@ pair. Recorded as contract C4.
 6. if the 95th-percentile gate PASSES → extend the new θ to 25 iterations
 7. if any boundary FAILS → do **not** build continuous EVSI across it;
    densify locally there first
+
+---
+
+# M8 RESULT — the preregistered gate, run at n=25
+
+**Reproduce:**
+`python marketing_experimentation/scripts/theta_interpolation.py --results /tmp/results_m8_full_merged.jsonl --expect-iterations 1-25 --boundary-stress`
+
+6,400 rows: 16 truths × 4 scenarios × 4 tools × 25 iterations. 0 duplicated
+run identities, 25 iterations in every cell, all 16 recorded θ exact against
+canonical (C9), 100 complete CRN clusters, 6,400/6,400 rows surviving the
+gate (C7).
+
+## Verdict: PASS
+
+| | |
+|---|---|
+| plain leave-one-out, interior truths | **0 / 56** above the 95th percentile on TV and on \|ΔEVSI\| |
+| boundary stress, spans 3.00–7.50pp | **0 / 16** above the 95th percentile |
+| worst boundary cell | `google_mm` +5.1875%, TV at the 36.0th percentile, \|ΔEVSI\| $4 at the 0.3rd |
+| largest boundary \|ΔEVSI\| | $26 (`google_mm` +10.4375%), at the 1.8th percentile |
+
+`q(θ)` is reconstructable across every action boundary, spanning gaps
+comparable to the original grid, to within cluster-bootstrap noise.
+
+## The caveat that was carried into this run, and what happened to it
+
+The freeze recorded: *the yardstick is sampling noise, which shrinks with
+cluster count; the n=10 PASS does not transfer, and the gate may fail at
+n=25.* That was the right thing to write down. What actually happened:
+
+* The |ΔEVSI| percentiles did **not** move systematically. Cell by cell,
+  **8 of 16 rose and 8 fell** — a wash.
+* The maximum fell, 5.1% → 3.0%.
+* Nothing came near 95 at either n.
+
+So the bar did rise, and the interpolation error fell at a comparable rate.
+That is informative on its own: most of the apparent interpolation error at
+n=10 was **estimation noise in `q` itself**, not model misspecification. Had
+it been misspecification, the error would have stayed put while the bar
+tightened, and the ratio would have climbed.
+
+*(An earlier reading of this comparison, taken off the worst-five list rather
+than the full sixteen, reported that the percentiles fell. That was a
+selection artefact — the worst-five list re-selects which cells it shows.)*
+
+## What this authorises, and what it does not
+
+Authorised: a continuous-prior Finding A. `q(θ)` may be evaluated on the
+documented spike-and-slab's own grid rather than on a seven-point prior
+mutilated to fit the simulated truths. The "sensitivity prior matched on
+negative mass" can retire.
+
+Not authorised by this: anything about Finding B. `INTERVAL → VERDICT` still
+needs a 3-d density and was not scaled. And the DGP is still synthetic —
+16 truths at 25 iterations is a better-resolved simulation, not evidence
+about a real marketing experiment.
