@@ -1,0 +1,205 @@
+{
+  "frozen_at": "2026-09-23T19:45:37+00:00",
+  "family": "M9-B",
+  "purpose": "freeze the generator and the design BEFORE the first cell is run; no M9-B data exists at this point",
+  "permitted_change_after_this_point": "NONE. The only permitted action between this freeze and the 16th completed cell is invoking the frozen generator with the frozen flags. Any edit to generate_panels.R, run_tools.py, the patch stack, the grid or the seeds voids the freeze and requires a new one -- including an edit that only makes the run faster.",
+  "supersedes_nothing": "M8 and its freeze are untouched. M9-B runs on a changed generator and its A1/A3-shaped cells are NOT the A1/A3 rows -- see docs/m9-preregistration.md, M9-B Addendum 1.",
+  "code": {
+    "analysis_commit": "a5b3be4508ee877daa17eebc90b2356e726130ec",
+    "analysis_commit_subject": "M9-B freeze tooling: the world check is run, not cited",
+    "freeze_commit": "recorded in docs/m9b-freeze.commit by the commit AFTER this file's",
+    "tree_clean_at_generation": true
+  },
+  "donor": {
+    "clone": "/home/user/donor-smoke",
+    "base_commit": "5133d372558957e67cf66ce9b5f3af71fc62f4ea",
+    "working_tree_dirty_by_design": true,
+    "patch_stack_in_order": [
+      "theta-mutation.patch",
+      "m8-seed-log.patch",
+      "m9b-axes.patch"
+    ],
+    "patches": {
+      "theta-mutation.patch": "f64587c3789943d67af3d7aeb4090da124fd2f38f5fbefee645da439f9073100",
+      "m8-seed-log.patch": "e157b1ef28de7dbc9c43a2c1e3d409d5023d2cb5bc134f213e67dbb017285f78",
+      "m9b-axes.patch": "80b899cc57f0578c62fb62bcb77457b15b4db50294ea0374ff3356629861fa66"
+    },
+    "patched_files_sha256": {
+      "src/R/generate_panels.R": "fac70c97b310e81958d99bec6fc5647463bfbf5c82d58285420d3e113ede1ef2",
+      "src/python/run_tools.py": "60345ae6ecbca00c8f5f9ba2f5698de565b30cbcc14edc566eb61e10a39aa91e"
+    },
+    "note": "file hashes sit ALONGSIDE patch hashes because an unchanged patch does not establish an unchanged file."
+  },
+  "world_contract": {
+    "max_post_days": 42,
+    "max_controls": 40,
+    "pre_days": 90,
+    "world_shape": "90 pre + 42 post days, 1 treated + 40 controls",
+    "seed_slot": 1,
+    "panel_seed": "master_seed*1000 + seed_slot*10000 + iteration",
+    "noise_seed_offset": 100000,
+    "perm_seed_offset": 900000,
+    "treated_selection": "the unchanged median-baseline rule, applied ONCE to the 41-geo world",
+    "donor_order": "sample.int over the 40 non-treated indices, on a dedicated substream; pools are its prefixes",
+    "nesting": [
+      "D5 subset D9 subset D20 subset D40",
+      "Y15 subset Y21 subset Y28 subset Y42"
+    ],
+    "not_used": "the sorted-baseline prefix, which would fuse pool size with donor size-similarity (F20, M-c)"
+  },
+  "design": {
+    "cells": [
+      "M9B_T15_G05",
+      "M9B_T15_G09",
+      "M9B_T15_G20",
+      "M9B_T15_G40",
+      "M9B_T21_G05",
+      "M9B_T21_G09",
+      "M9B_T21_G20",
+      "M9B_T21_G40",
+      "M9B_T28_G05",
+      "M9B_T28_G09",
+      "M9B_T28_G20",
+      "M9B_T28_G40",
+      "M9B_T42_G05",
+      "M9B_T42_G09",
+      "M9B_T42_G20",
+      "M9B_T42_G40"
+    ],
+    "n_cells": 16,
+    "post_days": [
+      15,
+      21,
+      28,
+      42
+    ],
+    "n_control": [
+      5,
+      9,
+      20,
+      40
+    ],
+    "theta_grid": [
+      -0.15,
+      -0.1,
+      -0.05,
+      -0.03125,
+      -0.02,
+      -0.01,
+      0.0,
+      0.01,
+      0.0125,
+      0.02,
+      0.05,
+      0.051875,
+      0.075,
+      0.1,
+      0.104375,
+      0.15
+    ],
+    "n_theta": 16,
+    "iterations": 25,
+    "scenario_template": "A1 -- no outlier, pre_days = 90",
+    "cluster_definition": [
+      "scenario",
+      "iteration"
+    ],
+    "cluster_note": "within a cell, (scenario, iteration) is the CRN cluster over theta, as in M8. ACROSS cells the same `iteration` is the same world, which is a variance-reduction property for cell-to-cell comparison and NOT a licence to pool cells into one cluster set.",
+    "action_boundaries": [
+      -0.031249999999999993,
+      0.012500000000000004,
+      0.051875,
+      0.104375
+    ],
+    "actions": [
+      "cut hard",
+      "cut",
+      "hold",
+      "increase",
+      "increase hard"
+    ],
+    "multipliers": [
+      0.5,
+      0.8,
+      1.0,
+      1.25,
+      1.6
+    ],
+    "breakeven_is_not_a_boundary": 0.03,
+    "estimand": "r_EVSI(T, G_c) = EVSI(T, G_c) / S_governed",
+    "monotonicity": "DESCRIPTIVE. No acceptance threshold is attached to it, and none will be invented after seeing the surface.",
+    "expected_rows": 25600
+  },
+  "reuse": {
+    "cells_reused": [],
+    "rationale": "M9B_T15_G20 is not A1 and M9B_T15_G09 is not A3: 21 geos drawn as 41 and sliced is a different world from 21 drawn as 21. Reuse would have saved ~1.7 CPU-hours and bought an axis whose meaning is false. All 16 cells regenerate.",
+    "identity_fields_that_would_have_to_match": [
+      "donor.patched_files_sha256",
+      "donor.patch_stack_in_order",
+      "design.cells",
+      "design.theta_grid",
+      "design.iterations",
+      "world_contract"
+    ]
+  },
+  "verification": {
+    "world_check_script": "/home/user/lead_economics_bench/marketing_experimentation/repro/recast/m9b_world_check.py",
+    "world_check_sha256": "7e9ba39166ac2a66651d1e922c336646bc790cc3aaea2709196f174db26f0892",
+    "world_check_verdict": [
+      "[ PASS] L1 legacy preservation: all four scenarios, 20 files byte-identical",
+      "[ PASS] W1 treated geo identical across every cell",
+      "[ PASS] W2 treated Y and Y_counterfactual invariant in G_c",
+      "[ PASS] W3 donor pools nest: D5 subset D9 subset D20 subset D40",
+      "[ PASS] W3b each pool is the prefix of one recorded permutation",
+      "[  \u00b7  ] W3c [desc] D5 City indices, replication 1: [1, 13, 18, 22, 38] (a size-sorted prefix would read [1, 2, 3, 4, 5])",
+      "[ PASS] W3d donor order re-derived from perm_seed alone matches the recorded one, exactly",
+      "[ PASS] W4 durations nest: Y15 == prefix of Y21 == prefix of Y28 == prefix of Y42",
+      "[ PASS] W5 Y_counterfactual invariant in theta; Y invariant outside the treated post-period",
+      "[ PASS] W6 NEGATIVE TEST: strip(M9B_T42_G40) == M9B_T15_G05",
+      "[ PASS] W7 one world per replication: panel_seed, donor_order, treated_geo and world size constant across cells",
+      "[ PASS] W8 [structural] run_panel reads the panel once and derives all four tool inputs from it",
+      "M9-B WORLD CONTRACT: 11/11 checks pass."
+    ],
+    "world_check_run_by_this_script": true,
+    "mutation_script": "/home/user/lead_economics_bench/marketing_experimentation/repro/recast/m9b_mutations.sh",
+    "mutation_script_sha256": "0c59b21f858e01d28a5feafbbc72be547d6bb042de260f1d9db81693b531dd80",
+    "mutation_verdict_file": "/home/user/lead_economics_bench/marketing_experimentation/docs/m9b-mutation-verdict.txt",
+    "mutation_verdict_sha256": "9ca041290991680b8504090fd639681e0fbc19ff1fea6f3ab947e64464961e5e",
+    "mutation_note": "m9b_mutations.sh is NOT re-run here: it edits the donor clone in place, and a freeze must not mutate the state it is freezing. Its recorded output is hashed instead. Two of its five mutations were accepted 10/10 by the first version of the world check -- see failures.md F20."
+  },
+  "run_protocol": {
+    "one_cell_per_invocation": "Rscript src/R/generate_panels.R --n_iterations 25 --effect_sizes <16 truths> --post_days T --n_control G --output_base panels, then run_tools.py",
+    "checkpointing": "cell-wise. On each cell's completion, copy its results rows and panels/<cell>/panel_seeds.csv out before starting the next. run_tools.py resumes from results.jsonl by (scenario, effect_label, iteration, tool).",
+    "seed_log_path": "panels/<cell>/panel_seeds.csv -- written beside the panels precisely so the next cell's run cannot overwrite it at results/raw/",
+    "on_failure": "stop, record, do not silently re-run a cell into the same results file",
+    "artifacts": "PRIVATE, per docs/artifact-manifest.json. Donor-derived output stays out of this and any public repository; only its provenance record is committed."
+  },
+  "blinding": {
+    "permitted_during_the_run": [
+      "operational state: which cells are complete, row counts, wall clock, exit codes, disk",
+      "integrity state: seed logs, complete-cluster gate, geo/day counts per cell, the world invariants of m9b_world_check.py",
+      "failures of any kind, at any time"
+    ],
+    "not_permitted_during_the_run": [
+      "the EVSI surface, r_EVSI(T, G_c), or any function of att_pct, ci_lower, ci_upper or `significant` aggregated across cells",
+      "anything that could motivate stopping the run early, extending it, reordering it, or choosing which cells to keep"
+    ],
+    "why": "cell-wise checkpointing makes an interim surface readable at any moment. Reading it turns a preregistered 16-cell design into a sequential one with an undeclared stopping rule, and no later analysis can undo that.",
+    "reuse_rule": "a cell counts as reused only if its identity matches -- generator sha256, patch stack, cell id, grid, seeds. Not 'looks equivalent'. Nothing is reused in M9-B; see `reuse`."
+  },
+  "cost_estimate": {
+    "rows": 25600,
+    "basis": "M8 measured 3,600 rows in 6,911s = 1.92 s/row at mean n_geos 21, total_days 105",
+    "mean_slice": {
+      "n_geos": 19.5,
+      "total_days": 116.5
+    },
+    "central_cpu_hours": 13.7,
+    "uncertainty": "upward. CausalPy dominates and scales with panel size; G_c=40 is larger than anything M8 ran."
+  },
+  "what_this_does_not_establish": [
+    "that the world resembles a real marketing experiment -- the DGP is synthetic and contains no spend, no budget and no intervention",
+    "that r_EVSI(T, G_c) differences transport outside this DGP",
+    "anything about cost: M9-B is not an ENBS and invents no cost model"
+  ]
+}
