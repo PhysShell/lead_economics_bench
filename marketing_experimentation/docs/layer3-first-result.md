@@ -241,6 +241,175 @@ it is worth anything.
 
 ---
 
+# Addendum 3: the loss split in two — thresholding, or the missing sign?
+
+**Reproduce:** `python marketing_experimentation/scripts/signed_verdict.py
+--results /tmp/results_atlas.jsonl --pool-scenarios --neg-sweep --alpha-scan`
+
+No new runs. Same 2,800 rows as Addendum 2.
+
+Addendum 2 reported that the significance bit keeps **0–11.9%** of what the
+interval is worth, and three of four tools have a significance channel worth
+**exactly $0**. That number is not in question here. What is in question is
+the sentence everyone — including me — attached to it: *thresholding destroys
+decision value*.
+
+There is a second explanation, and M7 is what made it visible. `significant`
+in this harness is **unsigned**. A channel that destroys 10% of revenue and
+one that adds 15% both produce `significant = True`. So the bit might be
+worth nothing not because it is coarse but because it is *ambiguous*, and
+those two diagnoses have completely different consequences. Coarseness is an
+argument about statistical practice. Ambiguity is a line in a report
+template.
+
+## The missing rung
+
+INTERVAL → **VERDICT** (negative / inconclusive / positive) → BIT. Both steps
+are deterministic garblings, so Blackwell orders the whole chain and the loss
+splits into two non-negative parts:
+
+* **I − V** — the price of thresholding: magnitude and uncertainty discarded.
+* **V − B** — the price of literally throwing the sign away.
+
+The premise was checked, not assumed: `significant == (verdict ≠
+inconclusive)` on **2,800/2,800 rows**. F13 is what happens when that check
+is skipped.
+
+## What the bit merges
+
+Under the seven-point prior, when each tool's bit says SIGNIFICANT, the
+interval behind it is **negative**:
+
+| tool | P(negative \| significant) | P(significant) at θ=+15% |
+|---|---|---|
+| `causalpy[y_hat]` | **34.6%** | 0.64 |
+| `geolift` | **39.7%** | 0.19 |
+| `google_mm` | 14.4% | 0.75 |
+| `causalimpact` | 12.7% | 0.86 |
+
+A third of `causalpy`'s significant results and two-fifths of `geolift`'s are
+the channel losing money, reported with the same symbol as the channel
+working.
+
+## The split, at the seven-point prior
+
+Pooled, 16 paired fit/eval splits, 50 runs fitted / 50 held out per truth,
+α = 0.5. Every rung scored on the *same* held-out rows.
+
+| tool | INTERVAL | VERDICT | BIT | I − V | V − B | **sign share** |
+|---|---|---|---|---|---|---|
+| `causalimpact` | $4,904 | $1,451 | $650 | $3,454 | $801 | **18.8%** |
+| `causalpy[y_hat]` | $4,171 | $2,855 | $0 | $1,316 | $2,855 | **68.4%** |
+| `geolift` | $5,269 | $392 | $29 | $4,877 | $363 | **6.9%** |
+| `google_mm` | $6,081 | $1,388 | $11 | $4,693 | $1,377 | **22.7%** |
+
+At *this* prior the original reading survives for three of four tools:
+thresholding carries 77–93% of the loss. `causalpy` is the exception, and a
+sharp one — its bit is worth **$0** while its verdict is worth $2,855. For
+`causalpy`, the entire value of the discrete signal is the sign.
+
+## And then the prior moves, and so does the answer
+
+This is the part that damages the headline. The seven-point grid puts
+**0.071** of the prior mass below zero; the continuous spike-and-slab the
+project actually documents puts **0.267** there. Addendum 2 already recorded
+that as a limitation. For this question it is not a limitation, it is the
+whole experiment — *the value of a sign is a function of how often the sign
+is bad news.*
+
+Sign share as negative mass rises. A `+` marks a cell where I − V is not
+separable from zero, so the figure is a **lower bound** — the sign accounts
+for at least that much and the data cannot rule out all of it:
+
+| P(θ<0) | `causalimpact` | `causalpy` | `geolift` | `google_mm` |
+|---|---|---|---|---|
+| 0.02 | 6.7% | 72.7%+ | 11.4% | 25.9% |
+| 0.10 | 27.2% | 64.2% | 5.9% | 24.0% |
+| 0.20 | 51.2%+ | 67.2% | 5.2% | 36.7% |
+| **0.267** *(the documented prior)* | **63.3%+** | **79.4%+** | **6.8%** | **48.7%** |
+| 0.30 | 68.7%+ | 87.0%+ | 7.3% | 54.0% |
+| 0.50 | 65.7%+ | 100%+ | 4.0% | 57.4% |
+
+0.267 is in the sweep because it is the negative mass of the prior this
+project wrote down, not because it is a round number. At that cell the sign
+is worth **$3,259** (`causalimpact`), **$5,799** (`causalpy`), **$595**
+(`geolift`) and **$3,423** (`google_mm`), against bits worth $3,552, $45,
+$424 and $3,185.
+
+**At the prior this project wrote down, the missing sign carries most of the
+loss for two of four tools (63%, 79%), about half for a third (49%), and
+almost none for `geolift` (7%).** Not "three of four" — `google_mm` sits on
+the line and saying otherwise would be rounding in the direction I want. The
+"thresholding" reading was nonetheless an artefact of a discretisation that
+deleted the negative half of the prior, and Addendum 2 flagged that
+discretisation as a caveat without noticing it was load-bearing for the
+interpretation.
+
+One thing the table does *not* say: that the bit is inert at this prior. At
+P(θ<0) = 0.267 the bit is worth $3,552 for `causalimpact` and $3,185 for
+`google_mm` — far from the $650 and $11 it scores on the seven-point prior.
+More negative mass makes every signal more valuable, EVPI included ($24,806 →
+$33,126). The sign share rises because V − B grows faster than I − V, not
+because the bit collapses.
+
+`geolift` is the one clean exception, for a reason that is not about signs at
+all: its `P(significant)` runs 0.05–0.19 across *every* truth. It has almost
+no power at this sample size, so its verdict is nearly inert and there is
+nothing for the sign to carry. That is a statement about `geolift`'s power,
+not evidence for thresholding.
+
+## Three things that keep this from being stronger than it is
+
+1. **α is not a nuisance parameter.** What makes a signed verdict valuable is
+   the rare cell — `p(negative | θ=+15%)` is 0/50 for two tools, so seeing
+   `negative` nearly proves θ < 0. Smoothing sets the probability of exactly
+   those decisive-but-unobserved events. The sign share across α ∈
+   {0.05, 0.5, 2.0}: `causalimpact` 24.3→8.7%, `causalpy` 82.0→36.8%,
+   `geolift` 13.3→0.0%, `google_mm` 30.4→7.6%. The ordering never reverses —
+   heavier smoothing always costs the sign — but the magnitude moves by 2–3×.
+   **The sign's share is a range, not a point**, and closing it needs more
+   runs per truth, not a better α.
+2. **The `+` cells have two readings.** The thresholding loss is
+   indistinguishable from zero there. That is consistent with the verdict
+   genuinely being as good as the interval, *and* with a 3-d KDE on 50 points
+   being too weak to demonstrate the interval's advantage. Both are live, and
+   they differ by a lot — 63% and 100% are not the same claim. Addendum 2's
+   own INTERVAL − POINT result was undetectable for all four tools at this
+   sample size, which is the same weakness showing up twice.
+3. **Two estimators, reported side by side.** The *model* column (exact EVSI
+   of the fitted likelihood) and the *held-out* column (the plug-in policy
+   scored on fresh runs) agree closely here — $1,451 vs $1,514, $2,855 vs
+   $2,780, $392 vs $386, $1,388 vs $1,491 — so this is not an estimation
+   artefact. The distinction still matters: only the model column is
+   guaranteed non-negative, and on the A1-only data at high negative mass the
+   held-out BIT went to **−$374**, a calibrated-on-a-pilot policy that is
+   worse than ignoring the experiment.
+
+## What this does to the research question
+
+It does not kill the central idea, and it does not confirm it as stated. It
+**splits** it:
+
+> The significance bit is worth near-zero in a five-action budget decision.
+> Under the seven-point grid that is mostly thresholding; under the prior the
+> project actually documents, the discarded sign carries most of it for two
+> of four tools and about half for a third. The two explanations are
+> separable, they were never separated before, and which one dominates
+> depends on how much prior mass sits below zero.
+
+The practical consequence is uncomfortable and worth stating: **a large part
+of the loss this track has been attributing to significance testing is
+recoverable by printing a sign.** That is a cheaper remedy than the one the
+brief was circling, and an honest report has to lead with it rather than
+bury it.
+
+What survives intact is the narrower claim, because the sign does not rescue
+it: even the *signed* verdict keeps only 8–68% of the interval's value at the
+seven-point prior. Thresholding costs real money. It is just not the whole
+bill, and it is not the majority of it under the documented prior.
+
+---
+
 # Addendum 2: M7 — seven truths, five actions
 
 **Reproduce:** `python marketing_experimentation/scripts/continuous_ladder.py

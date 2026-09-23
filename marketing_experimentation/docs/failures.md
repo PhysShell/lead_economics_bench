@@ -408,3 +408,46 @@ giving the estimator more room.
 **Caught by the reader, not by me** — the fifth such entry, and the one with
 the largest blast radius: it invalidated the structure the track's main
 result was expressed in, while leaving the underlying data untouched.
+
+## F14. A Blackwell self-test that ran at one prior while shares were printed at seven
+
+**What was wrong.** Two errors in the signed-verdict decomposition, in the
+same afternoon, both of the same family: a theorem about the truth quietly
+applied to an estimate of the truth.
+
+**(a) "Algebraic" was the wrong word.** The module claimed that
+`EVSI(VERDICT) ≥ EVSI(BIT)` was an algebraic identity in the held-out column,
+on the grounds that `p(bit | θ)` is derived from `p(verdict | θ)` through the
+garbling map rather than counted independently. It is not. The held-out
+expectation runs over the *empirical frequency of the evaluation rows*, and
+the Jensen step needs the *model's* marginals. The inequality is exact only
+in the model column — where it now lives, and where it is asserted.
+
+**(b) The self-test ran at the base prior only.** `--neg-sweep` reports the
+decomposition at seven different priors. The Blackwell check ran once, at the
+base prior, and passed. Six other priors were never checked. Blackwell is a
+statement for *every* prior, so checking it at one and printing shares at
+seven is not a check at all.
+
+**What it changed.** It printed a sign share of **113.0%** for
+`causalpy[y_hat]` at P(θ<0) = 0.50 — the decomposition's two parts were
+$−550 and $7,826, a negative "part" of a total. Nothing downstream had been
+written yet, so no published number moved. It would have been published.
+
+**How it was caught.** By the percentage exceeding 100. That is luck of a
+particular kind — the invariant happened to be violated in a quantity with an
+obvious ceiling. Had the violation landed at 85% instead of 113% it would
+have read as a finding.
+
+**How it is prevented now.** The check runs inside the sweep loop, at every
+prior, and there are three outcomes rather than two: a share, a **lower
+bound** when `I − V` is not separable from zero, and `KDE!` when `I − V` is
+negative by more than two split SDs. `tests/test_signed_verdict.py` asserts
+Blackwell across a parametrised range of negative-mass priors and 25 random
+likelihoods, and asserts the null case — that the sign is worth *exactly*
+zero when no verdict is ever negative — so the finding cannot be produced by
+a metric that is simply always positive.
+
+**Caught by me, not by the reader.** Recorded anyway, because §75 asks for
+every invalid comparison that *could* have changed conclusions, and an
+invalid comparison caught by a lucky ceiling is not a process that works.

@@ -62,6 +62,16 @@ The current claim, stated as narrowly as the evidence allows:
   worst-calibrated one.
 - **In most of the business plane the significance bit is worth ~$0** for
   every tool. For GeoLift it is inert across 83% of cells examined.
+- **Part of that loss is not thresholding at all — it is the missing sign.**
+  `significant` is unsigned: a channel destroying 10% and one adding 15% emit
+  the same symbol. Inserting the signed verdict (negative / inconclusive /
+  positive) between the interval and the bit gives a second garbling chain,
+  and splits the loss in two. At the prior this project documents (26.7% of
+  mass below zero) the discarded **sign** carries 63% and 79% of the loss for
+  two tools, ~49% for a third, and 7% for GeoLift — which has almost no power
+  at this sample size, so its verdict is near-inert to begin with. A large
+  part of what this track was attributing to significance testing is
+  recoverable by printing a sign. Addendum 3.
 
 ### The donor reproduces — `docs/donor-repro.md`
 
@@ -93,9 +103,16 @@ of them is about packaging, not method. A by-product nobody has published:
 Kept here rather than in a footnote, because the track's whole method is
 refusing to overclaim:
 
-- **The DGP is synthetic and, until M7 lands, two-point.** Reproducing a
-  simulation faithfully says nothing about whether it resembles a real
-  marketing experiment. This is the largest limitation by a distance.
+- **The DGP is synthetic.** M7 took it from two truths to seven, two of them
+  negative, but reproducing a simulation faithfully still says nothing about
+  whether it resembles a real marketing experiment. This is the largest
+  limitation by a distance.
+- **The sign/thresholding split is a range, not a point.** Its size depends
+  on the Dirichlet smoothing constant by a factor of 2–3, because what makes
+  a signed verdict valuable is a cell observed 0 times in 50 — and smoothing
+  is what sets the probability of exactly those decisive, unobserved events.
+  The ordering never reverses; the magnitude is unpinned until there are more
+  runs per truth.
 - **Nothing here has touched a real business's data.** No experiment has been
   run, no budget moved.
 - **CausalPy's ~1.1–1.3% point-estimate noise is unexplained.** Three
@@ -123,10 +140,11 @@ refusing to overclaim:
 | `scripts/s0_reconstruction.py` | is the bit's value determined by its error rates alone? |
 | `scripts/theta_atlas.py` | how does each tool behave as the truth moves? |
 | `scripts/continuous_ladder.py` | the ladder with five actions and a real prior over effect size |
+| `scripts/signed_verdict.py` | is the bit worthless because it is coarse, or because it is *unsigned*? `--neg-sweep`, `--alpha-scan` |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
-Tests: `pytest tests/` from this directory (131 invariants).
+Tests: `pytest tests/` from this directory (170 invariants).
 
 ---
 
@@ -136,7 +154,7 @@ Tests: `pytest tests/` from this directory (131 invariants).
   before any replay ran — and revised once *before* seeing output, with the
   evidence for the revision recorded so it cannot later be mistaken for a
   tolerance widened to fit.
-- **`docs/failures.md` is not decoration.** Thirteen entries, five of them
+- **`docs/failures.md` is not decoration.** Fourteen entries, five of them
   errors the reader caught rather than me — including F13, which invalidated
   the structure the main result was expressed in. History is not cleaned into a
   heroic narrative (brief §75).
