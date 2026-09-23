@@ -2,7 +2,7 @@
 
 **Reproduce:** `python marketing_experimentation/scripts/voi_v2.py`
 **Superseded first attempt:** `scripts/significance_gate_v1.py`
-**Invariants:** `tests/test_decision.py` (123 tests)
+**Invariants:** `tests/test_decision.py` (131 tests)
 
 ---
 
@@ -120,6 +120,30 @@ gate; they are advising within it.
 The question this track adds sits one step further out: **given that the
 estimator produces a distribution, how much decision value is destroyed by
 compressing it to significant / not significant at all?**
+
+## 3a. The candidate headline — conditional on M7, stated now so it can fail
+
+If the continuous-θ ladder confirms it, the result this track is actually
+carrying is not about GeoLift and not about `p < .05`:
+
+> **An estimator's statistical calibration and the decision value of its
+> standard significance interface are different properties.** Binarisation
+> can destroy most of the usable information even in a well-calibrated
+> method.
+
+GeoLift is the clean illustration and not the subject: correctly calibrated
+inference → a very wide interval → TPR of 8.7% → a significance channel that
+is nearly mute — while its point estimate still carries decision value within
+12% of the best of the four.
+
+**What would falsify it.** If M7 shows that with a continuous θ and five
+actions the S0 gap *narrows* — that the bit turns out to be close to a
+sufficient summary once the decision is realistic — the claim dies, and the
+two-point world will have been flattering it. That is the test, and it is
+running.
+
+This is written down before the result arrives so that it cannot be
+retrofitted to whatever M7 says.
 
 ## 4. What this does to the research question
 
