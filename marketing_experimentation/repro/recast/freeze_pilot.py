@@ -106,8 +106,18 @@ def main() -> None:
             # future reader finding two freezes and picking one.
             "analysis_commit": git("rev-parse", "HEAD"),
             "analysis_commit_subject": git("log", "-1", "--format=%s"),
-            "freeze_commit": "the commit containing this file; identified by "
-                             "git and by the tag m8-pilot-freeze, NOT here",
+            # Resolved WITHOUT a tag, because this remote refuses tag pushes
+            # (branch refs only) -- a tag that exists on one clone and not on
+            # the origin identifies nothing for whoever reproduces this.
+            # Instead the freeze commit's SHA is written into a pointer file
+            # in the FOLLOWING commit, which is not self-referential and
+            # survives a clone.
+            "freeze_commit": "recorded in docs/m8-pilot-freeze.commit by the "
+                             "commit AFTER this file's; not recordable here, "
+                             "since a file cannot contain the hash of the "
+                             "commit that contains it",
+            "tag_note": "this remote refuses tag pushes, so do not rely on a "
+                        "tag to find the freeze",
             "stale_copy_warning":
                 "a superseded copy of this artifact exists in the analysis "
                 "commit itself, recording tree_clean=false. Use the tagged "

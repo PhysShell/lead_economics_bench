@@ -1,13 +1,14 @@
 {
-  "frozen_at": "2026-09-23T14:20:41+00:00",
+  "frozen_at": "2026-09-23T14:23:23+00:00",
   "purpose": "M8 pilot accepted; freeze before the iteration count changes",
   "permitted_change_after_this_point": "n_iterations: 10 -> 25, for the nine new truths only",
   "code": {
-    "analysis_commit": "6cdb256674be9ffe4ad632ec0a02c250e2bca40b",
-    "analysis_commit_subject": "Canonical decimal C9, freeze SHA semantics, quarantine, extension gate",
-    "freeze_commit": "the commit containing this file; identified by git and by the tag m8-pilot-freeze, NOT here",
+    "analysis_commit": "578c069c43fc8c9a0511a7442cba5df496b498c2",
+    "analysis_commit_subject": "F18: two bugs inside the machinery built to prevent bugs",
+    "freeze_commit": "recorded in docs/m8-pilot-freeze.commit by the commit AFTER this file's; not recordable here, since a file cannot contain the hash of the commit that contains it",
+    "tag_note": "this remote refuses tag pushes, so do not rely on a tag to find the freeze",
     "stale_copy_warning": "a superseded copy of this artifact exists in the analysis commit itself, recording tree_clean=false. Use the tagged one.",
-    "tree_clean_at_generation": true,
+    "tree_clean_at_generation": false,
     "m8_baseline_commit": "4c892f5",
     "m8_baseline_note": "the commit that introduces the CRN cluster gate. NOT cc38fc2 -- that is F16 only and reproduces a pilot with no gate."
   },
@@ -28,8 +29,8 @@
   "quarantine": {
     "status": "ABORTED_UNAUTHORIZED_EXTENSION",
     "what": "a 25-iteration extension started before this freeze existed, killed at 2,740 rows",
-    "rows": 2740,
-    "sha256": "23f4928a197138402e599ae6f0a543af6cc12f680004bac45392f3c615e26b27",
+    "rows": null,
+    "sha256": null,
     "started_from_freeze": false,
     "eligible_for_analysis": false,
     "eligible_for_reuse": false,
