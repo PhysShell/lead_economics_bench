@@ -86,6 +86,9 @@ from scipy.stats import gaussian_kde
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from leadbench_mx.clusters import (  # noqa: E402
+    audit_clusters, require_complete_clusters,
+)
 from leadbench_mx.decision import (  # noqa: E402
     DEFAULT_ACTIONS, DecisionProblem, budget_problem, spike_slab_prior,
 )
@@ -423,6 +426,15 @@ def main() -> None:
     ap.add_argument("--alpha-scan", action="store_true")
     ap.add_argument("--skip-interval", action="store_true",
                     help="Finding A only; it needs no density estimation")
+    ap.add_argument("--expect-iterations", default=None,
+                    help="preregister the complete-cluster set, e.g. '1-10'. "
+                         "The analysis refuses if the intersection of "
+                         "iterations over all truths is anything else -- the "
+                         "M8 pilot trap, where old truths carry 25 and new "
+                         "ones carry 10. See F16.")
+    ap.add_argument("--allow-incomplete-clusters", action="store_true",
+                    help="analyse without the CRN gate. Only defensible if "
+                         "you can say why the design is not clustered.")
     args = ap.parse_args()
 
     d = load(args.results)
@@ -433,6 +445,27 @@ def main() -> None:
     print(f"{len(d):,} usable rows"
           + (f" ({n0 - len(d)} dropped for non-finite interval)"
              if n0 != len(d) else ""))
+
+    thetas_all = sorted(float(t) for t in d.effect_pct.unique())
+    if not args.allow_incomplete_clusters:
+        exp = None
+        if args.expect_iterations:
+            lo, _, hi = args.expect_iterations.partition("-")
+            exp = range(int(lo), int(hi or lo) + 1)
+        rep = audit_clusters(d, thetas_all)
+        before = len(d)
+        d = require_complete_clusters(d, thetas_all, expect_iterations=exp)
+        print(f"\n== CRN cluster gate ==\n{rep.summary()}")
+        print(f"   kept {len(d):,}/{before:,} rows in clusters complete for "
+              f"every tool at every truth.")
+        print("   The donor shares one panel seed across effect sizes, so the")
+        print("   independent unit is (scenario, iteration), not the row. A")
+        print("   truth estimated from more panels than its neighbours is F16")
+        print("   wearing a new hat.")
+    else:
+        print("\n!! CRN cluster gate DISABLED. q(theta) rows may rest on "
+              "different\n   latent panels; interpolation error and Monte "
+              "Carlo difference are\n   then not separable.")
 
     ok, tot = audit_bit_is_garbling(d)
     print(f"\n== premise check: is BIT a garbling of VERDICT? ==")

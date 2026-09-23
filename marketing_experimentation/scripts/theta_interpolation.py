@@ -67,6 +67,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from leadbench_mx.clusters import require_complete_clusters  # noqa: E402
 from leadbench_mx.decision import (  # noqa: E402
     action_boundaries, budget_problem, spike_slab_prior,
 )
@@ -106,6 +107,8 @@ def main() -> None:
     ap.add_argument("--results", default="/tmp/results_atlas.jsonl")
     ap.add_argument("--alpha", type=float, default=ALPHA)
     ap.add_argument("--draws", type=int, default=4000)
+    ap.add_argument("--expect-iterations", default=None,
+                    help="preregister the complete-cluster set, e.g. '1-10'")
     args = ap.parse_args()
 
     d = load(args.results)
@@ -113,6 +116,17 @@ def main() -> None:
                       .to_numpy(dtype=float)).all(axis=1) & d.significant.notna()]
     d = d.assign(_verdict=verdict_index(d))
     thetas = sorted(float(t) for t in d.effect_pct.unique())
+    # The gate matters MORE here than anywhere. If q(theta) rows rest on
+    # different latent panels, the interpolation error this script measures
+    # is mixed with a difference in Monte Carlo samples, and the boundary
+    # falsification silently tests the wrong thing. See F16.
+    exp = None
+    if args.expect_iterations:
+        lo, _, hi = args.expect_iterations.partition("-")
+        exp = range(int(lo), int(hi or lo) + 1)
+    before = len(d)
+    d = require_complete_clusters(d, thetas, expect_iterations=exp)
+    print(f"CRN gate: {len(d):,}/{before:,} rows in complete shared clusters")
     tools = sorted(d.tool_label.unique())
     th = np.array(thetas)
 

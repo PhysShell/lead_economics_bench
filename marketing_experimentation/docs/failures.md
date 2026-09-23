@@ -568,8 +568,37 @@ feed all four tools.** The four rows are not four independent tests, so "3 of
 *paired* comparison between tools on shared clusters would be more powerful
 than the unpaired one — not yet done.
 
-**Caught by the reader** — the seventh. The pattern is now unmistakable and
-worth naming: every one of F13, F14, F15 and F16 is a **structural claim about
-the data or the estimator asserted in prose and never checked against the
-source**. The arithmetic has been right throughout. What keeps failing is the
-sentence describing what the arithmetic is entitled to mean.
+**Caught by the reader** — the seventh.
+
+### The class these four belong to
+
+F13, F14, F15 and F16 are one failure mode, and it has a name in simulation
+science rather than in software testing. The distinction is between
+*verification* — does the implementation match the conceptual model — and
+*validation* — does the model represent reality for the intended use. The
+conceptual model is not only the equations; it includes the assumptions,
+abstractions and descriptions around them, which is why a perfectly verified
+implementation can still compute something other than what is claimed:
+
+> **Conceptual-model contract failure** — the computation was internally
+> correct, but an unverified structural assumption changed what the
+> computation was entitled to mean.
+
+| | the false sentence | what it was about |
+|---|---|---|
+| F13 | "BIT is a coarsening of POINT" | conceptual structure |
+| F14 | "the Blackwell self-test applies here" | a theorem aimed at the wrong estimand |
+| F15 | "this is a lower bound" / "this is the documented prior" | a name stronger than its construction |
+| F16 | "the θ samples are independent" | the experimental design |
+
+The arithmetic was right in all four. A unit test for the arithmetic cannot
+catch any of them, because the defect is in the sentence and the sentence is
+not in the test. The response is `docs/assumption-contracts.md`: every
+load-bearing claim carries a SOURCE (file:line or an evidencing run) and a
+CHECK (something that fails when the claim is false), and the check runs
+**inside the analysis**, not only in CI — F16's gate refuses the run rather
+than passing quietly in a test file.
+
+It will not stop the next error. It narrows the class. F16 had both a comment
+in the donor's own source and a correlation of +1.000 sitting in the results
+file, and neither was consulted, because nothing required it.

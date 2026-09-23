@@ -141,3 +141,71 @@ Not "more θ". This:
 - Any claim about real business data. The DGP is still synthetic; M8 does not
   change that and is not evidence about it.
 - A web app (§76), ad spend (§77), or anything that would modify track 1.
+
+---
+
+## Added before GO: the complete-cluster gate (C7)
+
+The pilot runs nine new truths at **10** iterations beside seven existing
+truths at **25**. Analysed as-is, `q(θ)` would be estimated from 25 latent
+panels on some rows and 10 on others — different Monte Carlo samples per row
+of one transition matrix. The boundary falsification would then be measuring
+interpolation error *plus* a sample-size difference, which is F16 reopening
+under a new name.
+
+`leadbench_mx.clusters.require_complete_clusters` enforces two assertions and
+**refuses the analysis** rather than silently dropping:
+
+    for each scenario:
+        intersection(iterations over all 16 θ) == {1..10}
+
+    for each tool × scenario × iteration in the analysis:
+        exactly one row at every one of the 16 θ
+
+plus a third that follows from the same logic: a cluster complete for one
+tool and not another is excluded from both, or a cross-tool comparison is
+confounded by which panels each tool happened to see.
+
+Iterations 11–25 of the existing truths are not lost. They are simply not
+entitled to participate in the boundary interpolation test until the new
+truths reach 25.
+
+Verified no-op on M7: 100/100 clusters complete, 2,800/2,800 rows kept.
+
+## Added before GO: seeds are evidenced by the run, not by the source
+
+F11's lesson — an environment property that matters must be evidenced by the
+run itself, not inferred from a file. The pilot output records per row:
+
+    scenario | iteration | theta | panel_seed | estimator_seed
+
+Not because the source is in doubt. Because "nine new truths attach to the
+same clusters without disturbing what is there" is only true if the patch
+preserved the seed function **and** no effect label leaks into a downstream
+estimator RNG. Checked in the source already:
+
+| tool | estimator seed | so θ shares it? |
+|---|---|---|
+| `causalimpact` | `--seed iteration` (`run_tools.py:173`) | yes — strengthens CRN |
+| `causalpy` | `random_seed = iteration` (`run_causalpy.py:100`) | yes — strengthens CRN |
+| `geolift` | none | deterministic given the panel |
+| `google_mm` | none | deterministic given the panel |
+
+And the question that raises, since the estimator seed is the bare iteration
+index and therefore repeats **across scenarios**: is the cluster `(scenario,
+iteration)` or `iteration` alone? Measured on M7 — mean cross-scenario
+residual correlation +0.012 (causalimpact) and +0.026 (causalpy), against
+−0.031 (geolift) and −0.045 (google_mm), which take no estimator seed at all.
+The seeded tools look exactly like the unseeded controls. The cluster is the
+pair. Recorded as contract C4.
+
+## Execution order
+
+1. ~~complete-cluster pilot gate~~ — done, verified no-op on M7
+2. freeze this preregistration as the M8 baseline commit
+3. run 9 new θ × 10 iterations × 4 scenarios × 4 tools (1,440 rows, ~1.8 CPU-h)
+4. check row identities, seeds, signs, and all four action-boundary truths
+5. boundary leave-one-out interpolation test
+6. if the 95th-percentile gate PASSES → extend the new θ to 25 iterations
+7. if any boundary FAILS → do **not** build continuous EVSI across it;
+   densify locally there first

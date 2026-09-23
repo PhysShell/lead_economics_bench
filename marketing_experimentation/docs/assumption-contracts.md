@@ -1,0 +1,144 @@
+# Assumption contracts
+
+Four of this track's failures — F13, F14, F15, F16 — share one shape. The
+arithmetic was correct. The **sentence describing what the arithmetic was
+entitled to mean** was not, and nothing in the test suite could tell, because
+the sentence was not in the test suite.
+
+That class has a name in simulation science, and it is not "bad unit tests".
+It is a **verification failure against the conceptual model** — the
+distinction between checking that the implementation matches the model and
+checking that the model represents reality for the intended use. The
+conceptual model is not only the equations; it is the assumptions,
+abstractions and descriptions around them. So:
+
+> **Conceptual-model contract failure** — the computation was internally
+> correct, but an unverified structural assumption changed what the
+> computation was entitled to mean.
+
+| | the false sentence | what it was about |
+|---|---|---|
+| F13 | "BIT is a coarsening of POINT" | conceptual structure |
+| F14 | "the Blackwell self-test applies here" | a theorem aimed at the wrong estimand |
+| F15 | "this is a lower bound" / "this is the documented prior" | a name stronger than its construction |
+| F16 | "the θ samples are independent" | the experimental design |
+
+## The process
+
+Small, and deliberately not a cathedral. Before each milestone, every
+load-bearing sentence gets four fields. A sentence with no `CHECK` is not
+allowed to carry a result.
+
+    CLAIM        the structural assertion, in one line
+    SOURCE       where it comes from: file:line, or the run that evidenced it
+    CONSEQUENCE  what must be observable if it is true
+    CHECK        the executable thing that would fail if it were not
+
+Two rules make it work rather than decorate:
+
+1. **A claim needs SOURCE or CHECK, and preferably both.** Reading the donor's
+   source is evidence; so is a probe on its output. Neither one alone caught
+   F16 — the comment was there to read, and the +1.000 correlation was there
+   to measure, and prose beat both for a milestone.
+2. **The CHECK runs in the analysis, not only in CI.** F16's gate refuses the
+   run. A check that merely passes in a test file does not stop a wrong
+   analysis from printing a plausible number.
+
+## Current contracts
+
+### C1 — the significance bit is the interval excluding zero
+
+    SOURCE       donor adapter output, empirically
+    CONSEQUENCE  derived bit == stored `significant` on every row
+    CHECK        audit_bit_is_garbling(); 2,800/2,800 exact
+                 signed_verdict.py refuses to continue on any mismatch
+
+### C2 — VERDICT → BIT is a deterministic garbling
+
+    SOURCE       C1, plus the GARBLE matrix
+    CONSEQUENCE  EVSI(VERDICT) >= EVSI(BIT) for every likelihood and prior
+    CHECK        tests/test_signed_verdict.py, 25 random likelihoods x 6
+                 priors; and min(V-B) over 400,000 posterior draws, printed
+                 by every run
+
+### C3 — new effect-size arms share the latent panel by iteration
+
+    SOURCE       src/R/generate_panels.R:375-379 (no effect-size term in
+                 `panel_seed`; comment "same seed for null and effect")
+                 run_tools.py:173 (`--seed iteration` to CausalImpact)
+                 run_causalpy.py:100 (`random_seed = iteration`)
+                 GeoLift and Google MM take no estimator seed at all
+    CONSEQUENCE  residuals across θ are paired by (scenario, iteration)
+    CHECK        corr(att_pct - effect_pct) across θ within a cluster
+                 measured +1.000 for all four tools (min +0.999)
+
+### C4 — the cluster is (scenario, iteration), not iteration alone
+
+    SOURCE       the estimator seed is the bare iteration index, so it
+                 REPEATS across scenarios — C3 does not settle this
+    CONSEQUENCE  if the shared seed linked scenarios, residuals for the same
+                 iteration in different scenarios would correlate
+    CHECK        measured: mean cross-scenario r = +0.012 (causalimpact),
+                 +0.026 (causalpy) — against -0.031 (geolift) and -0.045
+                 (google_mm), which take NO estimator seed. The seeded tools
+                 look like the unseeded controls, so the seed does not link
+                 scenarios.
+
+### C5 — the join key is unique
+
+    SOURCE       D13: an appended results file silently duplicates rows
+    CONSEQUENCE  a duplicate is a doubled likelihood weight
+    CHECK        guard_unique() and the cluster gate both refuse duplicates
+                 rather than deduplicating
+
+### C6 — the runtime is the R 4.5.1 lane
+
+    SOURCE       F11: the Makefile's RSCRIPT governs only `make panels`,
+                 while run_tools.py hardcodes "Rscript"
+    CONSEQUENCE  the resolved interpreter is a property of the run
+    CHECK        asserted and printed by the run itself, not inferred from
+                 the environment
+
+### C7 — the M8 pilot preserves CRN clusters
+
+    SOURCE       this preregistration; nine new truths at 10 iterations
+                 beside seven existing truths at 25
+    CONSEQUENCE  every truth rests on the same set of latent panels
+    CHECK        require_complete_clusters(..., expect_iterations=1-10)
+                 refuses the analysis otherwise; rows per (tool, θ) must be
+                 constant after gating
+
+### C8 — +3% is not a decision boundary
+
+    SOURCE       the quadratic adjustment cost in budget_problem
+    CONSEQUENCE  the optimal action changes at b + c(d_i+d_j)/k, not at b
+    CHECK        action_boundaries() against a 500,001-point brute-force
+                 argmax sweep; and an assertion that +3% is not among them
+
+## Metamorphic relations
+
+Where no oracle exists — and for a simulator there usually is none — the
+checkable thing is a **relation that must hold between related runs**. The
+failure log arrived at several of these before anyone named the technique:
+
+| relation | must hold |
+|---|---|
+| information is free | `EVSI >= 0` |
+| a signal is garbled | EVSI cannot increase |
+| same panel, new θ | cross-arm residual identity `att(θ) − att(null) − true == 0` |
+| θ negated | the sign propagates to the estimate |
+| a richer exact signal | Blackwell ordering |
+| a useless signal | EVSI is exactly 0, not merely small |
+
+Each one is already an executable check somewhere in this repository. The
+point of listing them together is that they are the same tool, and the next
+one should be reached for deliberately rather than discovered after a
+milestone.
+
+## What this does not fix
+
+It will not stop the next error. It narrows the class: a structural claim can
+no longer sit in a docstring for a milestone without either a source citation
+or something that fails when it is false. F16 had both available — a comment
+in the donor's own source, and a correlation of +1.000 sitting in the results
+file — and neither was consulted, because nothing required it.
