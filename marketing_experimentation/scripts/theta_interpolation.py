@@ -109,6 +109,12 @@ def main() -> None:
     ap.add_argument("--draws", type=int, default=4000)
     ap.add_argument("--expect-iterations", default=None,
                     help="preregister the complete-cluster set, e.g. '1-10'")
+    ap.add_argument("--boundary-stress", action="store_true",
+                    help="hold out each action boundary AND every truth within"
+                         " --radius of it, so the interpolation must span a"
+                         " real gap rather than reach 0.19pp to a neighbour")
+    ap.add_argument("--radius", type=float, default=0.01,
+                    help="in theta units; 0.01 = 1 percentage point")
     args = ap.parse_args()
 
     d = load(args.results)
@@ -206,15 +212,101 @@ def main() -> None:
     print(f"   {n_bad}/{len(rows)} cells above the 95th percentile on |dEVSI|")
     if n_bad == 0:
         print("\n   VERDICT: on this grid, the decision-relevant interpolation")
-        print("   error is inside sampling noise everywhere. A continuous-prior")
-        print("   Finding A is defensible -- but note this is the seven-point")
-        print("   grid testing ITSELF, with 5%-wide gaps. It says nothing about")
-        print("   the boundaries at -3.1% and +1.25%, where no truth was ever")
-        print("   simulated and where the optimal action actually changes.")
+        print("   error is inside sampling noise everywhere.")
+        print("\n   READ THE NEXT SENTENCE BEFORE BANKING THAT. Once the M8")
+        print("   grid is in, each boundary truth has a neighbour 0.19-1.0pp")
+        print("   away, so leaving it out asks whether q is smooth over a")
+        print("   fifth of a percentage point. It obviously is. The test")
+        print("   passes as preregistered and is EASIER than it was meant to")
+        print("   be, because the grid that was supposed to be tested is the")
+        print("   grid doing the testing. `--boundary-stress` holds out the")
+        print("   boundary AND its neighbours, forcing a span comparable to")
+        print("   the original 5pp gaps. That is the test with teeth.")
     else:
         print("\n   VERDICT: the interpolation is not free everywhere. The")
         print("   cells above are where M8 should place truths first -- they")
         print("   are the ones a neighbour demonstrably cannot predict.")
+
+    if args.boundary_stress:
+        print(f"\n{'=' * 68}")
+        print("BOUNDARY STRESS: hold out the boundary AND its neighbours")
+        print(f"{'=' * 68}")
+        print("The plain leave-one-out above is easier than it was designed to")
+        print("be: after M8 each boundary has a neighbour 0.19-1.0pp away, so")
+        print("it measures smoothness over a fifth of a point. Here every truth")
+        print(f"within {100*args.radius:.2f}pp of the boundary is removed too, so the")
+        print("interpolation must span a gap comparable to the original grid.")
+        print("This is the question the preregistration was actually asking:")
+        print("can q be reconstructed ACROSS the region where the optimal")
+        print("business action changes?\n")
+        print(f"   {'tool':18s} {'boundary':>9s} {'span':>12s} {'TV':>7s} "
+              f"{'TV pct':>7s} {'|dEVSI|':>9s} {'pct':>6s}")
+        stress_rows = []
+        for tool in tools:
+            g = d[d.tool_label == tool]
+            V, _ = verdict_matrix(g, thetas)
+            q_obs = counts_to_q(V, args.alpha)
+            rng = np.random.default_rng(0)
+            boot = cluster_bootstrap_draws(V, args.alpha, args.draws, rng)
+            gap_obs = float(evsi_batch(problem, q_obs[None])[0]
+                            - evsi_batch(problem, (q_obs @ GARBLE.T)[None])[0])
+            gb = (evsi_batch(problem, boot)
+                  - evsi_batch(problem, boot @ GARBLE.T))
+            for bnd in action_boundaries():
+                j = int(np.argmin(np.abs(th - bnd)))
+                drop = {k for k in range(len(th))
+                        if abs(th[k] - bnd) <= args.radius}
+                keep = [k for k in range(len(th)) if k not in drop]
+                # An endpoint left with neighbours on one side only would be
+                # extrapolation; skip rather than report a weaker test as if
+                # it were this one.
+                if not keep or th[keep[0]] > th[j] or th[keep[-1]] < th[j]:
+                    print(f"   {tool:18s} {100*bnd:+8.4f}%  "
+                          f"{'extrapolation - skipped':>38s}")
+                    continue
+                lo = max(x for x in th[keep] if x < th[j])
+                hi = min(x for x in th[keep] if x > th[j])
+                q_hat = logit_interp(th[keep], q_obs[keep], th[j])
+                tv_i = tv(q_hat, q_obs[j])
+                pct = 100.0 * float(
+                    (np.array([tv(boot[i, j], q_obs[j])
+                               for i in range(len(boot))]) < tv_i).mean())
+                q_swap = q_obs.copy()
+                q_swap[j] = q_hat
+                gap_int = float(
+                    evsi_batch(problem, q_swap[None])[0]
+                    - evsi_batch(problem, (q_swap @ GARBLE.T)[None])[0])
+                d_i = abs(gap_int - gap_obs)
+                pct_e = 100.0 * float((np.abs(gb - gap_obs) < d_i).mean())
+                stress_rows.append((tool, bnd, pct, d_i, pct_e))
+                print(f"   {tool:18s} {100*bnd:+8.4f}% "
+                      f"{100*(hi-lo):6.2f}pp gap {tv_i:7.3f} {pct:6.1f}% "
+                      f"${d_i:>8,.0f} {pct_e:5.1f}%")
+            print()
+
+        bad = [r for r in stress_rows if r[4] > 95.0]
+        print(f"   {len(bad)}/{len(stress_rows)} boundary cells above the 95th "
+              f"percentile on |dEVSI|")
+        if bad:
+            print("\n   PREREGISTERED FALSIFICATION FIRED. Do NOT build a")
+            print("   continuous-prior EVSI across these boundaries:")
+            for tool, bnd, _, d_i, pe in bad:
+                print(f"     {tool:18s} {100*bnd:+8.4f}%  ${d_i:,.0f} "
+                      f"at the {pe:.1f}th percentile")
+            print("   Densify locally there first.")
+        else:
+            print("\n   Survives the harder test too: q is reconstructable")
+            print("   across every action boundary, spanning the original grid")
+            print("   gaps, to within cluster-bootstrap noise.")
+            print("\n   AND THE CAVEAT THAT MATTERS MOST. The yardstick is")
+            print("   SAMPLING NOISE, which shrinks with the number of")
+            print("   clusters. A pass at 10 clusters per scenario is a pass")
+            print("   against a low bar; the same interpolation error measured")
+            print("   against 25 clusters may clear the 95th percentile. That")
+            print("   is the gate working, not a flaw in it -- but it means")
+            print("   this result is a statement AT n=10, and the gate must be")
+            print("   re-run after any extension before a continuous-prior")
+            print("   EVSI is built on it.")
 
 
 if __name__ == "__main__":
