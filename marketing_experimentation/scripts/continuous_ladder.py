@@ -368,7 +368,13 @@ def main() -> None:
     tax = pd.DataFrame(index=r.index)
     tax["POINT-BIT"] = r["POINT"] - r["BIT"]
     tax["INTERVAL-POINT"] = r["INTERVAL"] - r["POINT"]
-    tax["BIT keeps %"] = 100 * r["BIT"] / r["POINT"]
+    # BIT / INTERVAL, not BIT / POINT. The bit is a garbling of the interval,
+    # so that ratio is a compression measurement. BIT / POINT compares two
+    # signals Blackwell does not order and is not a "share kept" of anything.
+    # A leftover from the mechanical S0/S1/S2 rename; caught because the two
+    # places that printed it disagreed (21.7% here against 11.2% below) and
+    # the runs are deterministic, so one of them had to be wrong.
+    tax["BIT keeps %"] = 100 * r["BIT"] / r["INTERVAL"]
     out = tax.copy()
     for c in ("POINT-BIT", "INTERVAL-POINT"):
         out[c] = [f"${v:,.0f}" if np.isfinite(v) else "n/a" for v in tax[c]]
