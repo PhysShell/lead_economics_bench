@@ -103,15 +103,23 @@ And the second-order observation matters more than the first:
 > Under the point estimate they span **17%** ($48.7k–$57.0k), and on the
 > 8-split averages in the addendum, **12%** ($46.3k–$52.0k).
 
-Recast conclude that "point estimates alone would tell you these tools are
-interchangeable — the uncertainty story tells you why they aren't." On this
-evidence that is precisely backwards *for a decision-maker*: once the estimate
-is used to update a belief rather than to pass a threshold, the tools become
-close to interchangeable, and the disagreement they document is largely a
-disagreement about where to put a threshold nobody is obliged to use.
+Recast observe that point estimates are close in easy cases and that the
+uncertainty story is what separates the tools. On this evidence that
+separation is largely a separation *at the threshold*: once the estimate
+updates a belief rather than passing a test, the four converge to within 12%.
 
-Their framing is right for their users, because their users live in the gated
-world. That is the point.
+**An earlier version of this paragraph said their framing was right "because
+their users live in the gated world", which was unfair to them.** Recast's
+own practitioner guidance is explicitly decision-aware — it says the choice
+depends on the relative cost of the two errors (GeoLift where a false
+positive is dearer than a missed winner, Google MM where more decisive
+answers are needed and extra false positives are tolerable) and warns that
+GeoLift's wide intervals make decisions harder. They are not assuming the
+gate; they are advising within it.
+
+The question this track adds sits one step further out: **given that the
+estimator produces a distribution, how much decision value is destroyed by
+compressing it to significant / not significant at all?**
 
 ## 4. What this does to the research question
 
@@ -322,23 +330,60 @@ runs from 7.8% (`geolift`) to 79.9% (`causalimpact`). That ordering needed an
 explanation, and it has an exact one, using Recast's own published
 calibration numbers rather than anything of ours.
 
-A one-bit signal is worth what it **discriminates** — the gap between how
-often it fires when there is an effect and how often it fires when there is
-not. Scenario A1, from the donor's `metrics.csv`:
+At rung S0 the decision sees exactly one bit. That channel is **fully
+described by two numbers** — how often it fires under each truth — and
+nothing else about the estimator reaches the decision. Scenario A1, from the
+donor's `metrics.csv`:
 
-| tool | FPR | TPR | discrimination | coverage | bias | **S0 keeps** |
-|---|---|---|---|---|---|---|
-| `geolift` | **4.6%** | 8.7% | **4.1 pp** | 92–95% | +0.2 pp | **7.8%** |
-| `causalpy` | 19.8% | 33.8% | 14.0 pp | 80% | −1.0 pp | 17.5% |
-| `google_mm` | 16.9% | 42.9% | 26.0 pp | 83% | +2.0 pp | 70.4% |
-| `causalimpact` | **27.8%** | 62.1% | **34.3 pp** | 72% | +3.8 pp | **79.9%** |
+| tool | FPR | TPR | coverage | bias | **S0 keeps** |
+|---|---|---|---|---|---|
+| `geolift` | **4.6%** | 8.7% | 92–95% | +0.2 pp | **7.8%** |
+| `causalpy` | 19.8% | 33.8% | 80% | −1.0 pp | 17.5% |
+| `google_mm` | 16.9% | 42.9% | 83% | +2.0 pp | 70.4% |
+| `causalimpact` | **27.8%** | 62.1% | 72% | +3.8 pp | **79.9%** |
 
-> **Spearman correlation between discrimination and S0 retention: 1.00.**
-> Perfect rank agreement across all four tools.
+**Reproduce:** `python marketing_experimentation/scripts/s0_reconstruction.py`
 
-So the ladder's S0 column is not mysterious and not an artefact. It measures
-exactly what it should. But reading the table left to right makes the
-uncomfortable part plain:
+An earlier version of this section reported a Spearman correlation of 1.00
+between discrimination (TPR − FPR) and S0 retention, and called it a
+mechanistic explanation. **It is not one.** A perfect rank correlation on
+four points has an exact two-sided permutation p-value of 2/4! = 0.083, and
+more fundamentally a correlation is not a mechanism. The mechanism is
+available in closed form:
+
+```
+EVSI(S0) = min(pi*c_FN, (1-pi)*c_FP)
+         - min(pi*(1-TPR)*c_FN, (1-pi)*(1-FPR)*c_FP)
+         - min(pi*TPR*c_FN,     (1-pi)*FPR*c_FP)
+```
+
+Evaluated from Recast's **published** FPR and FNR — numbers produced by their
+code, not ours — against the S0 figures the ladder obtained by counting
+significance flags row by row:
+
+| tool | from published rates | from our row counts | difference |
+|---|---|---|---|
+| `causalimpact` | $40,800 | $40,800 | **$0.00** |
+| `google_mm` | $35,100 | $35,100 | **$0.00** |
+| `causalpy` | $8,200 | $8,200 | **$0.00** |
+| `geolift` | $3,600 | $3,600 | **$0.00** |
+
+> **EVSI(S0) is reconstructed to the dollar from two numbers per tool.** The
+> S0 rung is not *correlated with* the binary significance channel; it is
+> **mechanically determined by it** under this decision problem.
+
+GeoLift, written out: `200,000 − 182,600 − 13,800 = 3,600`.
+
+**A shortcut that does not work**, recorded because the first draft of the
+script was about to assert it. `EVSI = EVPI × (TPR − FPR)` matches a few
+cells and is wrong by up to **$80,000** across the grid; it would put GeoLift
+at $8,200 where the true value is $3,600. The `min()` structure is the whole
+content — the bit is worth something only where it moves the posterior far
+enough to change which loss binds. This is also why the earlier rank
+correlation, though real, explained nothing: the ordering happens to agree
+with discrimination without being a function of it.
+
+Reading the table left to right then makes the uncomfortable part plain:
 
 **The tool that keeps most of its value through the significance gate is the
 worst-calibrated one, and the tool that keeps least is the only
@@ -368,15 +413,25 @@ replaces, and it is now supported from two independent directions.
 
 They are compatible, and they are answers to different questions:
 
-| | conclusion |
-|---|---|
-| **Recast** | GeoLift is the only tool whose error rates are what they claim. Use it. |
-| **This track** | GeoLift's calibration costs it nearly all its power, and if you use its estimate to update a belief rather than to pass a threshold, you lose almost nothing relative to the other three. |
+**Recast are not naive about this**, and an earlier draft of this section
+implied they were. Their own practitioner guidance says the choice depends on
+the relative cost of the two errors — GeoLift when a false positive is more
+expensive than a missed winner, Google MM when more decisive answers are
+needed and extra false positives are tolerable — and they warn explicitly
+that GeoLift's wide intervals make decisions harder. They also note that
+point estimates are close in easy cases and that the uncertainty story is
+what separates the tools.
 
-Their advice is right for a user who must report a significance verdict. Ours
-is for a user who must choose a budget. The S0 ranking — an 11× spread — is
-largely a ranking of **how willing each tool is to reject**, and it
-disappears at S1, where the four converge to within 12%.
+So this is a continuation, not a contradiction:
+
+| | question answered |
+|---|---|
+| **Recast** | given that you must report a verdict, which tool's error rates are what they claim, and how should the cost of the two errors steer the choice? |
+| **This track** | how much decision value is destroyed by compressing the estimate into that verdict at all? |
+
+The S0 ranking — an 11× spread — is largely a ranking of **how willing each
+tool is to reject**, and it disappears at S1, where the four converge to
+within 12%. The interesting object is the compression, not the ranking.
 
 ## B.2 Does the retention result survive the rest of the business plane?
 
@@ -424,10 +479,14 @@ A rank that survives cell by cell is worth more than a rank of aggregates:
 | `google_mm` | < `causalimpact` | 80% of 10 |
 
 Five of six pairwise comparisons hold in every shared cell; the sixth in four
-of five. **The ordering `geolift < causalpy < google_mm < causalimpact` is a
-property of the tools, not of the cell it was first measured in** — and it is
-the same ordering that §B.1 derives independently from the tools' published
-discrimination.
+of five. So the ordering `geolift < causalpy < google_mm < causalimpact` is
+**robust across the examined 7 × 5 decision grid, under this DGP** — not a
+coincidence of the single cell it was first measured in.
+
+That is deliberately weaker than "a property of the tools". Still held fixed:
+the donor's DGP, its two truths, this prior family, this payoff model, the
+$100 threshold defining an active cell, and the business parameters swept.
+M7 removes the largest of those; the others remain.
 
 And the headline numbers are representative rather than cherry-picked: at
 0.4/1.0 each tool sits near the median of its own active region (GeoLift 7.8%

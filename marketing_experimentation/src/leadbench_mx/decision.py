@@ -228,8 +228,25 @@ def two_point_problem(
 # `two_point_problem` asks "act or don't". A marketing team does not face that
 # question; it faces "how much". With two actions an experiment only has to
 # say which side of a threshold theta falls on, so most of its precision is
-# wasted. With five, the answer has to be located, and information is worth
-# more. That is a prediction this module makes and `scripts/` measures.
+# wasted. With five, the answer has to be located.
+#
+# A CORRECTION. An earlier version of this comment said that therefore
+# "information is worth more" with a richer action set, and a test asserted it
+# for nested sets. **That is false as a general claim.** Adding an action can
+# raise the no-information baseline more than it raises the
+# perfect-information value, and EVPI falls. Two equiprobable states:
+#
+#     a1 = (10, 0), a2 = (0, 10)   ->  no info 5, perfect 10, EVPI 5
+#     add h = (6, 6), removing nothing
+#                                  ->  no info 6, perfect 10, EVPI 4
+#
+# A strictly richer set with strictly lower EVPI. So `A subset of B` does not
+# imply `EVPI(B) >= EVPI(A)`; see `test_nesting_does_not_guarantee_higher_evpi`.
+#
+# EVPI *is* monotone along the nested sequence used below, but that is a
+# property of this payoff and this prior -- specifically, `hold` is in the
+# smallest set and prior-optimal throughout, so the baseline never moves. The
+# test asserts that condition rather than assuming it.
 # ---------------------------------------------------------------------------
 
 #: Spend multipliers for the default action set. Deliberately asymmetric:

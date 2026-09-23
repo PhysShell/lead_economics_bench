@@ -65,8 +65,10 @@ def load(path: str) -> pd.DataFrame:
     return pd.DataFrame([json.loads(line) for line in Path(path).open()])
 
 
-def residuals(d: pd.DataFrame, scenario: str) -> pd.DataFrame:
-    """Per-tool |att(effect) - att(null) - true_att| over shared iterations."""
+def residuals(d: pd.DataFrame, scenario: str,
+              theta: float | None = None) -> pd.DataFrame:
+    """Per-tool |att(theta) - att(null) - true_att| over shared iterations,
+    for ONE non-null truth."""
     keys = ["tool", "posterior_type", "scenario", "iteration"]
     if "posterior_type" not in d.columns:
         d = d.assign(posterior_type="")
@@ -74,7 +76,23 @@ def residuals(d: pd.DataFrame, scenario: str) -> pd.DataFrame:
 
     # Non-null arm by effect size, not by the literal label "effect": that is
     # the name of one particular theta (D7, and our own version of it).
-    eff = d[d.effect_pct.astype(float) != 0.0].set_index(keys)
+    #
+    # But `effect_pct != 0` is only a correct selector when there is ONE
+    # non-null truth. On the atlas dataset there are six, and pooling them
+    # would compute a single residual over rows whose true effects differ by
+    # 25 percentage points -- replacing a hard-coded 7.5% with a hard-coded
+    # "anything but zero", which is the same defect wearing a hat. The caller
+    # picks a theta; `main` loops over them.
+    nonnull = sorted(t for t in d.effect_pct.astype(float).unique() if t != 0.0)
+    if theta is None:
+        if len(nonnull) != 1:
+            raise SystemExit(
+                f"{len(nonnull)} non-null truths present ({nonnull}); pass "
+                f"--theta to pick one.\nPooling them would average residuals "
+                f"across different true effects.")
+        theta = nonnull[0]
+
+    eff = d[np.isclose(d.effect_pct.astype(float), theta)].set_index(keys)
     nul = d[d.effect_pct.astype(float) == 0.0].set_index(keys)
 
     # A duplicated run identity would make `.loc[common]` align rows
@@ -108,22 +126,49 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default=DEFAULT_RESULTS)
     ap.add_argument("--scenario", default="A1")
+    ap.add_argument("--theta", type=float, default=None,
+                    help="which non-null truth to test; required when the "
+                         "dataset contains several")
+    ap.add_argument("--all-thetas", action="store_true",
+                    help="loop over every non-null truth in the dataset")
     args = ap.parse_args()
 
     d = load(args.results)
-    r = residuals(d, args.scenario)
-    if r.empty:
-        raise SystemExit(f"no paired rows for scenario {args.scenario}")
+    sub = d[d.scenario == args.scenario]
+    nonnull = sorted(t for t in sub.effect_pct.astype(float).unique() if t != 0.0)
+    thetas = nonnull if args.all_thetas else [args.theta]
 
     print(f"scenario {args.scenario} | "
-          f"identity: att(effect) - att(null) - true_att == 0 for a "
-          f"deterministic estimator\n")
+          f"identity: att(theta) - att(null) - true_att == 0 for a "
+          f"deterministic estimator")
+    if len(nonnull) > 1 and not args.all_thetas and args.theta is None:
+        raise SystemExit(
+            f"\n{len(nonnull)} non-null truths present "
+            f"({[round(100*t,1) for t in nonnull]}%).\n"
+            f"Pass --theta to pick one, or --all-thetas to loop. Pooling them "
+            f"would average\nresiduals across different true effects.")
+
+    for th in thetas:
+        _one(d, args, th)
+
+
+def _one(d, args, th) -> None:
+    r = residuals(d, args.scenario, th)
+    if r.empty:
+        raise SystemExit(f"no paired rows for scenario {args.scenario}")
+    if th is not None:
+        print(f"\ntheta = {100 * th:+.1f}%")
+    print()
     print(f"{'tool':14s} {'posterior':10s} {'n':>5s} {'median':>12s} "
           f"{'max':>12s} {'% of true':>10s}  class")
 
     for (tool, pt), g in r.groupby(["tool", "posterior_type"], sort=True):
         med = float(g.resid.median())
-        rel = med / float(g.true_att_level.median())
+        # abs(): theta may be negative, and a signed denominator makes `rel`
+        # negative, which sails past `rel < 1e-12` and labels a stochastic
+        # tool "exact". Caught on the first negative-theta dataset, where
+        # causalpy was reported as exact at -1.4704%.
+        rel = med / abs(float(g.true_att_level.median()))
         cls = ("exact" if rel < 1e-12 else
                "exact (4dp-censored)" if med < 1e-4 else
                "stochastic")

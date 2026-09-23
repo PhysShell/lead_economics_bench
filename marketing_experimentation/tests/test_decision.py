@@ -196,9 +196,62 @@ def test_adjustment_cost_is_what_makes_the_action_set_matter():
         f"with no adjustment cost only the extremes should ever win, got {opt}")
 
 
-def test_richer_nested_action_set_raises_evpi():
-    """Adding options to an existing set can only make knowing theta more
-    valuable, because the no-information baseline is unchanged."""
+def test_nesting_does_not_guarantee_higher_evpi():
+    """**This is the important one, and it refutes a claim I had written.**
+
+    I asserted that adding options to an existing action set can only raise
+    EVPI, "because the no-information baseline is unchanged". The baseline is
+    NOT unchanged: a added action can be the new prior-optimal one, and if it
+    hedges well it raises `max_a E[U]` more than it raises `E[max_a U]`.
+
+    Minimal counterexample, two equiprobable states:
+
+        a1 = (10,  0)        no information: 5
+        a2 = ( 0, 10)        perfect information: 10      EVPI = 5
+
+    Add a hedge, removing nothing:
+
+        h  = ( 6,  6)        no information: 6
+                             perfect information: 10      EVPI = 4
+
+    A strictly richer set, strictly lower EVPI. So
+
+        A subset of B  does NOT imply  EVPI(B) >= EVPI(A)
+
+    and any monotonicity observed in `budget_problem` is a property of that
+    utility specification, not of decision theory.
+    """
+    prior = np.array([0.5, 0.5])
+    theta = np.array([0.0, 1.0])
+
+    small = DecisionProblem(
+        theta, prior, np.array([[10.0, 0.0], [0.0, 10.0]]), ("a1", "a2"))
+    bigger = DecisionProblem(
+        theta, prior,
+        np.array([[10.0, 0.0], [0.0, 10.0], [6.0, 6.0]]), ("a1", "a2", "h"))
+
+    assert small.value_no_experiment() == pytest.approx(5.0)
+    assert small.value_perfect_information() == pytest.approx(10.0)
+    assert small.evpi() == pytest.approx(5.0)
+
+    assert bigger.value_no_experiment() == pytest.approx(6.0)
+    assert bigger.value_perfect_information() == pytest.approx(10.0)
+    assert bigger.evpi() == pytest.approx(4.0)
+
+    assert bigger.evpi() < small.evpi()
+
+
+def test_evpi_monotone_for_this_budget_specification_only():
+    """EVPI does rise along this particular nested sequence -- an empirical
+    property of `budget_problem`'s payoff and the spike-and-slab prior, NOT
+    an instance of a general rule. The test above is why the distinction is
+    laboured: the general rule is false.
+
+    It holds here because `hold` is already in the smallest set and is
+    prior-optimal throughout, so every added action raises `E[max_a U]` while
+    leaving `max_a E[U]` alone. Remove that condition and the guarantee goes
+    with it.
+    """
     th = theta_grid()
     pr = spike_slab_prior(th)
     nested = [
@@ -207,17 +260,24 @@ def test_richer_nested_action_set_raises_evpi():
         (("cut", "hold", "increase", "increase hard"), (0.8, 1.0, 1.25, 1.6)),
         (DEFAULT_ACTIONS, DEFAULT_MULTIPLIERS),
     ]
-    evpis = [budget_problem(th, pr, multipliers=m, action_names=n).evpi()
+    probs = [budget_problem(th, pr, multipliers=m, action_names=n)
              for n, m in nested]
+    evpis = [p.evpi() for p in probs]
     assert all(b >= a - 1e-9 for a, b in zip(evpis, evpis[1:])), evpis
-    assert evpis[-1] > evpis[0], "the full set should be strictly better"
+    assert evpis[-1] > evpis[0]
+
+    # The condition that makes it work, asserted rather than assumed.
+    baselines = [p.value_no_experiment() for p in probs]
+    assert all(np.isclose(b, baselines[0]) for b in baselines), (
+        f"the baseline moved: {baselines}. The monotonicity above depended "
+        f"on it not moving, so it is no longer evidence of anything.")
 
 
-def test_non_nested_action_set_can_lower_evpi():
-    """The guard on the test above. 'Richer action set raises VOI' is true
-    for sets you ADD to, and false for sets you REPLACE. Dropping the hedge
-    wrecks the no-information baseline and inflates EVPI, which looks like
-    information becoming more valuable and is not.
+def test_dropping_the_hedge_inflates_evpi():
+    """The mirror of the counterexample, in this problem's own terms.
+    Replacing the action set with two extremes removes `hold`, wrecks the
+    no-information baseline, and inflates EVPI -- which looks like
+    information becoming more valuable and is the opposite.
     """
     th = theta_grid()
     pr = spike_slab_prior(th)
