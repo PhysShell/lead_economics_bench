@@ -39,11 +39,17 @@ The current claim, stated as narrowly as the evidence allows:
 
 ### The decision layer — `docs/layer3-first-result.md`
 
-- **The compression tax sits at one rung.** Converting a continuous estimate
-  to a significance bit destroys 20–92% of an experiment's decision value,
-  depending on the tool. Adding the confidence interval on top of the point
-  estimate is worth nothing measurable — tested against four likelihood
-  families, including one that cannot be starved by dimension.
+- **Thresholding an interval into a bit destroys 66–93% of its decision
+  value.** Because `significant` is exactly "the interval excludes zero"
+  (verified, 0 mismatches in 2,000 rows per tool), the bit is a *deterministic
+  garbling* of the interval, so Blackwell's theorem guarantees the ordering
+  and a violation would be a bug in our density estimation rather than a
+  finding. That makes it a compression measurement rather than a comparison.
+- **The point estimate is a side branch, not a rung.** It is not comparable
+  to the bit by Blackwell — neither is a garbling of the other — so
+  `POINT − BIT` is an empirical property of a decision problem, reported
+  separately. An earlier version of this track treated the two as nested and
+  was wrong; see `docs/failures.md` F13.
 - **Under optimal use the four tools converge** from an 11× spread at the
   significance bit to ~12% at the point estimate. The disagreement the
   vendors document is largely a disagreement about where to put a threshold
@@ -93,7 +99,9 @@ refusing to overclaim:
 - **CausalPy's ~1.3% point-estimate noise is unexplained.** Three mechanisms
   proposed, three refuted (F8). A fourth is written down as a hypothesis.
 - **EVSI *levels* are density-dependent** — $46k under a KDE, $67k under a
-  Student-t. Only the differences and the ordering are robust.
+  Student-t, and the 3-d interval density inflates further. Only the
+  orderings and the held-out AUC differences are robust, which is why AUC is
+  now computed alongside every EVSI.
 - **The figure layer of the donor lies on any θ ≠ 7.5%** unless patched. Ours
   patches it; theirs does not.
 

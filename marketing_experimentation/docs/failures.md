@@ -313,3 +313,50 @@ donor-side half is recorded as **D11**.
 **The general rule this earns:** an environment property that matters to a
 conclusion gets asserted by the run itself, in its own output, every time —
 not established once in a setup step and trusted thereafter.
+
+## F13. The information ladder was not a ladder
+
+**What was wrong.** The central apparatus of this track assumed a nesting:
+
+    S0 significance bit  <  S1 point estimate  <  S2 estimate + interval width
+
+and reported `EVSI(S1) − EVSI(S0)` as "the price of binarisation", with the
+whole compression tax said to sit at that one rung.
+
+**Why it was wrong.** `significant` is not computed from the point estimate.
+In this harness it is exactly "the confidence interval excludes zero" —
+now checked rather than assumed, at **100.00% agreement, 0 mismatches in
+2,000 rows per tool**. So S0 is a function of the *interval*, not of S1. They
+are two different projections of the same result, and the difference between
+them was never a compression at all.
+
+A second, compounding error: `S2 = (att, ci_width)`. The intervals are not
+symmetric about the estimate — median |att − midpoint| is 1.3–8.3% of the
+width — so `(att, width)` recovers significance only 94–97% of the time. Even
+the S2→S0 step, the one that *looked* like a genuine nesting, was not one.
+
+**What it changed.** A published headline. "Adding the confidence interval on
+top of the point estimate is worth nothing measurable" was measured on the
+width. On the full bounds the interval adds a great deal for three of four
+tools — held-out AUC rises 0.76 → 0.91 for `google_mm` and 0.77 → 0.92 for
+`causalimpact`. The claim survives only for GeoLift, where it holds in two
+independent density families.
+
+**How it is prevented now.** The representation graph is a fork, and the
+vertical arm is a genuine garbling chain, so **Blackwell's theorem
+guarantees** `EVSI(FULL) ≥ EVSI(INTERVAL) ≥ EVSI(BIT)` for any prior and
+utility. That is no longer a hypothesis — it is an identity, and a violation
+is therefore a **self-test on our own density estimation** rather than a
+finding. It fires already: `google_mm` shows FULL < INTERVAL, correctly
+identifying that the 4-d density has run out of sample.
+
+`POINT` is reported as a side branch under its own heading, because neither
+it nor the bit is a garbling of the other and Blackwell does not order them.
+
+Held-out AUC is now computed alongside every EVSI, because EVSI in different
+dimensions is not comparable and a richer signal can score higher purely by
+giving the estimator more room.
+
+**Caught by the reader, not by me** — the fifth such entry, and the one with
+the largest blast radius: it invalidated the structure the track's main
+result was expressed in, while leaving the underlying data untouched.

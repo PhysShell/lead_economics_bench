@@ -229,7 +229,109 @@ it is worth anything.
 
 ---
 
-# Addendum: the information ladder, and a claim of mine it refutes
+# Addendum 0: the ladder was not a ladder — a structural retraction
+
+**Everything in Addendum 1 below was computed on a representation graph that
+does not hold.** The error is structural rather than numerical, and it
+changes one of this track's headline claims.
+
+## What was wrong
+
+The ladder assumed S0 (significance bit) was a coarsening of S1 (point
+estimate), which was a coarsening of S2 (estimate + interval width), and
+asserted `EVSI(S2) ≥ EVSI(S1) ≥ EVSI(S0)` as a nesting.
+
+**`significant` is not computed from the point estimate.** In this harness it
+is exactly "the confidence interval excludes zero" — checked here rather than
+assumed, at **100.00% agreement, 0 mismatches in 2,000 rows per tool**. So
+the bit is a function of the *interval*, and S0 was never a coarsening of S1.
+They are two different projections of the same result, and
+
+> `EVSI(S1) − EVSI(S0)` could not be called "the price of binarisation",
+> because S0 is not S1 binarised.
+
+## The correct structure, and what it buys
+
+```
+FULL   (att, ci_lo, ci_hi, diagnostic)
+  │
+  ├──────────────────────→ POINT  (att)          side branch
+  │
+  ▼
+INTERVAL (att, ci_lo, ci_hi)
+  │
+  ▼  deterministic garbling
+BIT    (does the interval exclude zero?)
+```
+
+Along the vertical chain the bit genuinely is a deterministic garbling, so
+**Blackwell's theorem guarantees** `EVSI(FULL) ≥ EVSI(INTERVAL) ≥ EVSI(BIT)`
+for *any* prior and utility. That is no longer a hypothesis to test but an
+identity — which converts a violation into a **self-test on the harness**: if
+measured EVSI(INTERVAL) falls below EVSI(BIT), the density estimation is
+broken, because the information ordering cannot be.
+
+`POINT` sits off the chain. Neither it nor the bit is a garbling of the other
+— the point drops the interval, the bit drops the magnitude — and Blackwell
+orders only comparable experiments. `POINT − BIT` is an empirical property of
+a particular decision problem, not a theorem, and is now reported under its
+own heading.
+
+**S2 also had to change from `(att, width)` to `(att, ci_lower, ci_upper)`.**
+The intervals are not symmetric about the estimate — median |att − midpoint|
+runs 1.3–8.3% of the width — so `(att, width)` recovers significance only
+**94–97%** of the time and would have silently broken the nesting.
+
+## What the corrected measurement says
+
+| tool | BIT | POINT | INTERVAL | FULL |
+|---|---|---|---|---|
+| `causalimpact` | $40,800 | $51,967 | **$119,599** | n/a |
+| `google_mm` | $35,100 | $51,335 | **$117,561** | $105,664 † |
+| `causalpy` | $8,200 | $46,825 | $64,624 | $65,278 |
+| `geolift` | $3,600 | $46,445 | $49,856 | $49,984 |
+
+† flagged by the Blackwell self-test: FULL < INTERVAL, so the 4-d density has
+run out of sample. Treat the FULL column as unreliable.
+
+**This retracts the claim that "the interval adds nothing".** That was
+measured on `(att, width)`, and the width alone really does add little. The
+full bounds add a great deal for three of four tools.
+
+## Held-out AUC, because EVSI across dimensions is not comparable
+
+A 3-d KDE has more room to find structure that is not there. AUC on the same
+held-out points is dimension-agnostic and cannot be inflated by overfitting
+the fit half:
+
+| tool | POINT | INTERVAL | Δ | |
+|---|---|---|---|---|
+| `causalimpact` | 0.7725 | **0.9200** | +0.1475 | interval discriminates better |
+| `google_mm` | 0.7630 | **0.9126** | +0.1496 | interval discriminates better |
+| `causalpy` | 0.7581 | 0.8244 | +0.0663 | interval discriminates better |
+| `geolift` | 0.7553 | 0.7224 | **−0.0329** | no better — the extra dimensions cost more than they carry |
+
+Cross-checked against a full-covariance Gaussian, which cannot overfit the
+way a KDE can: the direction survives for the three (+0.07, +0.04, −0.02
+respectively) while the *magnitudes* shrink. So the EVSI levels in the table
+above are KDE-inflated and should be read as an upper bound; the AUC
+direction is the robust part.
+
+**GeoLift is the exception in both families**, which rescues a piece of the
+original claim in a narrower form: for GeoLift specifically, the interval
+adds nothing on top of the point estimate. For the other three it adds
+substantially, and the earlier blanket statement was an artefact of using the
+width instead of the bounds.
+
+---
+
+# Addendum 1: the information ladder, and a claim of mine it refutes
+
+> **Superseded in structure by Addendum 0.** The S1→S2 numbers below were
+> computed with `S2 = (att, ci_width)` on an assumed nesting that does not
+> hold. They are kept because the bandwidth and likelihood-family analysis in
+> §A remains valid *for the signal it actually measured* — the width — and
+> because the reasoning is part of the record.
 
 **Reproduce:** `python marketing_experimentation/scripts/information_ladder.py --bandwidth-scan`
 
