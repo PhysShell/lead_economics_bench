@@ -1,0 +1,154 @@
+Record the seed each panel and each estimator actually used (M8).
+=================================================================
+
+Applies ON TOP of theta-mutation.patch, in the disposable clone only:
+
+    cd /home/user/donor-smoke
+    git apply .../theta-mutation.patch
+    git apply .../m8-seed-log.patch
+
+This is a diff, not vendored source (D5: the donor has no licence).
+
+WHY
+---
+The M8 design rests on one structural sentence: "nine new truths attach to
+the same clusters without disturbing what is there." F13-F16 are all cases of
+a structural sentence that was true-sounding and unchecked, so this one gets
+evidence from the run rather than from the source that asserts it -- F11's
+lesson, where two-lane isolation was asserted and only an empty library
+exposed it.
+
+WHAT IT ADDS
+------------
+1. generate_panels.R writes results/raw/panel_seeds.csv, one row per panel:
+       scenario, effect_label, iteration, effect_pct, panel_seed, noise_seed
+   The checkable property is that panel_seed is CONSTANT across effect_label
+   within (scenario, iteration). That is what makes the arms a
+   common-random-numbers design; mistaking it for independence is F16.
+
+   The write sits immediately after the generation loop and BEFORE the figure
+   section, so a plotting failure cannot lose the evidence.
+
+2. run_tools.py records estimator_seed on every emitted row:
+       causalpy      iteration   (run_causalpy.py sets random_seed=iteration)
+       causalimpact  iteration   (run_tools.py passes --seed iteration)
+       geolift       None        (takes no seed; deterministic given the panel)
+       google_mm     None        (takes no seed; deterministic given the panel)
+   Both seeded paths are guarded by `if iteration is not None`, so recording
+   `iteration` records exactly what was passed.
+
+VERIFIED, not illustrative
+--------------------------
+    Rscript parse()     generate_panels.R parses, 57 expressions
+    py_compile          run_tools.py compiles
+    live run            360 seed records written; panel_seed constant across
+                        all 9 effect labels in all 40 clusters; every seed
+                        equal to 42000 + 10000*scenario_idx + iteration
+    labels              no collision with the existing seven truths
+
+WHAT IT DOES NOT CHANGE
+-----------------------
+No estimator input, no RNG, no output value. It adds one CSV and one JSON
+field. A run with this patch produces byte-identical att/ci columns to a run
+without it.
+
+diff --git a/src/R/generate_panels.R b/src/R/generate_panels.R
+index 2f8cfbb..42be893 100644
+--- a/src/R/generate_panels.R
++++ b/src/R/generate_panels.R
+@@ -349,6 +349,12 @@ cat("═════════════════════════
+ 
+ total_panels <- 0
+ 
++# M8: record the seed ACTUALLY used per (scenario, effect, iteration), so the
++# common-random-numbers property is evidenced by the run rather than inferred
++# from this source file. F11's lesson: an environment/design property that
++# matters must be demonstrated by the run. Contract C3.
++seed_log <- list()
++
+ for (sc_id in names(scenarios)) {
+   sc <- scenarios[[sc_id]]
+ 
+@@ -396,6 +402,12 @@ for (sc_id in names(scenarios)) {
+       # so null and effect panels have identical pre-treatment data
+       panel_seed <- master_seed * 1000 + match(sc_id, names(scenarios)) * 10000 + it
+ 
++      seed_log[[length(seed_log) + 1L]] <- data.frame(
++        scenario = sc_id, effect_label = eff_label, iteration = it,
++        effect_pct = eff, panel_seed = panel_seed,
++        noise_seed = panel_seed + 100000, stringsAsFactors = FALSE
++      )
++
+       # Step 1: Draw baselines (same seed for null and effect)
+       baselines <- draw_baselines(n_geos, baseline_mean, baseline_spread,
+         seed = panel_seed
+@@ -441,6 +453,25 @@ for (sc_id in names(scenarios)) {
+ }
+ 
+ cat(sprintf("Done. Total panels generated: %d\n", total_panels))
++# ── M8: emit the seed log ───────────────────────────────────────────
++# One row per generated panel. The property to check is that panel_seed is
++# CONSTANT across effect_label within (scenario, iteration): that is what
++# makes the arms a common-random-numbers design rather than independent
++# samples, and mistaking it for independence is recorded as F16.
++if (length(seed_log) > 0) {
++  seeds_df <- do.call(rbind, seed_log)
++  dir.create(file.path("results", "raw"),
++    recursive = TRUE, showWarnings = FALSE
++  )
++  write.csv(seeds_df, file.path("results", "raw", "panel_seeds.csv"),
++    row.names = FALSE
++  )
++  cat(sprintf(
++    "Wrote %d seed records to results/raw/panel_seeds.csv\n",
++    nrow(seeds_df)
++  ))
++}
++
+ 
+ # ── Diagnostic Plot ─────────────────────────────────────────────────
+ # 2x2 panel showing one iteration per scenario (null condition),
+diff --git a/src/python/run_tools.py b/src/python/run_tools.py
+index f679cc2..60bd095 100644
+--- a/src/python/run_tools.py
++++ b/src/python/run_tools.py
+@@ -297,7 +297,8 @@ def run_panel(
+             append_result({
+                 "scenario": scenario, "effect_label": effect_label,
+                 "effect_pct": effect_pct, "iteration": iteration,
+-                "tool": "causalpy", "posterior_type": cp_res.posterior_type,
++                "tool": "causalpy",
++                "estimator_seed": iteration, "posterior_type": cp_res.posterior_type,
+                 "att_level": cp_res.att_level, "att_pct": att_pct_unified,
+                 "ci_lower": cp_res.ci_lower, "ci_upper": cp_res.ci_upper,
+                 "ci_lower_level": cp_res.ci_lower_level,
+@@ -325,7 +326,8 @@ def run_panel(
+         append_result({
+             "scenario": scenario, "effect_label": effect_label,
+             "effect_pct": effect_pct, "iteration": iteration,
+-            "tool": "google_mm", "posterior_type": "",
++            "tool": "google_mm",
++                "estimator_seed": None, "posterior_type": "",
+             "att_level": mm_result.att_level, "att_pct": att_pct_unified,
+             "ci_lower": mm_result.ci_lower, "ci_upper": mm_result.ci_upper,
+             "ci_lower_level": mm_result.ci_lower_level,
+@@ -354,7 +356,8 @@ def run_panel(
+         append_result({
+             "scenario": scenario, "effect_label": effect_label,
+             "effect_pct": effect_pct, "iteration": iteration,
+-            "tool": "geolift", "posterior_type": "",
++            "tool": "geolift",
++                "estimator_seed": None, "posterior_type": "",
+             "att_level": gl_att_level, "att_pct": att_pct_unified,
+             "ci_lower": gl_result.get("ci_lower"),
+             "ci_upper": gl_result.get("ci_upper"),
+@@ -383,7 +386,8 @@ def run_panel(
+         append_result({
+             "scenario": scenario, "effect_label": effect_label,
+             "effect_pct": effect_pct, "iteration": iteration,
+-            "tool": "causalimpact", "posterior_type": "",
++            "tool": "causalimpact",
++                "estimator_seed": iteration, "posterior_type": "",
+             "att_level": ci_att_level, "att_pct": att_pct_unified,
+             "ci_lower": ci_result_raw.get("ci_lower"),
+             "ci_upper": ci_result_raw.get("ci_upper"),
