@@ -1,0 +1,4 @@
+2197227005212800227c194bc3c83f606825368e
+the commit containing docs/m9b-freeze.json. Written one commit later because
+a file cannot contain the hash of the commit that contains it, and this remote
+refuses tag pushes, so a tag would identify nothing after a clone.
