@@ -216,10 +216,11 @@ def report_sign_dependence(d: pd.DataFrame, s: pd.DataFrame) -> None:
         gn, gp = g[g.theta_pct < 0], g[g.theta_pct > 0]
         if gn.empty or gp.empty:
             continue
+        sk = float(g["skew"].mean())
         print(f"  {tool:18s} bias neg {gn.bias.mean():+.3f} / "
               f"pos {gp.bias.mean():+.3f}   "
               f"SD neg {gn.sd.mean():.3f} / pos {gp.sd.mean():.3f}   "
-              f"skew {g.skew.mean():+.2f}")
+              f"skew {sk:+.2f}")
 
 
 def report_pathology(p: pd.DataFrame) -> None:
