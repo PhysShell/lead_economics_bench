@@ -1,11 +1,11 @@
 {
-  "frozen_at": "2026-09-23T14:11:10+00:00",
+  "frozen_at": "2026-09-23T14:11:55+00:00",
   "purpose": "M8 pilot accepted; freeze before the iteration count changes",
   "permitted_change_after_this_point": "n_iterations: 10 -> 25, for the nine new truths only",
   "code": {
-    "repo_head": "5dbb6d2a61df228c50cb4551567e1cb25d88fdda",
-    "repo_head_subject": "M8 pilot ACCEPTED, and the boundary falsification survives both versions",
-    "tree_clean": false,
+    "repo_head": "fecf20c8c608a3a2ea19d76ace92b22464153c8b",
+    "repo_head_subject": "F17 closed properly, C9 hardened, C10 added, pilot frozen",
+    "tree_clean": true,
     "m8_baseline_commit": "4c892f5",
     "m8_baseline_note": "the commit that introduces the CRN cluster gate. NOT cc38fc2 -- that is F16 only and reproduces a pilot with no gate."
   },
