@@ -1,11 +1,13 @@
 {
-  "frozen_at": "2026-09-23T14:11:55+00:00",
+  "frozen_at": "2026-09-23T14:20:41+00:00",
   "purpose": "M8 pilot accepted; freeze before the iteration count changes",
   "permitted_change_after_this_point": "n_iterations: 10 -> 25, for the nine new truths only",
   "code": {
-    "repo_head": "fecf20c8c608a3a2ea19d76ace92b22464153c8b",
-    "repo_head_subject": "F17 closed properly, C9 hardened, C10 added, pilot frozen",
-    "tree_clean": true,
+    "analysis_commit": "6cdb256674be9ffe4ad632ec0a02c250e2bca40b",
+    "analysis_commit_subject": "Canonical decimal C9, freeze SHA semantics, quarantine, extension gate",
+    "freeze_commit": "the commit containing this file; identified by git and by the tag m8-pilot-freeze, NOT here",
+    "stale_copy_warning": "a superseded copy of this artifact exists in the analysis commit itself, recording tree_clean=false. Use the tagged one.",
+    "tree_clean_at_generation": true,
     "m8_baseline_commit": "4c892f5",
     "m8_baseline_note": "the commit that introduces the CRN cluster gate. NOT cc38fc2 -- that is F16 only and reproduces a pilot with no gate."
   },
@@ -22,6 +24,16 @@
       "src/python/run_tools.py": "60345ae6ecbca00c8f5f9ba2f5698de565b30cbcc14edc566eb61e10a39aa91e"
     },
     "note": "file hashes are recorded ALONGSIDE the patch hashes because a patch being unchanged does not establish that the file it was applied to is unchanged."
+  },
+  "quarantine": {
+    "status": "ABORTED_UNAUTHORIZED_EXTENSION",
+    "what": "a 25-iteration extension started before this freeze existed, killed at 2,740 rows",
+    "rows": 2740,
+    "sha256": "23f4928a197138402e599ae6f0a543af6cc12f680004bac45392f3c615e26b27",
+    "started_from_freeze": false,
+    "eligible_for_analysis": false,
+    "eligible_for_reuse": false,
+    "payload_disposition": "DELETED after this manifest was written. The evidence that it happened is kept; the reusable observations are not, so no future glob can discover them."
   },
   "data": {
     "pilot_results": {
@@ -44,7 +56,7 @@
       "sha256": "6bdd5f19021aa40578761cbf3b0fba72e49bbfa84e4efed979c1144e8dd02469",
       "rows": 2800
     },
-    "known_state_note": "the donor clone's panels/ directory holds 25 iterations, not 10: an extension was started before this freeze existed and aborted. Iterations 1-10 are identical by seed, and the aborted partial results are kept at /tmp/results_m8_partial_aborted.jsonl and are NOT part of any analysis. Recorded because an undocumented surplus is how a later run silently uses data nobody authorised."
+    "known_state_note": "the donor clone's panels/ directory holds 25 iterations, not 10. Iterations 1-10 are identical by seed. See `quarantine`. Recorded because an undocumented surplus is how a later run silently uses data nobody authorised."
   },
   "design": {
     "theta_grid_new": [
