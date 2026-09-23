@@ -245,11 +245,28 @@ n=25.* That was the right thing to write down. What actually happened:
 * The maximum fell, 5.1% → 3.0%.
 * Nothing came near 95 at either n.
 
-So the bar did rise, and the interpolation error fell at a comparable rate.
-That is informative on its own: most of the apparent interpolation error at
-n=10 was **estimation noise in `q` itself**, not model misspecification. Had
-it been misspecification, the error would have stayed put while the bar
-tightened, and the ratio would have climbed.
+**The claim this supports, stated at the strength the data carry:**
+
+> The n=25 run provides no evidence of a persistent boundary interpolation
+> defect. Despite a tighter reference distribution, all 16 boundary cells
+> remain far below the preregistered 95th-percentile threshold. The pattern
+> is consistent with the n=10 discrepancies containing a substantial
+> finite-simulation component; **this experiment does not separately identify
+> simulation noise and interpolation approximation error.**
+
+An earlier draft of this paragraph said that *most of* the n=10 discrepancy
+**was** estimation noise in `q`. That is a variance decomposition, and two
+values of n cannot produce one. Raising n changes both the spread around a
+fixed true `q` **and the input to the interpolation itself**, so the observed
+leave-one-out discrepancy is
+
+    finite-simulation error in q  +  interpolation approximation error
+                                 +  their interaction
+
+and these three do not separate here. What genuinely follows is the weaker
+and still useful statement: a *persistent structural* misspecification would
+not have to shrink with n, and the gate would have tightened onto it. It did
+not.
 
 *(An earlier reading of this comparison, taken off the worst-five list rather
 than the full sixteen, reported that the percentiles fell. That was a
