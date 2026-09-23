@@ -1,0 +1,72 @@
+m9b_mutations.sh -- recorded 2026-09-23T19:44:30Z
+generator sha256 before: fac70c97b310e81958d99bec6fc5647463bfbf5c82d58285420d3e113ede1ef2
+
+################ M-a: world sized to the request (tripwire left in) ####
+    HARNESS FAILURE: generator exited 1
+
+################ M-b: same, tripwire deleted ###########################
+    [ FAIL] W1 treated geo identical across every cell
+    [ FAIL] W2 treated Y and Y_counterfactual invariant in G_c
+    [ PASS] W3 donor pools nest: D5 subset D9 subset D20 subset D40
+    [ FAIL] W3b each pool is the prefix of one recorded permutation
+    [ PASS] W3d donor order re-derived from perm_seed alone matches the recorded one, exactly
+    [ FAIL] W4 durations nest: Y15 == prefix of Y21 == prefix of Y28 == prefix of Y42
+    [ PASS] W5 Y_counterfactual invariant in theta; Y invariant outside the treated post-period
+    [ FAIL] W6 NEGATIVE TEST: strip(M9B_T42_G40) == M9B_T15_G05
+    [ FAIL] W7 one world per replication: panel_seed, donor_order, treated_geo and world size constant across cells
+    [ PASS] W8 [structural] run_panel reads the panel once and derives all four tool inputs from it
+    M9-B WORLD CONTRACT: REFUSED -- 6 of 10 checks failed. Do not freeze, do not run cells.
+
+################ M-c: donors are the sorted-baseline prefix ############
+    [ PASS] W1 treated geo identical across every cell
+    [ PASS] W2 treated Y and Y_counterfactual invariant in G_c
+    [ PASS] W3 donor pools nest: D5 subset D9 subset D20 subset D40
+    [ PASS] W3b each pool is the prefix of one recorded permutation
+    [ FAIL] W3d donor order re-derived from perm_seed alone matches the recorded one, exactly
+    [ PASS] W4 durations nest: Y15 == prefix of Y21 == prefix of Y28 == prefix of Y42
+    [ PASS] W5 Y_counterfactual invariant in theta; Y invariant outside the treated post-period
+    [ PASS] W6 NEGATIVE TEST: strip(M9B_T42_G40) == M9B_T15_G05
+    [ PASS] W7 one world per replication: panel_seed, donor_order, treated_geo and world size constant across cells
+    [ PASS] W8 [structural] run_panel reads the panel once and derives all four tool inputs from it
+    M9-B WORLD CONTRACT: REFUSED -- 1 of 10 checks failed. Do not freeze, do not run cells.
+
+################ M-d: permutation drawn from the DGP noise stream ######
+    [ PASS] W1 treated geo identical across every cell
+    [ PASS] W2 treated Y and Y_counterfactual invariant in G_c
+    [ PASS] W3 donor pools nest: D5 subset D9 subset D20 subset D40
+    [ PASS] W3b each pool is the prefix of one recorded permutation
+    [ FAIL] W3d donor order re-derived from perm_seed alone matches the recorded one, exactly
+    [ PASS] W4 durations nest: Y15 == prefix of Y21 == prefix of Y28 == prefix of Y42
+    [ PASS] W5 Y_counterfactual invariant in theta; Y invariant outside the treated post-period
+    [ PASS] W6 NEGATIVE TEST: strip(M9B_T42_G40) == M9B_T15_G05
+    [ PASS] W7 one world per replication: panel_seed, donor_order, treated_geo and world size constant across cells
+    [ PASS] W8 [structural] run_panel reads the panel once and derives all four tool inputs from it
+    M9-B WORLD CONTRACT: REFUSED -- 1 of 10 checks failed. Do not freeze, do not run cells.
+
+################ M-e: treated geo chosen from the SLICE ################
+    [ FAIL] W1 treated geo identical across every cell
+    [ FAIL] W2 treated Y and Y_counterfactual invariant in G_c
+    [ FAIL] W3 donor pools nest: D5 subset D9 subset D20 subset D40
+    [ FAIL] W3b each pool is the prefix of one recorded permutation
+    [ PASS] W3d donor order re-derived from perm_seed alone matches the recorded one, exactly
+    [ PASS] W4 durations nest: Y15 == prefix of Y21 == prefix of Y28 == prefix of Y42
+    [ PASS] W5 Y_counterfactual invariant in theta; Y invariant outside the treated post-period
+    [ FAIL] W6 NEGATIVE TEST: strip(M9B_T42_G40) == M9B_T15_G05
+    [ FAIL] W7 one world per replication: panel_seed, donor_order, treated_geo and world size constant across cells
+    [ PASS] W8 [structural] run_panel reads the panel once and derives all four tool inputs from it
+    M9-B WORLD CONTRACT: REFUSED -- 6 of 10 checks failed. Do not freeze, do not run cells.
+
+################ restore + confirm clean ###############################
+    [ PASS] W1 treated geo identical across every cell
+    [ PASS] W2 treated Y and Y_counterfactual invariant in G_c
+    [ PASS] W3 donor pools nest: D5 subset D9 subset D20 subset D40
+    [ PASS] W3b each pool is the prefix of one recorded permutation
+    [ PASS] W3d donor order re-derived from perm_seed alone matches the recorded one, exactly
+    [ PASS] W4 durations nest: Y15 == prefix of Y21 == prefix of Y28 == prefix of Y42
+    [ PASS] W5 Y_counterfactual invariant in theta; Y invariant outside the treated post-period
+    [ PASS] W6 NEGATIVE TEST: strip(M9B_T42_G40) == M9B_T15_G05
+    [ PASS] W7 one world per replication: panel_seed, donor_order, treated_geo and world size constant across cells
+    [ PASS] W8 [structural] run_panel reads the panel once and derives all four tool inputs from it
+    M9-B WORLD CONTRACT: 10/10 checks pass.
+
+generator sha256 after : fac70c97b310e81958d99bec6fc5647463bfbf5c82d58285420d3e113ede1ef2
