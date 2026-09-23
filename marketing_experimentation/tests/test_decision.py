@@ -355,3 +355,42 @@ def test_zero_adjustment_cost_collapses_every_boundary_to_breakeven():
     from leadbench_mx.decision import action_boundaries
 
     assert np.allclose(action_boundaries(adjust_cost=0.0), 0.03)
+
+
+def test_spike_slab_negative_mass_is_grid_dependent():
+    """Pins F19 so it cannot be rediscovered as a surprise.
+
+    The gridded spike leaks across zero and the leak grows with resolution,
+    converging toward half the spike plus the slab's true negative tail. The
+    published "0.267 below zero" is the n=81 value of this artefact, not a
+    property of the prior, whose exact negative mass is 0.1389.
+    """
+    from scipy.stats import norm
+
+    exact = 0.55 * norm.cdf(0.0, 0.04, 0.06)
+    assert abs(exact - 0.1389) < 1e-4
+
+    got = {}
+    for n in (81, 401, 1601):
+        g = np.linspace(-0.15, 0.25, n)
+        got[n] = float(spike_slab_prior(g)[g < 0].sum())
+
+    # grid-dependent, monotone in n, and all far from the exact value
+    assert got[81] < got[401] < got[1601]
+    assert abs(got[81] - 0.2666) < 1e-3, "the published 0.267 came from here"
+    assert got[1601] > 2 * exact, "the leak is larger than the true mass"
+
+
+def test_an_atom_prior_does_not_leak_across_zero():
+    """The complement: with the spike kept as an atom, negative mass is the
+    slab's alone and does not move with the grid."""
+    from scipy.stats import norm
+
+    for n in (81, 401, 1601):
+        g = np.linspace(-0.15, 0.25, n)
+        dens = norm.pdf(g, 0.04, 0.06)
+        w = np.gradient(g)
+        slab = dens * w
+        slab = slab / slab.sum()
+        neg = 0.55 * float(slab[g < 0].sum())
+        assert abs(neg - 0.55 * norm.cdf(0.0, 0.04, 0.06)) < 0.01

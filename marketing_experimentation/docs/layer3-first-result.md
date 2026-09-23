@@ -983,3 +983,103 @@ statistics and decisions — and the corrected measurement puts a number on it:
 for two of four tools, **more than 80% of the decision value of the
 experiment is destroyed at the moment the result is converted to a
 significance verdict.**
+
+---
+
+# Addendum 4: Finding A on the documented prior
+
+**Reproduce:** `python marketing_experimentation/scripts/continuous_finding_a.py`
+
+The first Finding A computed on the prior the project actually documents,
+rather than on a seven-point surrogate bent to fit the simulator. The M8
+boundary gate is what made this legitimate: `q(θ)` survived leave-one-out
+across every action boundary at n=25, so the likelihood can be evaluated
+where the prior lives instead of the prior being dragged to where the
+likelihood was measured.
+
+## The prior, in its declared form
+
+    p(θ) = 0.45·δ₀ + 0.55·N(0.04, 0.06²)
+
+The spike is an **atom**, not a normal of width 0.005 on a grid, so `π₀` is
+exactly 0.45 at any resolution. Support restricted to [−15%, +15%], the
+interval the gate validated — 1.88% of prior mass above +15% is dropped
+rather than extrapolated into.
+
+**Its negative mass is 0.139, not 0.267.** The 0.267 was an artefact of the
+gridded spike leaking across zero; see F19. The "sensitivity prior matched on
+negative mass" retires, and its label was wrong as well as its purpose.
+
+    246 support points (1 atom + 245 slab), the four action boundaries
+    inserted exactly    |    prior-optimal action 'hold'    |    EVPI $22,313
+
+## The sign loss
+
+`q(θ)` interpolated from 16 simulated truths; cluster bootstrap over
+(scenario, iteration), 2,000 draws, α = 0.5.
+
+| tool | VERDICT | BIT | **V − B** | 95% credible |
+|---|---|---|---|---|
+| `causalpy[y_hat]` | $2,171 | **$0** | **$2,170** | [1,563 – 3,547] |
+| `causalimpact` | $2,508 | $1,397 | **$1,096** | [642 – 1,662] |
+| `google_mm` | $1,448 | $193 | **$1,079** | [672 – 2,104] |
+| `geolift` | $218 | $0 | $218 | [0 – 762] |
+
+Three of four exclude zero. `geolift` still does not, for the reason it never
+did: its `P(significant)` is 0.05–0.19 at *every* truth, so its verdict is
+nearly mute and there is little for the sign to carry.
+
+Self-test: `min(V − B)` over all 8,000 draws = **0.0**.
+
+## Where the value comes from — the part worth more than the total
+
+EVSI is not a sum over θ, but the gain over the baseline action is, exactly:
+
+    contribution(θ) = p(θ)·[ Σ_y p(y|θ)·U(a*(y), θ) − U(a₀, θ) ]
+
+| tool | spike (θ=0) | slab < 0 | slab > 0 | median total |
+|---|---|---|---|---|
+| `causalpy[y_hat]` | $405 | **$1,658** | −$206 | $2,170 |
+| `causalimpact` | $324 | **$1,033** | −$216 | $1,096 |
+| `google_mm` | $209 | **$866** | −$102 | $1,079 |
+| `geolift` | $0 | $170 | $0 | $218 |
+
+**The sign's value is almost entirely about the negative half.** 76–100% of
+it comes from slab mass below zero, and the positive slab contributes
+**negatively** for three of four tools.
+
+That negative contribution is not an error and is not clipped. Blackwell
+guarantees `V ≥ B` in *total*, not at every truth: the extra resolution can
+move the policy to an action that happens to be worse at one θ while paying
+for itself on average. Here it does exactly that on the positive side.
+
+Which gives the mechanism a plain reading. An unsigned `significant` cannot
+tell a business to **cut**. On the positive half, "something is happening"
+plus a prior centred at +4% is already nearly enough to act on; on the
+negative half it is worse than useless, because the same symbol that means
+*scale this* also means *stop this*. The money is in not funding a channel
+that is destroying revenue.
+
+*(Medians are not additive — the three regional medians need not sum to the
+median total. The residual is printed alongside rather than normalised away;
+it runs $45 to −$313.)*
+
+## It is not a sliver
+
+50% of |contribution| sits in 36–57 of 246 support points, 90% spans roughly
+[−14%, +7%]. Broadly spread with a concentration on the negative side, rather
+than a headline manufactured by a narrow band near one boundary — which the
+single dollar figure could not have distinguished.
+
+## What this still is not
+
+The DGP is synthetic. This says how these four estimators behave in *this*
+simulation world, and it can support an EVSI comparison within it. It says
+nothing about the θ, variances, correlations or response dynamics of a real
+advertising campaign. The distance from "this can be done correctly" to "this
+predicts Meta and Google Ads in the wild" is not crossed by any number above.
+
+Finding B — `INTERVAL → VERDICT` — was deliberately not scaled. A
+one-dimensional `q(θ)` surviving interpolation says nothing about a 3-d
+density; the curse of dimensionality is not impressed by a neighbouring
+result.

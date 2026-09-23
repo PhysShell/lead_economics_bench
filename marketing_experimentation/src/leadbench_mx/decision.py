@@ -324,6 +324,25 @@ def spike_slab_prior(
     A point mass at exactly zero cannot be represented on a grid, so the
     "spike" is a narrow normal of width ``null_width``. ``p_null`` is the
     share of prior mass on it.
+
+    **THIS APPROXIMATION LEAKS, AND IT LEAKED INTO A PUBLISHED FIGURE.**
+    The spike is centred *at* zero, so about half of ``p_null`` lands below
+    zero — and how much depends on the grid spacing::
+
+        exact, from 0.45*delta_0 + 0.55*N(0.04, 0.06^2):  P(theta<0) = 0.1389
+        this function, n=  81 grid:                                    0.2666
+                      n= 401 grid:                                     0.3442
+                      n=1601 grid:                                     0.3587
+
+    The 0.2666 is the "0.267 of prior mass below zero" that a whole
+    sensitivity analysis was anchored to. It is not a property of the prior;
+    it is a property of an 81-point grid. See F19.
+
+    For anything where the atom's weight matters, keep the spike as an atom:
+    ``continuous_finding_a.build_prior`` does, and its ``pi_0`` is exactly
+    0.45 however fine the grid gets. This function is retained because
+    earlier results were computed with it and removing it would silently
+    change them, not because it is the right representation.
     """
     theta = np.asarray(theta, dtype=float)
     spike = np.exp(-0.5 * (theta / null_width) ** 2)

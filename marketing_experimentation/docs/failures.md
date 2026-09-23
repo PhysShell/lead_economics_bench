@@ -728,3 +728,59 @@ answered with a tolerance, the tolerance was the bug.** Half the last
 retained digit is exact in decimal and inexact in binary. `0.10` and `0.1`
 are equal as numbers and unequal as strings. Neither needed an epsilon;
 both needed the question asked in the right domain.
+
+## F19. The prior's headline property was a property of the grid
+
+**What was wrong.** For the whole of Addendum 3 and the M8 preregistration,
+the documented spike-and-slab was described as putting **0.267** of its mass
+below zero, and a sensitivity prior was built to *match* that figure.
+
+It is not a property of the prior. It is a property of an 81-point grid.
+
+`spike_slab_prior` represents the atom at θ=0 as a normal of width 0.005 and
+evaluates it on a grid. The spike is centred *at* zero, so roughly half of
+`p_null = 0.45` falls below zero — and how much depends on the spacing:
+
+| | P(θ<0) |
+|---|---|
+| exact, from `0.45·δ₀ + 0.55·N(0.04, 0.06²)` | **0.1389** |
+| gridded, n=81 | 0.2666 ← *the published 0.267* |
+| gridded, n=401 | 0.3442 |
+| gridded, n=1601 | 0.3587 |
+
+Monotone in resolution, converging toward half the spike plus the slab's true
+negative tail. The documented prior's actual negative mass is **0.139** — not
+0.267, and not the 0.071 of the seven-point binning either.
+
+**What it changes.** The sweep row labelled *"0.267 — matched to the
+continuous prior"* was matched to a number the prior does not have. Every
+figure in that row is still a correctly computed EVSI at `P(θ<0) = 0.267`; it
+is just not "the documented prior's value", which is what it was presented
+as. The row stands as a sensitivity point and its label is withdrawn.
+
+It does **not** invalidate the M8 boundary gate. That gate compares
+interpolation error against bootstrap noise *within one decision problem*, so
+a mis-specified prior moves numerator and denominator together. The gate was
+a falsification attempt under a particular problem, and it survived; it was
+simply not quite the problem it was labelled as.
+
+**How it was caught.** By computing Finding A on the prior's declared form
+instead of a discretisation of it. The new prior reported `P(θ<0) = 0.141`,
+which disagreed with the 0.267 carried in every previous document — two
+representations of one quantity, disagreeing. C9 again, arrived at from the
+other direction: this time the duplicate channel was *the correct
+computation*, and it contradicted the incumbent.
+
+**How it is prevented now.** The atom stays an atom:
+`continuous_finding_a.build_prior` puts `π₀` on a support point of its own,
+so its weight is exactly 0.45 at any resolution. `spike_slab_prior` keeps its
+old behaviour — earlier results were computed with it and silently changing
+it would rewrite them — but its docstring now carries the leak table, and
+`test_spike_slab_negative_mass_is_grid_dependent` pins the artefact so it
+cannot be rediscovered as a surprise.
+
+**The general form, which is the same one F17 and F18 taught.** A quantity
+that only exists after a discretisation is a property of the discretisation
+until proven otherwise. "0.267 of the mass is below zero" was never measured
+on the prior; it was measured on a rendering of the prior, and then cited for
+two milestones as though the rendering were the thing.
