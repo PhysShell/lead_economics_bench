@@ -1,0 +1,107 @@
+{
+  "frozen_at": "2026-09-23T14:11:10+00:00",
+  "purpose": "M8 pilot accepted; freeze before the iteration count changes",
+  "permitted_change_after_this_point": "n_iterations: 10 -> 25, for the nine new truths only",
+  "code": {
+    "repo_head": "5dbb6d2a61df228c50cb4551567e1cb25d88fdda",
+    "repo_head_subject": "M8 pilot ACCEPTED, and the boundary falsification survives both versions",
+    "tree_clean": false,
+    "m8_baseline_commit": "4c892f5",
+    "m8_baseline_note": "the commit that introduces the CRN cluster gate. NOT cc38fc2 -- that is F16 only and reproduces a pilot with no gate."
+  },
+  "donor": {
+    "clone": "/home/user/donor-smoke",
+    "base_commit": "5133d372558957e67cf66ce9b5f3af71fc62f4ea",
+    "working_tree_dirty_by_design": true,
+    "patches": {
+      "theta-mutation.patch": "f64587c3789943d67af3d7aeb4090da124fd2f38f5fbefee645da439f9073100",
+      "m8-seed-log.patch": "e157b1ef28de7dbc9c43a2c1e3d409d5023d2cb5bc134f213e67dbb017285f78"
+    },
+    "patched_files_sha256": {
+      "src/R/generate_panels.R": "7d690e9bf276707abc9a2dd385d1bc5ccb4337781b9bad620822a841ac192959",
+      "src/python/run_tools.py": "60345ae6ecbca00c8f5f9ba2f5698de565b30cbcc14edc566eb61e10a39aa91e"
+    },
+    "note": "file hashes are recorded ALONGSIDE the patch hashes because a patch being unchanged does not establish that the file it was applied to is unchanged."
+  },
+  "data": {
+    "pilot_results": {
+      "path": "/tmp/results_m8_pilot.jsonl",
+      "sha256": "c4da43b0589bf72f7449985a780f81d273a99580c0669569492e9a80ad2a4de3",
+      "rows": 1440
+    },
+    "seed_manifest": {
+      "path": "/tmp/panel_seeds_m8_pilot.csv",
+      "sha256": "496e1d8b582c862ce26be6b713afad886ffcd83728d05ddb5cda3ff862ace8eb",
+      "rows": 361
+    },
+    "prefix_baseline_kept_as_f17_control": {
+      "path": "/tmp/results_m8_pilot_rounded.jsonl",
+      "sha256": "cdf9ea7406116436fd10c95135e123bfb516b1eec378f8b878b20e5c2b5c620a",
+      "rows": 1440
+    },
+    "atlas_seven_truths": {
+      "path": "/tmp/results_atlas.jsonl",
+      "sha256": "6bdd5f19021aa40578761cbf3b0fba72e49bbfa84e4efed979c1144e8dd02469",
+      "rows": 2800
+    },
+    "known_state_note": "the donor clone's panels/ directory holds 25 iterations, not 10: an extension was started before this freeze existed and aborted. Iterations 1-10 are identical by seed, and the aborted partial results are kept at /tmp/results_m8_partial_aborted.jsonl and are NOT part of any analysis. Recorded because an undocumented surplus is how a later run silently uses data nobody authorised."
+  },
+  "design": {
+    "theta_grid_new": [
+      -0.15,
+      -0.03125,
+      -0.02,
+      -0.01,
+      0.01,
+      0.0125,
+      0.051875,
+      0.1,
+      0.104375
+    ],
+    "theta_grid_existing": [
+      -0.1,
+      -0.05,
+      0.0,
+      0.02,
+      0.05,
+      0.075,
+      0.15
+    ],
+    "action_boundaries": [
+      -0.031249999999999993,
+      0.012500000000000004,
+      0.051875,
+      0.104375
+    ],
+    "actions": [
+      "cut hard",
+      "cut",
+      "hold",
+      "increase",
+      "increase hard"
+    ],
+    "multipliers": [
+      0.5,
+      0.8,
+      1.0,
+      1.25,
+      1.6
+    ],
+    "breakeven_is_not_a_boundary": 0.03,
+    "cluster_definition": [
+      "scenario",
+      "iteration"
+    ],
+    "iterations_analysed": "1-10",
+    "gate_threshold_percentile": 95,
+    "gate_yardstick": "cluster-bootstrap spread of q itself"
+  },
+  "result": {
+    "pilot_acceptance": "ACCEPTED, 21/21 after the F17 fix",
+    "f17_closure": "CLOSED: only effect_pct and runtime_seconds differ between the pre- and post-fix runs; consumer inventory has no entry in class `estimation`",
+    "attach_equivalence": "slope 1.00000 / intercept <=1.6e-09 / R2 1.00000 for three tools; causalpy slope 0.99920, intercept -1.6e-04, R2 0.99997, max|new-old| 1.1e-03, consistent with its own sampler noise rather than a different panel",
+    "boundary_leave_one_out": "PASS, 0/56 above the 95th percentile",
+    "boundary_stress": "PASS, 0/16 above the 95th percentile, spans 3.00-7.50pp",
+    "caveat_on_the_gate": "the yardstick is sampling noise, which shrinks with cluster count. This is a PASS AT n=10. The gate must be re-run at n=25 before a continuous-prior EVSI is built on it, and it may fail there. That is the gate working."
+  }
+}

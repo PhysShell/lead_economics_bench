@@ -652,3 +652,46 @@ estimation" is a measured claim rather than an assumed one.
 said 10 iterations before 25 exist to catch labelling, sign and boundary
 defects before the full spend. It cost ~1.25 CPU-hours and saved the same
 defect from reaching 3,600 rows and every number built on them.
+
+### F17, closure — and a phantom the closure check produced on its way
+
+Closing F17 properly needed more than "the estimates are the same". A rounded
+θ that never enters an estimator can still change a conclusion through
+boundary classification, grouping, row selection, truth or display — and the
+class that actually fired was **truth**, since `budget_problem(thetas, ...)`
+builds its utility matrix from `effect_pct`.
+
+**The inventory.** Every consumer of the quantity, classified, across the
+donor and this repository: `estimation` **0 sites**; `TRUTH` 3 (ours —
+`signed_verdict`, `theta_interpolation`, `continuous_ladder`); `grouping` 3
+(all pairing `effect_pct` with `effect_label`, which are 1:1, so rounding can
+neither merge nor split a group); `row selection` 2 (zero vs non-zero, which
+survives rounding); `ordering` 1; `reporting` 3; `display` 3. "Estimation is
+untouched" is now a statement about the call graph rather than about the line
+that was read.
+
+**The allowlist diff.** Every field of every row, allowlist declared first:
+only `effect_pct` (480 rows, max |diff| 5.0e−5 — exactly half the last
+retained digit) and `runtime_seconds` (1,440 rows, wall-clock) differ. 24
+fields byte-identical.
+
+**And the phantom.** The first version of that diff compared the two runs
+through a pandas merge and reported `converged` as differing in **1,080
+rows**. It does not differ. The key is simply *absent* for three of the four
+tools in both files, and the merge stringified the missing values
+inconsistently between frames. The instrument normalised absence into a value
+and then answered a question about absence.
+
+That is the same family as F13–F16: an instrument whose described behaviour
+and actual behaviour differed. It is recorded as contract C10, because a
+phantom finding inside a closure check is worse than no closure check — it
+spends trust on nothing, and the next real finding arrives looking identical.
+The fix was to compare parsed JSON objects row by row with an explicit
+`_ABSENT` sentinel and never a DataFrame round-trip.
+
+**One more of mine, for completeness.** The corrected check then failed on its
+own threshold: `max |diff| <= 5e-5` rejects 0.03125 → 0.0312, which in binary
+is 5.0000000000000375e−05. The bound for 4-dp rounding is half the last
+retained digit and must be inclusive. Float slop on the bound, not slack in
+the claim — but it failed on precisely the case the check exists for, which
+is the only case where an off-by-epsilon threshold matters.

@@ -115,23 +115,55 @@ Two rules make it work rather than decorate:
     CHECK        action_boundaries() against a 500,001-point brute-force
                  argmax sweep; and an assertion that +3% is not among them
 
-### C9 — the recorded θ is the θ the DGP actually used
+### C9 — cross-channel equality for any duplicated decision-relevant scalar
 
-    SOURCE       two independent write paths for the same quantity:
-                 panel_seeds.csv via write.csv, results.jsonl via
-                 jsonlite::toJSON (whose default is digits = 4)
-    CONSEQUENCE  the two must agree exactly
-    CHECK        m8_pilot_check.py section 1b, exact float equality.
-                 This is how F17 was found: θ = −0.03125 was recorded as
-                 −0.0312, moving a preregistered decision-boundary truth
-                 0.005pp off the boundary it exists to sit on.
+    CLAIM        Any decision-relevant scalar written to more than one
+                 provenance channel has a CANONICAL REPRESENTATION, and the
+                 channels are checked for equality against it before analysis.
+    SOURCE       θ is written twice: panel_seeds.csv via write.csv, and
+                 metadata.json -> results.jsonl via jsonlite::toJSON, whose
+                 default is digits = 4
+    CANONICAL    the exact numeric θ passed to --effect_sizes. JSON and CSV
+                 are serialisations OF it, not competing versions of it.
+    CONSEQUENCE  every channel must reproduce the canonical value exactly
+    CHECK        m8_pilot_check.py §1b, exact float equality; and
+                 f17_closure.py, which additionally proves that the correction
+                 moved only allowlisted fields
 
-A note on why this contract exists at all. It was not foreseen. The seed log
-was added to evidence a *different* claim — that new arms attach to old
-clusters — and happened to create a second write path for θ. The comparison
-then fell out for free. That is worth generalising: **a provenance record is
-worth more when it duplicates something already recorded elsewhere**, because
-the duplication is what makes a silent corruption visible.
+An earlier draft of this contract said merely "duplicate and compare", and
+that is not enough. Duplication without a designated canonical representation
+produces a disagreement with no way to say which side is wrong — two channels
+and no truth is a worse position than one channel, because it manufactures the
+appearance of verification. What makes the check decidable is naming the
+canonical form first.
+
+**Why the contract exists at all is worth recording.** It was not foreseen.
+The seed log was added to evidence a *different* claim — that new arms attach
+to old clusters — and incidentally created a second write path for θ. The
+comparison fell out for free, and caught F17. Generalising: a provenance
+record is worth most when it duplicates something already recorded elsewhere,
+because duplication against a canonical form is what makes silent corruption
+visible. A log that records only what nothing else records can confirm but
+never contradict.
+
+### C10 — a comparison instrument must not normalise away the thing compared
+
+    CLAIM        a diff used as evidence distinguishes "absent", "null" and
+                 "present with a value"
+    SOURCE       f17_closure.py's first version compared two runs through a
+                 pandas merge and reported `converged` as differing in 1,080
+                 rows. It does not differ: the key is simply ABSENT for three
+                 of the four tools in both files, and the merge stringified
+                 the missing values inconsistently between frames.
+    CONSEQUENCE  a field absent in both files is identical in both files
+    CHECK        the closure diff compares parsed JSON objects row by row with
+                 an explicit _ABSENT sentinel, never a DataFrame round-trip
+
+A phantom finding inside a closure check is worse than no closure check: it
+spends the reader's trust on nothing, and the next real finding arrives
+looking the same. This is the same family as F13-F16 — an instrument whose
+described behaviour and actual behaviour differed — which is why it is a
+contract and not a code comment.
 
 ## Metamorphic relations
 

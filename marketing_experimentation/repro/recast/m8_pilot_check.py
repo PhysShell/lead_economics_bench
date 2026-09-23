@@ -26,7 +26,13 @@ getting wrong (F13-F16). So it is checked three ways, weakest to strongest:
 3. **Empirical, and the one that could actually fail.** If a NEW truth and an
    OLD truth really share a latent panel, their estimation residuals inside
    one cluster must be the same realisation. On the M7 atlas that correlation
-   was **+1.000** across truths. If the new arms had landed on different
+   was **+1.000** across truths.
+
+   Correlation alone does not establish that. `r = 1` is satisfied by
+   `new = 2*old + 17`, which would describe arms on affinely-related panels
+   rather than shared ones. So the regression is reported too, and must come
+   back as the identity: slope 1, intercept 0, R^2 1, and `max |new - old|`
+   small against the residual scale. If the new arms had landed on different
    panels -- a seed that quietly picked up the effect label, a directory
    collision, a reordering -- this is where it shows, and nothing else in the
    pipeline would notice.
@@ -189,9 +195,25 @@ def main() -> None:
             continue
         w = w[cols].dropna()
         r = float(w.corr().to_numpy()[0, 1])
+        # Correlation alone is not attach-equivalence. r = 1 is satisfied by
+        # new = 2*old + 17, which would mean the arms sit on panels that are
+        # merely affinely related -- a rescaled DGP, not a shared one. The
+        # claim is that they are the SAME realisation, so the regression must
+        # come back as the identity: intercept 0, slope 1, R^2 1, and a max
+        # absolute deviation small against the residual scale itself.
+        x = w.iloc[:, 0].to_numpy(float)
+        y = w.iloc[:, 1].to_numpy(float)
+        slope, intercept = np.polyfit(x, y, 1)
+        r2 = r * r
+        max_abs = float(np.abs(y - x).max())
+        scale = float(np.abs(np.concatenate([x, y])).mean())
         ok &= report(
             f"{tool}: resid(theta={100*new_t:+.2f}%) vs resid(theta=0%)",
-            r > SHARED_PANEL_R, f"r={r:+.5f} over {len(w)} shared clusters")
+            (r > SHARED_PANEL_R and abs(slope - 1) < 0.02
+             and abs(intercept) < 0.02 * scale and r2 > SHARED_PANEL_R ** 2),
+            f"r={r:+.5f}  slope={slope:+.5f}  intercept={intercept:+.3e}  "
+            f"R2={r2:.5f}  max|new-old|={max_abs:.3e} against a mean |resid| "
+            f"of {scale:.3e}   ({len(w)} clusters)")
 
     print("\n== 6. the preregistered cluster gate on the merged file ==")
     merged = both[np.isfinite(both[["att_pct"]].to_numpy(dtype=float)).all(axis=1)]
