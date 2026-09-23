@@ -34,6 +34,11 @@ cells and refuses to print if any fails.
 plane. That is a true and useful statement about conventional practice — it
 was only the label that was wrong.
 
+**Caught by the reader, not by me**, and it is the most consequential of the
+four such entries: the whole of Layer 3 followed from having the model
+corrected. The reader's argument was one line — if information is free you
+can always ignore it, so `EVSI ≥ 0` at zero cost — and it was decisive.
+
 ## F2. Two reporting artefacts in the v2 first run
 
 - "cells where best EVSI < 0: 10" was floating-point dust (largest magnitude

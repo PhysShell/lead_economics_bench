@@ -1,40 +1,130 @@
 # marketing_experimentation — research track 2
 
-A separate, falsification-oriented research track. It does **not** continue the
+A separate, falsification-oriented track. It does **not** continue the
 lead-economics product hypothesis; it tests a different one.
 
 > Can a vendor-neutral system decide, from a business's own historical data,
 > whether a marketing experiment is worth running at all — and if so, which
 > design and which estimator?
 
-**Isolation.** The previous track is frozen at commit `7ce8c6b` and nothing
-here modifies its manifests, results or report. Those stay reproducible
-byte-for-byte.
+**Isolation.** Track 1 is frozen at `7ce8c6b`. Nothing here modifies its
+manifests, results or report; those stay reproducible byte-for-byte.
 
-**Phase discipline (brief §1, §76).** No modelling code until the landscape is
-established. The first deliverables are documents, because the most likely
-outcome of this research is discovering that the profession solved the
-operational problem years ago — and that is far cheaper to learn from reading
-than from building.
+---
 
-## Status
+## Where the question went
 
-| Phase | Deliverable | State |
+It started as "which geo estimator is best". That gap turned out to be
+occupied: Recast Research published a head-to-head simulation of four
+open-source geo tools in June 2026, with code. So the track moved up a layer,
+and then the layer it moved to produced a result that moved it again.
+
+| layer | question | state |
 |---|---|---|
-| 1. Domain archaeology | `docs/domain-archaeology.md` | in progress |
-| 2. Product landscape | `docs/product-landscape.md` | first pass written |
-| 3. Dataset reconnaissance | `docs/dataset-landscape.md` | not started |
-| 4. Preregistration | `docs/preregistration.md` | blocked on 1–3 |
-| 5+ | benchmark | **not started, deliberately** |
+| 1. statistical behaviour | which estimator is most accurate? | **occupied** — Recast, Statsig, Microsoft ExP |
+| 2. regime selection | which estimator for which data regime? | prize looks smaller than assumed: under optimal use the tools converge to within 12% |
+| 3. business decision | is this experiment worth running, and what should the result change? | **the live question** |
 
-## The finding that already reshapes the hypothesis
+The current claim, stated as narrowly as the evidence allows:
 
-Recast Research published a head-to-head simulation study of four open-source
-geo-experiment tools in **June 2026**, with code. It reports that Meta GeoLift
-is well calibrated under the null (3–5% FPR) and has a **91% false negative
-rate**; that CausalImpact fires false alarms ~30% of the time; and that all
-four recover a 7.5% lift point estimate within a few percentage points while
-disagreeing sharply on uncertainty.
+> Marketing experimentation platforms compute statistical significance
+> competently, and then convert evidence into budget action with a rule that
+> is beaten by acting on the prior across most of the business plane. The gap
+> between `p < .05` and the posterior-optimal action is the thing worth
+> measuring.
 
-So "vendor-neutral comparison of geo estimators" is **not** an open gap. See
-`docs/product-landscape.md` §1 for what the study does and does not cover.
+---
+
+## What is established
+
+### The decision layer — `docs/layer3-first-result.md`
+
+- **The compression tax sits at one rung.** Converting a continuous estimate
+  to a significance bit destroys 20–92% of an experiment's decision value,
+  depending on the tool. Adding the confidence interval on top of the point
+  estimate is worth nothing measurable — tested against four likelihood
+  families, including one that cannot be starved by dimension.
+- **Under optimal use the four tools converge** from an 11× spread at the
+  significance bit to ~12% at the point estimate. The disagreement the
+  vendors document is largely a disagreement about where to put a threshold
+  nobody is obliged to use.
+- **The S0 ranking is a ranking of willingness to reject**, not of quality.
+  It correlates with the tools' published discrimination at Spearman 1.00,
+  and the tool that keeps most value through the gate is the worst-calibrated
+  one.
+- **In most of the business plane the significance bit is worth ~$0** for
+  every tool. For GeoLift it is inert across 83% of cells examined.
+
+### The donor reproduces — `docs/donor-repro.md`
+
+An independent end-to-end reproduction of the Recast study, on a different
+OS, architecture and BLAS:
+
+| | |
+|---|---|
+| R0 published rows → published aggregates | **PASS** |
+| R1 same seed → same generated data | **PASS**, 320/320 exact to 1e-9 |
+| R2 same panel → same estimator output | **PASS**, all four tools |
+| G4 θ mutation at +2% | **PASS** 6/6 criteria |
+
+**The packaging is fragile and the science underneath it is sound.** Thirteen
+defects had to be worked through first, two of them blocking — and every one
+of them is about packaging, not method. A by-product nobody has published:
+
+| tool | same answer on a different machine? |
+|---|---|
+| `google_mm` | yes, to machine precision |
+| `geolift` | yes, exactly, at the precision it reports |
+| `causalimpact` | yes, exactly — seeded BSTS, not the coin-flip it looks like |
+| `causalpy` | distributionally; individual runs differ by ~1.3% of the effect |
+
+---
+
+## What is **not** established
+
+Kept here rather than in a footnote, because the track's whole method is
+refusing to overclaim:
+
+- **The DGP is synthetic and, until M7 lands, two-point.** Reproducing a
+  simulation faithfully says nothing about whether it resembles a real
+  marketing experiment. This is the largest limitation by a distance.
+- **Nothing here has touched a real business's data.** No experiment has been
+  run, no budget moved.
+- **CausalPy's ~1.3% point-estimate noise is unexplained.** Three mechanisms
+  proposed, three refuted (F8). A fourth is written down as a hypothesis.
+- **EVSI *levels* are density-dependent** — $46k under a KDE, $67k under a
+  Student-t. Only the differences and the ordering are robust.
+- **The figure layer of the donor lies on any θ ≠ 7.5%** unless patched. Ours
+  patches it; theirs does not.
+
+---
+
+## Running
+
+| | what it answers |
+|---|---|
+| `scripts/voi_v2.py` | is a free experiment ever worth negative value? (no — that was the v1 bug) |
+| `scripts/information_ladder.py` | what does each rung of compression cost? `--sweep` for the business plane |
+| `scripts/likelihood_models.py` | is the S1→S2 null a property of the data or the estimator? |
+| `scripts/theta_atlas.py` | how does each tool behave as the truth moves? |
+| `scripts/continuous_ladder.py` | the ladder with five actions and a real prior over effect size |
+| `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
+| `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
+
+Tests: `pytest tests/` from this directory (131 invariants).
+
+---
+
+## Method notes
+
+- **Preregistration before results.** G3's tolerances were fixed, in writing,
+  before any replay ran — and revised once *before* seeing output, with the
+  evidence for the revision recorded so it cannot later be mistaken for a
+  tolerance widened to fit.
+- **`docs/failures.md` is not decoration.** Twelve entries, four of them
+  errors the reader caught rather than me. History is not cleaned into a
+  heroic narrative (brief §75).
+- **No web app, no ad spend** (§76, §77).
+- **Licence hygiene** (§70): the donor has no licence. Nothing of theirs is
+  vendored here — the reproduction works through an external wrapper and a
+  recorded diff.
