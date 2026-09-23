@@ -505,3 +505,71 @@ and (c) is one thing: a quantity was named more strongly than its derivation
 supported. F13 was the same error about a garbling chain, F14 about a
 Blackwell check. Naming something a bound, a prior, or a measurement is a
 claim, and it needs the same evidence as a number does.
+
+## F16. Independence asserted across θ, in a design built on common random numbers
+
+**What was wrong.** `dirichlet_draws()` carried this docstring:
+
+> Independent across truths because each truth's runs are a separate
+> multinomial sample — **nothing in the design links them**, and pretending
+> otherwise would be a smoothing assumption smuggled in as a prior.
+
+The donor's source says the opposite, in a comment, at
+`src/R/generate_panels.R:375`:
+
+```r
+panel_seed <- master_seed * 1000 + match(sc_id, names(scenarios)) * 10000 + it
+# Step 1: Draw baselines (same seed for null and effect)
+```
+
+There is **no effect-size term in that seed.** The loop over effect sizes
+sits outside it, so every θ inside one `(scenario, iteration)` reuses the same
+baselines, the same noise realisation, the same pre-period and the same
+counterfactual skeleton; only the treatment multiplier changes. That is a
+common-random-numbers design — a deliberate variance-reduction choice, and a
+good one — and I read it as independence.
+
+**How wrong.** Not marginally. The correlation of `att_pct − effect_pct`
+across θ *within* a cluster is **+1.000** for all four tools (min +0.999).
+The seven "independent multinomial samples" per scenario are seven views of
+the same 25 noise realisations. Thresholding to a verdict destroys some of
+that dependence — excess agreement between two truths' verdicts over a
+shuffled baseline is +0.012 to +0.078 — but the draw underneath is shared.
+
+**What it changed.** The point estimates barely moved, as predicted. The
+*intervals* did, and one qualitative claim flipped:
+
+| tool | scenarios excluding zero, cell model | cluster model |
+|---|---|---|
+| `causalimpact` | 1 of 4 | **3 of 4** |
+| `geolift` | 1 of 4 | 2 of 4 |
+| `causalpy[y_hat]` | 4 of 4 | 4 of 4 |
+| `google_mm` | 3 of 4 | 3 of 4 |
+
+So Addendum 3's sentence "`causalimpact` is weaker than the pooled figure
+suggests — only one of four scenarios excludes zero on its own" was itself an
+artefact of the wrong uncertainty model. Corrected.
+
+The cluster intervals are **not uniformly narrower**: width ratio median 0.83
+over 20 cells, range 0.00–1.12. The direction of the error could not have been
+argued from first principles, which is precisely why it had to be measured
+rather than reasoned about.
+
+**How it is prevented now.** `verdict_matrix()` builds one row per
+`(scenario, iteration)` carrying the whole θ-vector, and
+`cluster_bootstrap_draws()` gives each cluster a single Dirichlet(1,…,1)
+weight applied across all of its truths at once. The cell-wise model is kept,
+labelled as a parametric sensitivity, and printed beside the cluster result so
+the cost of the assumption stays visible rather than argued.
+
+A consequence worth stating because it bites elsewhere: **the same clusters
+feed all four tools.** The four rows are not four independent tests, so "3 of
+4 tools exclude zero" is one correlated observation. The upside is that a
+*paired* comparison between tools on shared clusters would be more powerful
+than the unpaired one — not yet done.
+
+**Caught by the reader** — the seventh. The pattern is now unmistakable and
+worth naming: every one of F13, F14, F15 and F16 is a **structural claim about
+the data or the estimator asserted in prose and never checked against the
+source**. The arithmetic has been right throughout. What keeps failing is the
+sentence describing what the arithmetic is entitled to mean.

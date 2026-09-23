@@ -299,38 +299,57 @@ about a world that does not exist. Pooled is offered as sensitivity.
 
 ## Finding A — the sign, with its uncertainty
 
-`V − B` in dollars, median and 95% credible interval, α = 0.5, 25 runs per
-truth per scenario:
+> **Corrected at F16.** The first version of this section resampled each
+> truth independently. The donor shares one panel seed across effect sizes —
+> `src/R/generate_panels.R:375` has no effect-size term, and its own comment
+> says *"same seed for null and effect"* — so every θ inside one
+> `(scenario, iteration)` reuses the same baselines and the same noise draw.
+> The correlation of `att_pct − effect_pct` across θ within a cluster is
+> **+1.000**. Uncertainty is now a Bayesian bootstrap over clusters, carrying
+> each cluster's whole θ-vector together.
+
+`V − B` in dollars, median and 95% credible interval, α = 0.5, 25 clusters
+per scenario and 100 pooled:
 
 | tool | A1 | A2 | A3 | A4 | pooled |
 |---|---|---|---|---|---|
-| `causalpy[y_hat]` | **$3,826**<br>[1,498–6,102] | **$4,547**<br>[1,732–6,942] | **$5,100**<br>[1,645–7,457] | **$942**<br>[47–1,856] | **$2,792**<br>[1,538–4,537] |
-| `google_mm` | **$1,476**<br>[86–3,893] | **$1,768**<br>[617–4,433] | **$2,945**<br>[325–5,936] | $316<br>[0–1,721] | **$1,402**<br>[692–3,262] |
-| `causalimpact` | $702<br>[0–2,929] | **$1,811**<br>[819–3,139] | $711<br>[0–1,767] | $268<br>[0–1,275] | **$937**<br>[512–1,375] |
-| `geolift` | $422<br>[0–1,891] | $896<br>[0–2,405] | **$1,491**<br>[89–3,578] | $0<br>[0–491] | $543<br>[0–1,337] |
+| `causalpy[y_hat]` | **$3,865**<br>[1,574–5,397] | **$4,610**<br>[2,085–5,826] | **$5,090**<br>[2,105–6,565] | **$918**<br>[411–1,655] | **$2,813**<br>[1,558–4,443] |
+| `google_mm` | **$1,515**<br>[288–3,298] | **$1,748**<br>[757–3,837] | **$2,769**<br>[381–5,499] | $259<br>[0–1,478] | **$1,414**<br>[669–3,230] |
+| `causalimpact` | **$641**<br>[84–2,594] | **$1,774**<br>[753–3,357] | **$653**<br>[160–1,799] | $277<br>[0–1,053] | **$934**<br>[499–1,458] |
+| `geolift` | $217<br>[0–1,054] | **$858**<br>[73–1,827] | **$1,345**<br>[511–2,630] | $0<br>[0–0] | $533<br>[0–1,212] |
 
 Bold = credible interval excludes zero.
 
 **`causalpy` is the clean result.** All four regimes independently exclude
 zero, and its `EVSI(BIT)` is **$0 in every single scenario** while its verdict
-is worth $1,035–$5,128. For that tool the entire value of the discrete signal
-is the sign. `google_mm` follows at three of four.
+is worth $1,053–$5,190. For that tool the entire value of the discrete signal
+is the sign.
 
-**`causalimpact` is weaker than the pooled figure suggests** — only one of
-four scenarios excludes zero on its own. The pooled interval [512–1,375]
-should be read with that in mind, not instead of it.
+**`causalimpact` now excludes zero in three of four scenarios**, not one. The
+earlier claim that it was "weaker than the pooled figure suggests" was an
+artefact of the wrong uncertainty model, not a property of the tool.
 
-**`geolift`'s sign loss is not established.** Pooled [0–1,337] includes zero,
-and so do three of four scenarios. The reason is visible in its
-`P(significant)`: 0.05–0.19 at *every* truth. It has almost no power at this
-sample size, so its verdict is nearly mute and there is nothing for the sign
-to carry. That is a statement about GeoLift's power, not evidence for
-thresholding.
+**`geolift`'s sign loss remains unestablished pooled** ([0–1,212]), though it
+excludes zero in A2 and A3. Its `P(significant)` is 0.05–0.19 at *every*
+truth: almost no power at this sample size, so its verdict is nearly mute and
+there is little for the sign to carry. In A4 the interval is exactly [0, 0] —
+no resample of those 25 clusters produces any sign value at all.
 
-Self-test: `min(V − B)` over all 400,000 posterior draws = **−2.3e−12**.
-Blackwell holds per draw, exactly, by Jensen on that draw's own marginals —
-which is why `P(V − B > 0)` is near-vacuous here. The informative number is
-the *lower* credible bound.
+**The four rows are not four independent tests.** The same clusters feed all
+four tools, so "3 of 4 tools exclude zero" is one correlated observation.
+
+Self-test: `min(V − B)` over all 400,000 posterior draws = **0.0**. Blackwell
+holds per draw, exactly, by Jensen on that draw's own marginals — which is why
+`P(V − B > 0)` is near-vacuous here. The informative number is the *lower*
+credible bound.
+
+### The wrong model was not uniformly optimistic
+
+Cluster interval width ÷ cell interval width: median **0.83**, range
+**0.00–1.12** over 20 cells. Common random numbers usually tighten the
+estimate, but not everywhere, and the direction could not have been argued
+from first principles. That is the case for measuring rather than reasoning
+about it — and the case against having asserted independence in a docstring.
 
 ### α turned out not to be the problem I claimed
 
@@ -340,10 +359,10 @@ propagated, the intervals overlap heavily:
 
 | tool | α = 0.05 | α = 0.5 | α = 2.0 |
 |---|---|---|---|
-| `causalpy[y_hat]` | $3,018 [1,642–4,759] | $2,792 [1,538–4,537] | $2,153 [1,238–3,962] |
-| `google_mm` | $1,569 [772–3,419] | $1,402 [692–3,262] | $996 [424–2,702] |
-| `causalimpact` | $983 [580–1,409] | $937 [512–1,375] | $785 [295–1,268] |
-| `geolift` | $666 [5–1,431] | $543 [0–1,337] | $175 [0–1,022] |
+| `causalpy[y_hat]` | $3,019 [1,635–4,671] | $2,813 [1,558–4,443] | $2,178 [1,324–3,726] |
+| `google_mm` | $1,586 [729–3,404] | $1,414 [669–3,230] | $999 [502–2,594] |
+| `causalimpact` | $983 [543–1,517] | $934 [499–1,458] | $779 [363–1,275] |
+| `geolift` | $647 [29–1,373] | $533 [0–1,212] | $104 [0–727] |
 
 The factor of 2–3 was a spread between three plug-in point estimates, each of
 which had an interval far wider than the spread between them. α remains a
@@ -396,10 +415,10 @@ prior", which is what the earlier version called it.
 
 | P(θ<0) | `causalimpact` | `causalpy[y_hat]` | `geolift` | `google_mm` |
 |---|---|---|---|---|
-| 0.02 | $324 [0–720] | $1,878 [467–3,659] | $506 [0–1,259] | $1,046 [174–2,743] |
-| 0.10 | $1,277 [809–1,772] | $3,303 [2,107–5,044] | $557 [0–1,384] | $1,638 [964–3,466] |
-| **0.267** *(matched)* | **$3,546** [2,454–5,207] | **$6,321** [4,690–8,481] | **$775** [241–1,637] | **$4,069** [2,645–5,855] |
-| 0.50 | $5,887 [4,021–7,608] | $8,274 [6,497–10,050] | $676 [0–1,633] | $6,575 [5,002–8,093] |
+| 0.02 | $329 [0–701] | $1,887 [566–3,503] | $509 [0–1,122] | $1,018 [227–2,593] |
+| 0.10 | $1,276 [771–1,895] | $3,330 [2,087–4,983] | $559 [24–1,266] | $1,673 [904–3,474] |
+| **0.267** *(matched)* | **$3,601** [2,364–5,269] | **$6,288** [4,645–8,360] | **$788** [296–1,571] | **$4,086** [2,654–6,012] |
+| 0.50 | $5,913 [4,093–7,429] | $8,281 [6,867–9,784] | $647 [16–1,418] | $6,579 [5,265–7,792] |
 
 At the matched-marginal prior all four tools exclude zero, `geolift`
 included — the only prior at which its sign loss is established at all. No

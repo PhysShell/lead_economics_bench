@@ -332,3 +332,40 @@ def spike_slab_prior(
     slab = slab / slab.sum()
     p = p_null * spike + (1.0 - p_null) * slab
     return p / p.sum()
+
+
+def action_boundaries(
+    breakeven: float = 0.03,
+    adjust_cost: float = 0.35,
+    profit_per_lift: float = 4.0,
+    multipliers: tuple[float, ...] = DEFAULT_MULTIPLIERS,
+) -> np.ndarray:
+    """The true lifts at which the optimal budget action changes.
+
+    Setting `U(d_i, theta) = U(d_j, theta)` for two adjacent actions::
+
+        d_i k (theta - b) - c d_i^2  =  d_j k (theta - b) - c d_j^2
+        k (theta - b)(d_i - d_j)     =  c (d_i - d_j)(d_i + d_j)
+        theta*                       =  b + c (d_i + d_j) / k
+
+    **`breakeven` is not a decision boundary.** It is where the linear gain
+    term changes sign, and with a quadratic adjustment cost that is not where
+    the optimal action changes. For the defaults -- b = 3%, c = 0.35, k = 4,
+    multipliers (0.5, 0.8, 1.0, 1.25, 1.6) -- the four boundaries are
+
+        cut hard | cut            -3.1250%
+        cut      | hold           +1.2500%
+        hold     | increase       +5.1875%
+        increase | increase hard  +10.4375%
+
+    and +3% sits between the second and third, where nothing happens.
+
+    This matters for where to spend simulator time: a theta grid dense at the
+    economic breakeven is dense in the wrong place. Densify at the boundaries,
+    because that is where a small change in belief changes what the business
+    does -- which is the only thing EVSI is measuring.
+    """
+    d = np.asarray(multipliers, dtype=float) - 1.0
+    if np.any(np.diff(d) <= 0):
+        raise ValueError("multipliers must be strictly increasing")
+    return breakeven + adjust_cost * (d[:-1] + d[1:]) / profit_per_lift

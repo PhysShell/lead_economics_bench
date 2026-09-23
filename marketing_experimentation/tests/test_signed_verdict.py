@@ -21,8 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from leadbench_mx.decision import budget_problem, spike_slab_prior  # noqa: E402
 from signed_verdict import (  # noqa: E402
-    GARBLE, audit_bit_is_garbling, dirichlet_draws, evsi_batch,
-    reweight_negative, sign_loss_posterior, verdict_index,
+    GARBLE, audit_bit_is_garbling, cluster_bootstrap_draws, dirichlet_draws,
+    evsi_batch, reweight_negative, sign_loss_posterior, verdict_index,
+    verdict_matrix,
 )
 
 
@@ -217,7 +218,8 @@ def test_sign_loss_posterior_reports_a_real_interval():
     counts = np.array([[40.0, 10.0, 0.0], [20.0, 25.0, 5.0],
                        [5.0, 40.0, 5.0], [2.0, 30.0, 18.0],
                        [0.0, 15.0, 35.0]])
-    r = sign_loss_posterior(problem, counts, 0.5, 4000, seed=0)
+    r = sign_loss_posterior(problem, counts, 0.5, 4000, seed=0,
+                            model="cell")
     assert r["gap_lo"] <= r["gap_med"] <= r["gap_hi"]
     assert r["gap_lo"] >= -1e-9, "a credible interval below zero breaks Blackwell"
     assert r["worst_blackwell"] >= -1e-6
@@ -229,7 +231,8 @@ def test_a_mute_channel_gives_an_interval_touching_zero():
     A method that returns a confident tiny number here is broken."""
     problem = a_problem()
     counts = np.tile(np.array([0.0, 24.0, 1.0]), (len(problem.theta), 1))
-    r = sign_loss_posterior(problem, counts, 0.5, 4000, seed=0)
+    r = sign_loss_posterior(problem, counts, 0.5, 4000, seed=0,
+                            model="cell")
     assert r["gap_lo"] == pytest.approx(0.0, abs=1e-6)
 
 
@@ -274,3 +277,73 @@ def test_the_reference_also_agrees_on_a_two_level_signal():
     got = evsi_batch(pr, P)
     want = np.array([_evsi_reference(pr, P[d]) for d in range(P.shape[0])])
     assert np.allclose(got, want, atol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# The cluster bootstrap. Added after the reader found that the donor shares one
+# panel seed across effect sizes (generate_panels.R:375), so the per-truth
+# samples are common random numbers rather than independent draws. See F16.
+# ---------------------------------------------------------------------------
+
+def test_cluster_bootstrap_draws_are_probability_vectors():
+    rng = np.random.default_rng(0)
+    V = rng.integers(0, 3, size=(40, 5))
+    p = cluster_bootstrap_draws(V, 0.5, 300, rng)
+    assert p.shape == (300, 5, 3)
+    assert np.allclose(p.sum(axis=-1), 1.0)
+    assert (p > 0).all()
+
+
+def test_cluster_bootstrap_recovers_the_observed_frequencies_on_average():
+    """The posterior must be centred on the data, or every interval built
+    from it is displaced before it is widened."""
+    rng = np.random.default_rng(1)
+    V = rng.integers(0, 3, size=(200, 4))
+    p = cluster_bootstrap_draws(V, 0.5, 4000, rng).mean(axis=0)
+    obs = np.stack([np.bincount(V[:, j], minlength=3) / len(V)
+                    for j in range(V.shape[1])])
+    assert np.abs(p - obs).max() < 0.02
+
+
+def test_cluster_bootstrap_carries_a_whole_theta_vector_together():
+    """The property the cell-wise model destroys. With two truths whose
+    verdicts are identical in every cluster, the resampled probabilities must
+    stay identical in every draw -- a cell-wise resample would let them drift
+    apart, inventing a contrast the design cannot produce."""
+    rng = np.random.default_rng(2)
+    col = rng.integers(0, 3, size=60)
+    V = np.column_stack([col, col])                 # perfectly linked truths
+    p = cluster_bootstrap_draws(V, 0.5, 500, rng)
+    assert np.abs(p[:, 0, :] - p[:, 1, :]).max() < 1e-12
+
+    counts = np.stack([np.bincount(col, minlength=3)] * 2).astype(float)
+    q = dirichlet_draws(counts, 0.5, 500, np.random.default_rng(2))
+    assert np.abs(q[:, 0, :] - q[:, 1, :]).max() > 0.01, (
+        "the cell-wise model should drift -- if it does not, this test is "
+        "no longer distinguishing the two models")
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_cluster_draws_also_satisfy_blackwell(seed):
+    rng = np.random.default_rng(seed)
+    problem = a_problem()
+    V = rng.integers(0, 3, size=(50, len(problem.theta)))
+    p = cluster_bootstrap_draws(V, 0.5, 1500, rng)
+    gap = evsi_batch(problem, p) - evsi_batch(problem, p @ GARBLE.T)
+    assert gap.min() >= -1e-9
+    assert evsi_batch(problem, p).min() >= -1e-9
+
+
+def test_verdict_matrix_drops_incomplete_clusters():
+    """A cluster missing a truth, resampled as if complete, would reweight the
+    truths it does have. Dropping is the only safe option and must be the
+    behaviour, not an accident of pandas."""
+    d = pd.DataFrame({
+        "scenario": ["A1"] * 5,
+        "iteration": [1, 1, 2, 2, 2],
+        "effect_pct": [0.0, 0.05, 0.0, 0.05, 0.15],
+        "_verdict": [1, 2, 1, 2, 2],
+    })
+    V, keys = verdict_matrix(d, [0.0, 0.05, 0.15])
+    assert len(V) == 1 and keys == [("A1", 2)]
+    assert V[0].tolist() == [1, 2, 2]

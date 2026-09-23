@@ -180,16 +180,76 @@ def verdict_counts(g: pd.DataFrame, thetas: list[float]) -> np.ndarray | None:
 
 def dirichlet_draws(counts: np.ndarray, alpha: float, n_draws: int,
                     rng: np.random.Generator) -> np.ndarray:
-    """Posterior draws of p(verdict | theta), independently per truth.
+    """Posterior draws of p(verdict | theta), treating each truth separately.
 
-    Returns (n_draws, n_theta, 3). Independent across truths because each
-    truth's runs are a separate multinomial sample -- nothing in the design
-    links them, and pretending otherwise would be a smoothing assumption
-    smuggled in as a prior.
+    Returns (n_draws, n_theta, 3).
+
+    **This model is wrong for this data, and is kept only as a parametric
+    sensitivity.** An earlier version of this docstring said the truths were
+    independent "because each truth's runs are a separate multinomial sample
+    -- nothing in the design links them". The donor's source says the
+    opposite, in a comment, at `src/R/generate_panels.R:375`::
+
+        panel_seed <- master_seed * 1000 + match(sc_id, names(scenarios)) * 10000 + it
+        # Step 1: Draw baselines (same seed for null and effect)
+
+    There is no effect-size term in that seed. Every theta inside one
+    (scenario, iteration) reuses the same baselines, the same noise draw and
+    the same pre-period; only the treatment multiplier changes. That is a
+    common-random-numbers design, and the empirical signature is not subtle:
+    the correlation of `att_pct - effect_pct` across theta within a cluster
+    is **+1.000** for all four tools. The seven "independent samples" are
+    seven views of the same 25 noise realisations.
+
+    Use `cluster_bootstrap_draws` instead. See F16.
     """
     a = counts + alpha
     g = rng.gamma(a, size=(n_draws,) + a.shape)
     return g / g.sum(axis=-1, keepdims=True)
+
+
+def verdict_matrix(g: pd.DataFrame, thetas: list[float]
+                   ) -> tuple[np.ndarray, list[tuple]]:
+    """(n_clusters, n_theta) verdict codes, one row per (scenario, iteration).
+
+    The cluster is the independent unit of the donor's design. Keeping each
+    cluster's whole theta-vector together is the entire point: resampling
+    cells independently destroys the covariance the donor deliberately
+    created, and the resulting interval describes an experiment nobody ran.
+
+    Clusters missing any theta are dropped rather than padded -- a partial
+    cluster resampled as if complete would reweight the truths it does have.
+    """
+    piv = g.pivot_table(index=["scenario", "iteration"], columns="effect_pct",
+                        values="_verdict", aggfunc="first")
+    cols = [c for c in piv.columns if any(np.isclose(c, t) for t in thetas)]
+    piv = piv[sorted(cols)].dropna()
+    return piv.to_numpy(dtype=int), list(piv.index)
+
+
+def cluster_bootstrap_draws(V: np.ndarray, alpha: float, n_draws: int,
+                            rng: np.random.Generator) -> np.ndarray:
+    """Bayesian bootstrap over CLUSTERS, carrying each theta-vector intact.
+
+    ``V`` is (n_clusters, n_theta) verdict codes. One Dirichlet(1, ..., 1)
+    weight per cluster is applied to that cluster's entire row, so a cluster
+    that happens to be resampled heavily is heavy at *every* truth -- which
+    is exactly what common random numbers make true.
+
+    Returns (n_draws, n_theta, 3).
+
+    The Bayesian bootstrap is used rather than resampling clusters with
+    replacement because at 25 clusters per scenario the discrete resample is
+    coarse; the two agree in the limit and the smooth one is better behaved
+    at this size. ``alpha`` is then applied to the reweighted counts exactly
+    as in the cell-wise model, so the two are comparable term for term.
+    """
+    n, n_theta = V.shape
+    onehot = (V[:, :, None] == np.arange(3)[None, None, :]).astype(float)
+    w = rng.dirichlet(np.ones(n), size=n_draws)              # (D, n)
+    p_raw = np.einsum("dc,cjk->djk", w, onehot)              # (D, n_theta, 3)
+    counts = n * p_raw
+    return (counts + alpha) / (n + 3 * alpha)
 
 
 def evsi_batch(problem: DecisionProblem, P: np.ndarray) -> np.ndarray:
@@ -207,10 +267,16 @@ def evsi_batch(problem: DecisionProblem, P: np.ndarray) -> np.ndarray:
     return total - problem.value_no_experiment()
 
 
-def sign_loss_posterior(problem: DecisionProblem, counts: np.ndarray,
+def sign_loss_posterior(problem: DecisionProblem, data: np.ndarray,
                         alpha: float = ALPHA, n_draws: int = 20_000,
-                        seed: int = 0) -> dict:
+                        seed: int = 0, model: str = "cluster") -> dict:
     """Posterior for EVSI(VERDICT), EVSI(BIT) and the sign loss between them.
+
+    ``model="cluster"`` (the default, and the correct one for this data)
+    takes ``data`` as a (n_clusters, n_theta) verdict matrix and resamples
+    whole clusters. ``model="cell"`` takes ``data`` as (n_theta, 3) counts
+    and resamples each truth independently -- retained only so the cost of
+    that wrong assumption is visible rather than argued about.
 
     Every draw satisfies V >= B exactly (Jensen on that draw's own marginals),
     so `P(V - B > 0)` is close to vacuous here -- Blackwell has already ruled
@@ -219,7 +285,12 @@ def sign_loss_posterior(problem: DecisionProblem, counts: np.ndarray,
     matrix.
     """
     rng = np.random.default_rng(seed)
-    pv = dirichlet_draws(counts, alpha, n_draws, rng)
+    if model == "cluster":
+        pv = cluster_bootstrap_draws(data, alpha, n_draws, rng)
+    elif model == "cell":
+        pv = dirichlet_draws(data, alpha, n_draws, rng)
+    else:
+        raise ValueError(f"unknown uncertainty model {model!r}")
     pb = pv @ GARBLE.T
     v, b = evsi_batch(problem, pv), evsi_batch(problem, pb)
     gap = v - b
@@ -412,34 +483,66 @@ def main() -> None:
     print("FINDING A -- the cost of discarding the sign")
     print(f"{'='*72}")
     print("VERDICT -> BIT is a purely discrete channel. Multinomial counts,")
-    print("an exact garbling map, no kernel density anywhere. The uncertainty")
-    print(f"is a Dirichlet(counts + {args.alpha}) posterior over the transition")
-    print(f"matrix, propagated through EVSI: {args.draws:,} draws.")
+    print("an exact garbling map, no kernel density anywhere.")
+    print("\nThe uncertainty is a Bayesian bootstrap over (scenario, iteration)")
+    print("CLUSTERS, carrying each cluster's whole theta-vector together. The")
+    print("donor shares one panel seed across effect sizes -- there is no")
+    print("effect-size term in `panel_seed`, and the correlation of")
+    print("`att_pct - effect_pct` across theta within a cluster is +1.000 for")
+    print("all four tools. Resampling cells independently would describe an")
+    print("experiment nobody ran. That model is kept in the right-hand columns")
+    print(f"as a sensitivity. {args.draws:,} draws, alpha={args.alpha}. See F16.")
     print("\nPer scenario, because A1-A4 are four regimes the donor chose and")
     print("not a sample from any population. Pooled is a sensitivity check.\n")
 
-    def counts_for(tool: str, scen: str | None):
+    d = d.assign(_verdict=verdict_index(d))
+
+    def data_for(tool: str, scen: str | None, model: str):
         g = d[d.tool_label == tool]
         if scen is not None:
             g = g[g.scenario == scen]
+        if model == "cluster":
+            V, keys = verdict_matrix(g, thetas)
+            return V if len(V) else None
         return verdict_counts(g, thetas)
 
-    print(f"   {'tool':18s} {'where':8s} {'n/truth':>7s} {'VERDICT':>9s} "
-          f"{'BIT':>9s} {'V-B median':>11s} {'95% credible':>22s}")
-    finding_a = {}
+    print(f"   {'tool':18s} {'where':8s} {'clust':>5s} "
+          f"{'VERDICT':>9s} {'BIT':>9s} {'V-B med':>9s} "
+          f"{'95% credible (cluster)':>24s} | {'V-B med':>9s} "
+          f"{'95% (cell, wrong)':>21s}")
+    finding_a, finding_a_cell = {}, {}
     for tool in tools:
         for scen in scenarios + [None]:
-            c = counts_for(tool, scen)
-            if c is None:
+            V = data_for(tool, scen, "cluster")
+            c = data_for(tool, scen, "cell")
+            if V is None or c is None:
                 continue
-            res = sign_loss_posterior(problem, c, args.alpha, args.draws)
+            res = sign_loss_posterior(problem, V, args.alpha, args.draws,
+                                      model="cluster")
+            cell = sign_loss_posterior(problem, c, args.alpha, args.draws,
+                                       model="cell")
             finding_a[(tool, scen)] = res
-            label = scen or "pooled"
-            print(f"   {tool:18s} {label:8s} {int(c[0].sum()):>7d} "
+            finding_a_cell[(tool, scen)] = cell
+            print(f"   {tool:18s} {scen or 'pooled':8s} {len(V):>5d} "
                   f"{money(res['v_med']):>9s} {money(res['b_med']):>9s} "
-                  f"{money(res['gap_med']):>11s} "
-                  f"  [{money(res['gap_lo'])}, {money(res['gap_hi'])}]")
+                  f"{money(res['gap_med']):>9s} "
+                  f"{'[' + money(res['gap_lo']) + ', ' + money(res['gap_hi']) + ']':>24s}"
+                  f" | {money(cell['gap_med']):>9s} "
+                  f"{'[' + money(cell['gap_lo']) + ', ' + money(cell['gap_hi']) + ']':>21s}")
         print()
+
+    widths = [(r["gap_hi"] - r["gap_lo"]) /
+              max(finding_a_cell[k]["gap_hi"] - finding_a_cell[k]["gap_lo"], 1e-9)
+              for k, r in finding_a.items()]
+    print(f"   cluster interval width / cell interval width: "
+          f"median {np.median(widths):.2f}, range "
+          f"{min(widths):.2f}-{max(widths):.2f} over {len(widths)} cells.")
+    print("   The wrong model is not uniformly optimistic -- which is why the")
+    print("   direction of the error could not be argued from first principles")
+    print("   and had to be measured.")
+    print("\n   NOTE: the same clusters feed all four tools, so the four rows")
+    print("   are not four independent tests. `3 of 4 tools exclude zero` is")
+    print("   one correlated observation, not three-quarters of a vote.")
 
     worst = min(r["worst_blackwell"] for r in finding_a.values())
     print(f"   self-test: min(V - B) over all "
@@ -461,10 +564,11 @@ def main() -> None:
         print(f"   {'tool':18s} " + "".join(
             f"{'alpha=' + str(a):>26s}" for a in (0.05, 0.5, 2.0)))
         for tool in tools:
-            c = counts_for(tool, None)
+            c = data_for(tool, None, "cluster")
             cells = []
             for a in (0.05, 0.5, 2.0):
-                r_ = sign_loss_posterior(problem, c, a, args.draws)
+                r_ = sign_loss_posterior(problem, c, a, args.draws,
+                                         model="cluster")
                 cells.append(f"{money(r_['gap_med']):>7s} "
                              f"[{money(r_['gap_lo'])},{money(r_['gap_hi'])}]"
                              .rjust(26))
@@ -472,91 +576,89 @@ def main() -> None:
         print("\n   (pooled; the credible intervals overlap heavily across")
         print("   alpha, which the earlier plug-in presentation could not show)")
 
-    if args.skip_interval:
-        return
+    if not args.skip_interval:
+        # =====================================================================
+        # FINDING B
+        # =====================================================================
+        print(f"\n\n{'='*72}")
+        print("FINDING B -- the cost of thresholding  (PROVISIONAL)")
+        print(f"{'='*72}")
+        print("INTERVAL needs a 3-d density per truth. This project has already")
+        print("caught that estimator running out of sample twice. Both rungs are")
+        print("scored on the same held-out rows so the difference is paired, and")
+        print("the split-to-split SD is printed because it is the point.\n")
+        print(f"   {'tool':18s} {'where':8s} {'fit/truth':>9s} {'INTERVAL':>9s} "
+              f"{'VERDICT':>9s} {'I-V':>9s} {'±':>7s}  verdict")
+        finding_b, finding_b_verdict = {}, {}
+        for tool in tools:
+            for scen in scenarios + [None]:
+                g = d[d.tool_label == tool]
+                if scen is not None:
+                    g = g[g.scenario == scen]
+                ms = [m for m in (held_out_pair(g, thetas, s, alpha=args.alpha)
+                                  for s in range(args.seeds)) if m is not None]
+                if not ms:
+                    continue
+                iv = np.array([evsi_held_out(problem, m["INTERVAL"], m["src"])
+                               - evsi_held_out(problem, m["VERDICT"], m["src"])
+                               for m in ms])
+                i_ = float(np.nanmean([evsi_held_out(problem, m["INTERVAL"],
+                                                     m["src"]) for m in ms]))
+                v_ = float(np.nanmean([evsi_held_out(problem, m["VERDICT"],
+                                                     m["src"]) for m in ms]))
+                mean, sd = float(np.nanmean(iv)), float(np.nanstd(iv))
+                finding_b[(tool, scen)] = (mean, sd)
+                finding_b_verdict[(tool, scen)] = v_
+                verdict = ("separated from zero" if mean > 2 * sd else
+                           "BLACKWELL VIOLATION" if mean < -2 * sd else
+                           "NOT separated from zero")
+                print(f"   {tool:18s} {scen or 'pooled':8s} {ms[0]['n_fit']:>9d} "
+                      f"{money(i_):>9s} {money(v_):>9s} {money(mean):>9s} "
+                      f"{sd:>7,.0f}  {verdict}")
+            print()
 
-    # =====================================================================
-    # FINDING B
-    # =====================================================================
-    print(f"\n\n{'='*72}")
-    print("FINDING B -- the cost of thresholding  (PROVISIONAL)")
-    print(f"{'='*72}")
-    print("INTERVAL needs a 3-d density per truth. This project has already")
-    print("caught that estimator running out of sample twice. Both rungs are")
-    print("scored on the same held-out rows so the difference is paired, and")
-    print("the split-to-split SD is printed because it is the point.\n")
-    print(f"   {'tool':18s} {'where':8s} {'fit/truth':>9s} {'INTERVAL':>9s} "
-          f"{'VERDICT':>9s} {'I-V':>9s} {'±':>7s}  verdict")
-    finding_b, finding_b_verdict = {}, {}
-    for tool in tools:
-        for scen in scenarios + [None]:
-            g = d[d.tool_label == tool]
-            if scen is not None:
-                g = g[g.scenario == scen]
-            ms = [m for m in (held_out_pair(g, thetas, s, alpha=args.alpha)
-                              for s in range(args.seeds)) if m is not None]
-            if not ms:
-                continue
-            iv = np.array([evsi_held_out(problem, m["INTERVAL"], m["src"])
-                           - evsi_held_out(problem, m["VERDICT"], m["src"])
-                           for m in ms])
-            i_ = float(np.nanmean([evsi_held_out(problem, m["INTERVAL"],
-                                                 m["src"]) for m in ms]))
-            v_ = float(np.nanmean([evsi_held_out(problem, m["VERDICT"],
-                                                 m["src"]) for m in ms]))
-            mean, sd = float(np.nanmean(iv)), float(np.nanstd(iv))
-            finding_b[(tool, scen)] = (mean, sd)
-            finding_b_verdict[(tool, scen)] = v_
-            verdict = ("separated from zero" if mean > 2 * sd else
-                       "BLACKWELL VIOLATION" if mean < -2 * sd else
-                       "NOT separated from zero")
-            print(f"   {tool:18s} {scen or 'pooled':8s} {ms[0]['n_fit']:>9d} "
-                  f"{money(i_):>9s} {money(v_):>9s} {money(mean):>9s} "
-                  f"{sd:>7,.0f}  {verdict}")
-        print()
-
-    # =====================================================================
-    # The share -- only where it is resolved
-    # =====================================================================
-    print(f"{'='*72}")
-    print("THE SHARE BETWEEN THEM -- printed only where it is resolved")
-    print(f"{'='*72}")
-    print("sign share = (V-B) / ((I-V) + (V-B)). An earlier version printed")
-    print("this as `63.3%+`, a LOWER BOUND, wherever I-V was indistinguishable")
-    print("from zero. That was wrong, and wrong in the direction that")
-    print("flattered the finding: uncertainty in the DENOMINATOR moves the")
-    print("true share both ways. If I-V is really $300 rather than the $100")
-    print("estimated, a share of 67% is really 40%. An unresolved denominator")
-    print("makes the ratio unresolved, not bounded below.\n")
-    print("One more inconsistency, stated rather than hidden: the numerator")
-    print("comes from Finding A (Dirichlet median, every row) and the")
-    print("denominator's first part from Finding B (held-out, half the rows).")
-    print("Those use different estimators for VERDICT. `V_A` and `V_B` below")
-    print("are the two, so the reader can see whether the mixing matters.\n")
-    print(f"   {'tool':18s} {'where':8s} {'V_A':>8s} {'V_B':>8s} {'I-V':>9s} "
-          f"{'V-B':>9s} {'share':>18s}")
-    for tool in tools:
-        for scen in scenarios + [None]:
-            if (tool, scen) not in finding_b or (tool, scen) not in finding_a:
-                continue
-            mean, sd = finding_b[(tool, scen)]
-            gap = finding_a[(tool, scen)]["gap_med"]
-            va = finding_a[(tool, scen)]["v_med"]
-            vb = finding_b_verdict[(tool, scen)]
-            if mean > 2 * sd and mean + gap > 0:
-                share = f"{100 * gap / (mean + gap):17.1f}%"
-            elif mean < -2 * sd:
-                share = f"{'unresolved (KDE)':>18s}"
-            else:
-                share = f"{'unresolved':>18s}"
-            print(f"   {tool:18s} {scen or 'pooled':8s} {money(va):>8s} "
-                  f"{money(vb):>8s} {money(mean):>9s} {money(gap):>9s} "
-                  f"{share}")
-        print()
-    print("   Where it reads `unresolved`, both dollar figures are still")
-    print("   sound -- V-B never touches the density estimator. It is the")
-    print("   RATIO that has no defensible value, and the honest output is")
-    print("   the two magnitudes rather than a percentage of them.")
+        # =====================================================================
+        # The share -- only where it is resolved
+        # =====================================================================
+        print(f"{'='*72}")
+        print("THE SHARE BETWEEN THEM -- printed only where it is resolved")
+        print(f"{'='*72}")
+        print("sign share = (V-B) / ((I-V) + (V-B)). An earlier version printed")
+        print("this as `63.3%+`, a LOWER BOUND, wherever I-V was indistinguishable")
+        print("from zero. That was wrong, and wrong in the direction that")
+        print("flattered the finding: uncertainty in the DENOMINATOR moves the")
+        print("true share both ways. If I-V is really $300 rather than the $100")
+        print("estimated, a share of 67% is really 40%. An unresolved denominator")
+        print("makes the ratio unresolved, not bounded below.\n")
+        print("One more inconsistency, stated rather than hidden: the numerator")
+        print("comes from Finding A (Dirichlet median, every row) and the")
+        print("denominator's first part from Finding B (held-out, half the rows).")
+        print("Those use different estimators for VERDICT. `V_A` and `V_B` below")
+        print("are the two, so the reader can see whether the mixing matters.\n")
+        print(f"   {'tool':18s} {'where':8s} {'V_A':>8s} {'V_B':>8s} {'I-V':>9s} "
+              f"{'V-B':>9s} {'share':>18s}")
+        for tool in tools:
+            for scen in scenarios + [None]:
+                if (tool, scen) not in finding_b or (tool, scen) not in finding_a:
+                    continue
+                mean, sd = finding_b[(tool, scen)]
+                gap = finding_a[(tool, scen)]["gap_med"]
+                va = finding_a[(tool, scen)]["v_med"]
+                vb = finding_b_verdict[(tool, scen)]
+                if mean > 2 * sd and mean + gap > 0:
+                    share = f"{100 * gap / (mean + gap):17.1f}%"
+                elif mean < -2 * sd:
+                    share = f"{'unresolved (KDE)':>18s}"
+                else:
+                    share = f"{'unresolved':>18s}"
+                print(f"   {tool:18s} {scen or 'pooled':8s} {money(va):>8s} "
+                      f"{money(vb):>8s} {money(mean):>9s} {money(gap):>9s} "
+                      f"{share}")
+            print()
+        print("   Where it reads `unresolved`, both dollar figures are still")
+        print("   sound -- V-B never touches the density estimator. It is the")
+        print("   RATIO that has no defensible value, and the honest output is")
+        print("   the two magnitudes rather than a percentage of them.")
 
     if args.neg_sweep:
         print(f"\n{'='*72}")
@@ -575,13 +677,14 @@ def main() -> None:
         print("the denominator is Finding B, which is provisional.\n")
         ws = [0.02, 0.05, 0.10, 0.20, DOCUMENTED_NEGATIVE_MASS, 0.40, 0.50]
         for tool in tools:
-            c = counts_for(tool, None)
+            c = data_for(tool, None, "cluster")
             print(f"   {tool}")
             print(f"     {'P(th<0)':>8s} {'EVPI':>9s} {'VERDICT':>9s} "
                   f"{'BIT':>9s} {'V-B median':>11s} {'95% credible':>22s}")
             for w in ws:
                 pw = reweight_negative(problem, w)
-                r_ = sign_loss_posterior(pw, c, args.alpha, args.draws)
+                r_ = sign_loss_posterior(pw, c, args.alpha, args.draws,
+                                         model="cluster")
                 mark = " <- matched to continuous" if w == \
                     DOCUMENTED_NEGATIVE_MASS else ""
                 print(f"     {w:8.3f} {money(pw.evpi()):>9s} "

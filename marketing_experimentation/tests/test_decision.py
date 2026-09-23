@@ -310,3 +310,48 @@ def test_prior_has_real_mass_on_a_channel_that_destroys_money():
     pr = spike_slab_prior(th)
     assert pr[th < 0].sum() > 0.15
     assert np.isclose(pr.sum(), 1.0)
+
+
+def test_action_boundaries_match_brute_force():
+    """Closed form against an independent oracle: sweep a fine grid, find
+    where argmax actually changes, compare. A derivation checked only against
+    itself is how a perfectly correct proof gets built on a wrong formula --
+    the lesson of the einsum cross-check."""
+    from leadbench_mx.decision import action_boundaries
+
+    grid = np.linspace(-0.20, 0.30, 500_001)
+    problem = budget_problem(grid, np.full(len(grid), 1.0 / len(grid)))
+    best = problem.utility.argmax(axis=0)
+    switches = grid[:-1][np.diff(best) != 0]
+    closed = action_boundaries()
+    assert len(switches) == len(closed), (
+        f"{len(switches)} brute-force switches, {len(closed)} closed-form")
+    assert np.allclose(switches, closed, atol=2e-6)
+
+
+def test_breakeven_is_not_a_decision_boundary():
+    """The point of the function. +3% is where the gain term changes sign and
+    NOT where the optimal action changes -- so a theta grid densified at the
+    breakeven is densified where nothing happens."""
+    from leadbench_mx.decision import action_boundaries
+
+    b = action_boundaries()
+    assert not np.any(np.isclose(b, 0.03, atol=1e-3))
+    assert np.allclose(b, [-0.03125, 0.0125, 0.051875, 0.104375])
+
+
+def test_boundaries_are_ordered_and_bracket_the_breakeven():
+    from leadbench_mx.decision import action_boundaries
+
+    b = action_boundaries()
+    assert np.all(np.diff(b) > 0)
+    assert b[1] < 0.03 < b[2]
+
+
+def test_zero_adjustment_cost_collapses_every_boundary_to_breakeven():
+    """The sanity check on the mechanism: without a quadratic cost the optimum
+    is always an extreme, every indifference point sits at the breakeven, and
+    the action set stops carrying information."""
+    from leadbench_mx.decision import action_boundaries
+
+    assert np.allclose(action_boundaries(adjust_cost=0.0), 0.03)

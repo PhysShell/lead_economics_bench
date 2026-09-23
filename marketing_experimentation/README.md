@@ -123,7 +123,9 @@ refusing to overclaim:
   seven-point grid. Where the negative mass *sits* decides a five-action
   problem — mass at −10% argues for `cut hard`, the same mass at −1% argues
   for `hold` — and seven points cannot tell them apart. A finer grid near
-  zero and near the +3% breakeven (M8) is what would fix it.
+  zero and near the four **action boundaries** (M8) is what would fix it —
+  and those are at −3.125%, +1.25%, +5.1875% and +10.4375%, *not* at the +3%
+  economic breakeven, which is not a decision boundary at all.
 - **Nothing here has touched a real business's data.** No experiment has been
   run, no budget moved.
 - **CausalPy's ~1.1–1.3% point-estimate noise is unexplained.** Three
@@ -152,10 +154,11 @@ refusing to overclaim:
 | `scripts/theta_atlas.py` | how does each tool behave as the truth moves? |
 | `scripts/continuous_ladder.py` | the ladder with five actions and a real prior over effect size |
 | `scripts/signed_verdict.py` | is the bit worthless because it is coarse, or because it is *unsigned*? `--neg-sweep`, `--alpha-scan` |
+| `scripts/theta_interpolation.py` | can `q(θ)` be interpolated between simulated truths? leave-one-θ-out against bootstrap noise |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
-Tests: `pytest tests/` from this directory (185 invariants).
+Tests: `pytest tests/` from this directory (205 invariants).
 
 ---
 
@@ -165,7 +168,7 @@ Tests: `pytest tests/` from this directory (185 invariants).
   before any replay ran — and revised once *before* seeing output, with the
   evidence for the revision recorded so it cannot later be mistaken for a
   tolerance widened to fit.
-- **`docs/failures.md` is not decoration.** Fifteen entries, six of them
+- **`docs/failures.md` is not decoration.** Sixteen entries, seven of them
   errors the reader caught rather than me — including F13, which invalidated
   the structure the main result was expressed in. History is not cleaned into a
   heroic narrative (brief §75).
