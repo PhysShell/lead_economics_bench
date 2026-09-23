@@ -75,3 +75,35 @@ def test_three_of_the_nine_m8_thetas_are_not_four_dp_exact():
     lossy = [t for t in CANONICAL_THETA_M8
              if Decimal(t) != Decimal(t).quantize(Decimal("0.0001"))]
     assert sorted(lossy) == ["-0.03125", "0.051875", "0.104375"]
+
+
+def test_dec_survives_a_numpy_scalar():
+    """numpy.float64 subclasses float, and under numpy 2 its repr is
+    "np.float64(-0.03125)" -- unparseable by Decimal. The extension gate met
+    this on its first run, via action_boundaries(). A canonicaliser that
+    raises on array scalars is a canonicaliser that cannot check the design
+    fields it exists to check."""
+    import numpy as np
+
+    assert dec(np.float64(-0.03125)) == Decimal("-0.03125")
+    assert dec(np.float64(0.104375)) == Decimal("0.104375")
+    assert dec(np.int64(3)) == Decimal("3")
+    assert [str(dec(x)) for x in np.array([-0.03125, 0.0125])] == \
+        ["-0.03125", "0.0125"]
+
+
+def test_canonical_string_is_actually_canonical():
+    """A canonical representation must be unique or it is not canonical.
+    "0.10" was passed on the command line; metadata.json records 0.1. The
+    first version of this module rendered those as different strings and the
+    extension gate refused a state that had not changed -- a false alarm from
+    the contract written to prevent false confidence."""
+    from leadbench_mx.canonical import canon_str
+
+    assert canon_str("0.10") == canon_str(0.1) == "0.1"
+    assert canon_str("-0.03125") == canon_str(-0.03125) == "-0.03125"
+    assert canon_str("0.0") == canon_str(0.0) == "0"
+    assert canon_str(100) == "100", "normalize() alone would give 1E+2"
+    # and the property that matters: every pair of equal values agrees
+    for a, b in (("0.10", 0.1), ("0.100", "0.1"), (0.051875, "0.051875")):
+        assert canon_str(a) == canon_str(b)

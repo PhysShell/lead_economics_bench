@@ -695,3 +695,36 @@ is 5.0000000000000375e−05. The bound for 4-dp rounding is half the last
 retained digit and must be inclusive. Float slop on the bound, not slack in
 the claim — but it failed on precisely the case the check exists for, which
 is the only case where an off-by-epsilon threshold matters.
+
+## F18. Two bugs inside the machinery built to prevent bugs
+
+Both found by *running* the new safeguards rather than reading them, and both
+in the canonicalisation layer added to close F17.
+
+**(a) `numpy.float64` broke the canonicaliser.** `dec()` narrowed on
+`isinstance(x, float)` and called `repr`. `numpy.float64` subclasses `float`,
+and under numpy 2 its repr is `np.float64(-0.03125)` — which `Decimal` cannot
+parse. The extension gate raised on the first array scalar it met, and that
+scalar was one of the four action boundaries the gate exists to verify. Fixed
+by narrowing to the builtin first.
+
+**(b) The canonical representation was not canonical.** `--effect_sizes` was
+given `"0.10"`; `metadata.json` records `0.1`. The same number. `str(dec(x))`
+preserves trailing zeros, so the extension gate compared a freeze against
+itself and reported `design.theta_grid_new` as **CHANGED** — refusing a state
+that had not changed. A canonical form that is not unique is not canonical,
+it is a preferred spelling, and C9's whole argument is that a designated
+truth is what makes a disagreement decidable. Recorded as C9a.
+
+**Why this is in the log rather than a commit message.** The two defects are
+in the *verification* layer, which is the layer whose failures are hardest to
+notice: a checker that raises gets fixed, but a checker that cries wolf gets
+relaxed, and the second failure mode is how safeguards die. (b) would have
+been "resolved" by loosening the comparison, which is exactly the move that
+put an epsilon in the F17 bound a few hours earlier.
+
+The pattern across F17 and F18: **every time a representation question was
+answered with a tolerance, the tolerance was the bug.** Half the last
+retained digit is exact in decimal and inexact in binary. `0.10` and `0.1`
+are equal as numbers and unequal as strings. Neither needed an epsilon;
+both needed the question asked in the right domain.

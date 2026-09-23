@@ -146,6 +146,29 @@ because duplication against a canonical form is what makes silent corruption
 visible. A log that records only what nothing else records can confirm but
 never contradict.
 
+### C9a — the canonical representation must itself be unique
+
+    CLAIM        canon_str(x) returns the same string for every value equal
+                 to x, and never exponential notation
+    SOURCE       `--effect_sizes` was given "0.10"; metadata.json records
+                 0.1. The same number, two strings.
+    CONSEQUENCE  a state that has not changed must not read as changed
+    CHECK        tests/test_canonical.py; and the extension gate, which
+                 refused an unchanged state until this was fixed
+
+Caught by running the gate rather than by reading it. The first version
+compared `str(dec(...))`, which preserves trailing zeros, so the extension
+gate reported `design.theta_grid_new` as CHANGED between a freeze and itself
+— a false alarm from the contract written to prevent false confidence. A
+canonical representation that is not unique is not canonical; it is just a
+preferred spelling. `normalize()` fixes the trailing zero and `format(...,
+"f")` keeps 100 from becoming `1E+2`.
+
+The same run also found that `numpy.float64` subclasses `float` while its
+numpy-2 repr is `np.float64(-0.03125)`, which `Decimal` cannot parse — so
+the canonicaliser raised on the first array scalar it met, which was one of
+the action boundaries it exists to check.
+
 ### C10 — a comparison instrument must not normalise away the thing compared
 
     CLAIM        a diff used as evidence distinguishes "absent", "null" and

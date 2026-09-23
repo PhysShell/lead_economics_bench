@@ -69,8 +69,32 @@ def dec(x) -> Decimal:
     if isinstance(x, Decimal):
         return x
     if isinstance(x, float):
-        return Decimal(repr(x))
+        # float(x) first, deliberately. numpy.float64 subclasses float, and
+        # under numpy 2 its repr is "np.float64(-0.03125)", which Decimal
+        # cannot parse -- so a canonicaliser that trusted repr() would raise
+        # on the first array scalar it met. Narrowing to the builtin gives a
+        # repr that round-trips and carries the same value.
+        return Decimal(repr(float(x)))
+    if isinstance(x, int):
+        return Decimal(x)
     return Decimal(str(x))
+
+
+def canon_str(x) -> str:
+    """The canonical STRING for a value: normalised, never exponential.
+
+    A canonical representation has to be unique or it is not canonical, and
+    the first version of this module missed that. `--effect_sizes` was given
+    "0.10"; `metadata.json` records `0.1`. Those are the same number, and
+    `str(dec(...))` renders them as different strings, so the extension gate
+    refused a state that had not changed -- a false alarm from the very
+    contract written to prevent false confidence.
+
+    `normalize()` strips the trailing zero; `format(..., "f")` keeps the
+    result out of exponential notation, which `normalize()` would otherwise
+    produce for values like 100 (`1E+2`).
+    """
+    return format(dec(x).normalize(), "f")
 
 
 def canonical_set(thetas=CANONICAL_THETA_M8) -> set[Decimal]:

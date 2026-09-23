@@ -154,12 +154,13 @@ refusing to overclaim:
 | `scripts/theta_atlas.py` | how does each tool behave as the truth moves? |
 | `scripts/continuous_ladder.py` | the ladder with five actions and a real prior over effect size |
 | `scripts/signed_verdict.py` | is the bit worthless because it is coarse, or because it is *unsigned*? `--neg-sweep`, `--alpha-scan` |
+| `repro/recast/extend_from_freeze.py` | refuses to extend the run unless exactly one thing changed since the freeze |
 | `scripts/theta_interpolation.py` | can `q(θ)` be interpolated between simulated truths? leave-one-θ-out against bootstrap noise |
 | `src/leadbench_mx/clusters.py` | the common-random-numbers gate: refuses any analysis whose truths rest on different latent panels |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
-Tests: `pytest tests/` from this directory (213 invariants).
+Tests: `pytest tests/` from this directory (230 invariants).
 
 ---
 
@@ -169,7 +170,7 @@ Tests: `pytest tests/` from this directory (213 invariants).
   before any replay ran — and revised once *before* seeing output, with the
   evidence for the revision recorded so it cannot later be mistaken for a
   tolerance widened to fit.
-- **`docs/failures.md` is not decoration.** Sixteen entries, seven of them
+- **`docs/failures.md` is not decoration.** Eighteen entries, seven of them
   errors the reader caught rather than me. Four of them — F13–F16 — are one
   class, **conceptual-model contract failure**: correct arithmetic under a
   structural assumption that was never checked. `docs/assumption-contracts.md`

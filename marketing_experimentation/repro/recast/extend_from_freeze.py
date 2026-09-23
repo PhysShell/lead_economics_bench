@@ -41,7 +41,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from leadbench_mx.canonical import CANONICAL_THETA_M8, dec  # noqa: E402
+from leadbench_mx.canonical import (  # noqa: E402
+    CANONICAL_THETA_M8, canon_str,
+)
 from leadbench_mx.decision import action_boundaries  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[3]
@@ -86,8 +88,8 @@ def current_state(iterations: int) -> dict:
         "donor.file.generate_panels.R":
             sha256(DONOR / "src/R/generate_panels.R"),
         "donor.file.run_tools.py": sha256(DONOR / "src/python/run_tools.py"),
-        "design.theta_grid_new": [str(dec(t)) for t in CANONICAL_THETA_M8],
-        "design.action_boundaries": [str(dec(x)) for x in action_boundaries()],
+        "design.theta_grid_new": [canon_str(t) for t in CANONICAL_THETA_M8],
+        "design.action_boundaries": [canon_str(x) for x in action_boundaries()],
         "design.cluster_definition": ["scenario", "iteration"],
         "design.gate_threshold_percentile": 95,
         "iterations": iterations,
@@ -104,9 +106,9 @@ def frozen_state(fz: dict) -> dict:
             d["patched_files_sha256"]["src/R/generate_panels.R"],
         "donor.file.run_tools.py":
             d["patched_files_sha256"]["src/python/run_tools.py"],
-        "design.theta_grid_new": [str(dec(t)) for t in g["theta_grid_new"]],
+        "design.theta_grid_new": [canon_str(t) for t in g["theta_grid_new"]],
         "design.action_boundaries":
-            [str(dec(x)) for x in g["action_boundaries"]],
+            [canon_str(x) for x in g["action_boundaries"]],
         "design.cluster_definition": g["cluster_definition"],
         "design.gate_threshold_percentile": g["gate_threshold_percentile"],
         "iterations": 10,
