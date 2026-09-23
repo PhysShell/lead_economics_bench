@@ -35,7 +35,9 @@ so that
 
     E[f] = pi_0 * f(0) + (1 - pi_0) * integral f(theta) p_slab(theta) dtheta
 
-and `pi_0` is exactly 0.45 however fine the grid gets.
+and `pi_0` is exactly 0.45 however fine the grid gets. **After conditioning
+on the validated support it is 0.45861, not 0.45** -- see `build_prior`. The
+atom survives as an atom; its weight does not survive unchanged.
 
 Where the value comes from, not just how much
 -----------------------------------------------
@@ -54,8 +56,9 @@ mislead at a particular truth -- and those are reported rather than clipped.
 The support is the validated one
 ---------------------------------
 The gate validated interpolation, not extrapolation. Simulated truths span
-[-15%, +15%], so the prior is restricted to that interval and renormalised;
-the excluded mass is reported rather than absorbed.
+[-15%, +15%], so the prior is CONDITIONED on that interval -- not truncated
+without renormalisation, which would leave a measure of mass 0.981219 rather
+than a probability distribution. The excluded mass is reported by tail.
 
     python marketing_experimentation/scripts/continuous_finding_a.py \
         --results /tmp/results_m8_full_merged.jsonl
@@ -101,7 +104,7 @@ def build_prior(n_slab: int = 241) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     stopped being unambiguous the moment the support was restricted::
 
         0) DECLARED, untruncated        spike 0.45000   P(theta<0) 0.13887
-        A) CONDITIONED on the support   spike 0.45861   P(theta<0) 0.14153
+        A) CONDITIONED on the support   spike 0.45861   P(theta<0) 0.14110
         B) slab renormalised, mixture
            weight left at 0.45          spike 0.45000   P(theta<0) 0.14334
         C) sub-probability measure,
@@ -112,6 +115,10 @@ def build_prior(n_slab: int = 241) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     probability distribution, and C is a measure of mass 0.9812, which would
     put every dollar figure ~1.88% low for a reason that is bookkeeping
     rather than decision theory.
+
+    (An earlier draft of this table gave A's negative mass as 0.14153, which
+    forgets to exclude the 0.042% of slab mass below -15%. Conditioning drops
+    the left tail as well as the right: 0.14110.)
 
     **The atom stays an atom, but its weight is no longer 0.45.** Under
     conditioning it is `0.45 / 0.981219 = 0.45861`. Saying "pi_0 is exactly
@@ -325,7 +332,12 @@ def main() -> None:
         print(f"   {tool:18s} {money(parts[0]):>12s} {money(parts[1]):>12s} "
               f"{money(parts[2]):>12s} {money(tot):>12s}")
 
-    print(f"\n   as a share of the total. NOTE: medians are not additive --")
+    print(f"\n   TWO denominators, because with a negative region they answer")
+    print("   different questions. NET divides by the sum of the signed parts;")
+    print("   GROSS divides by the sum of their absolute values. A region can")
+    print("   be 90% of the net and 67% of the gross, and `% of the value` is")
+    print("   ambiguous between them.")
+    print("\n   NOTE: medians are not additive --")
     print("   the three regional medians need not sum to the median total, so")
     print("   the shares are taken against the sum of the parts and the")
     print("   residual is printed rather than hidden by normalising it away.")
@@ -340,8 +352,12 @@ def main() -> None:
             print(f"   {tool:18s} parts sum to ~$0; shares undefined")
             continue
         sh = [100 * x / ssum for x in parts]
-        print(f"   {tool:18s} spike {sh[0]:6.1f}%   neg slab {sh[1]:6.1f}%   "
-              f"pos slab {sh[2]:6.1f}%")
+        gross = sum(abs(x) for x in parts)
+        gh = [100 * abs(x) / gross for x in parts]
+        print(f"   {tool:18s} NET   spike {sh[0]:6.1f}%   neg {sh[1]:6.1f}%   "
+              f"pos {sh[2]:6.1f}%   (of the summed signed parts)")
+        print(f"   {'':18s} GROSS spike {gh[0]:6.1f}%   neg {gh[1]:6.1f}%   "
+              f"pos {gh[2]:6.1f}%   (of summed |parts|)")
         print(f"   {'':18s} sum of medians {money(ssum)} vs median total "
               f"{money(med_total)}  "
               f"(non-additivity: {money(ssum - med_total)})")

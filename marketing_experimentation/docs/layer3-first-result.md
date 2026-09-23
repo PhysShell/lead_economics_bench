@@ -1002,9 +1002,18 @@ instead of the prior being dragged to where the likelihood was measured.
 
 The spike is an **atom**. Representing it as a normal of width 0.005 on a
 grid is what produced F19, and the correction is structural rather than
-numerical: a point mass and a density are different objects, and discretising
-the first into the second changes the topology of the prior before anyone
-looks at its probabilities.
+numerical:
+
+> The discretisation changed the **measure structure** of the prior: a
+> singular atomic component at θ=0 was replaced by an absolutely continuous
+> finite-width component. A point mass was turned into density. That changes
+> the probability measure, not merely its numerical resolution.
+
+*(An earlier draft said the discretisation "changed the topology of the
+prior". It did not — the topology of the θ-space is untouched. What changed
+is the decomposition of the measure into its singular and absolutely
+continuous parts, which is both the accurate statement and the more
+interesting one.)*
 
 ## 2. Validated-domain policy
 
@@ -1079,16 +1088,26 @@ EVSI is not a sum over θ, but the gain over the baseline action is, exactly:
 
     contribution(θ) = p(θ)·[ Σ_y p(y|θ)·U(a*(y), θ) − U(a₀, θ) ]
 
-| tool | spike (θ=0) | slab < 0 | slab > 0 | median total |
-|---|---|---|---|---|
-| `causalpy[y_hat]` | 23.4% | **88.1%** | −11.5% | $2,129 |
-| `causalimpact` | 29.1% | **89.7%** | −18.7% | $1,088 |
-| `google_mm` | 22.2% | **88.1%** | −10.3% | $1,064 |
-| `geolift` | 18.4% | **81.6%** | 0.0% | $214 |
+Two denominators, because with a negative region "% of the value" is
+ambiguous. **NET** divides by the sum of the signed parts; **GROSS** by the
+sum of their absolute values.
 
-**The sign's value is almost entirely the negative half.** 82–90% of it comes
-from slab mass below zero, and the positive slab contributes **negatively**
-for three of four tools.
+| tool | | spike (θ=0) | slab < 0 | slab > 0 | median total |
+|---|---|---|---|---|---|
+| `causalpy[y_hat]` | net | 23.4% | **88.1%** | −11.5% | $2,129 |
+| | gross | 19.0% | 71.6% | 9.4% | |
+| `causalimpact` | net | 29.1% | **89.7%** | −18.7% | $1,088 |
+| | gross | 21.1% | 65.2% | 13.6% | |
+| `google_mm` | net | 22.2% | **88.1%** | −10.3% | $1,064 |
+| | gross | 18.4% | 73.1% | 8.5% | |
+| `geolift` | net | 18.4% | **81.6%** | 0.0% | $214 |
+| | gross | 18.4% | 81.6% | 0.0% | |
+
+**The sign's value is predominantly the negative half — on both
+denominators.** The negative slab contributes **82–90% of the net summed
+regional contribution** and **65–82% of the gross**. The positive slab
+contributes negatively in net terms for three of four tools, which is why
+the two denominators separate at all.
 
 That negative contribution violates nothing. Blackwell orders the experiments
 *ex ante in expected utility*, not state by state: extra resolution can move
@@ -1098,11 +1117,15 @@ rather than clipped.
 
 So the mechanism has a plain reading:
 
-> An unsigned `significant` cannot tell a business to **cut**. On the positive
-> half, "something is happening" plus a prior centred at +4% is already close
-> to enough to act on. On the negative half the same symbol means both *scale
-> this* and *stop this*. The money is in not funding a channel that is
-> destroying revenue.
+> The economically important information destroyed by an unsigned signal is
+> **directional information in adverse-effect states**.
+
+An unsigned `significant` cannot tell a business to **cut**. On the positive
+half, "something is happening" plus a prior centred at +4% is already close
+to enough to act on. On the negative half the same symbol means both *scale
+this* and *stop this*. The money is in not funding a channel that is
+destroying revenue — and that reading comes from the regional decomposition,
+not from staring at a total and inventing a story for it.
 
 *(Medians are not additive, so the three regional medians need not sum to the
 median total. Shares are taken against the sum of the parts and the residual

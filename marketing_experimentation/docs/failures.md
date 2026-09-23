@@ -784,3 +784,54 @@ that only exists after a discretisation is a property of the discretisation
 until proven otherwise. "0.267 of the mass is below zero" was never measured
 on the prior; it was measured on a rendering of the prior, and then cited for
 two milestones as though the rendering were the thing.
+
+### F19, stated precisely — and what F17, F18 and F19 share
+
+**The accurate description of the defect.** An earlier write-up said the
+discretisation "changed the topology of the prior". It did not: the topology
+of the θ-space is untouched. What changed is the **measure structure** —
+
+> a singular atomic component at θ=0 was replaced by an absolutely continuous
+> finite-width component. A point mass was turned into density. That changes
+> the probability measure, not merely its numerical resolution.
+
+Spike-and-slab is *defined* as a point mass at zero plus a continuous slab,
+so discretising the atom does not approximate the model — it replaces it.
+
+**And the leak table proves that rather than suggesting it.** 0.267, 0.315,
+0.344, 0.359 at n = 81, 161, 401, 1601 is not poor convergence toward
+0.1389. It is good convergence toward
+
+    0.13887 + 0.45/2 = 0.36387
+
+which is the correct answer to a *different* question: the negative mass of a
+model in which the atom has been smeared symmetrically about zero. The
+published 0.267 was never an estimate of the right number.
+
+**The root shared by all three.**
+
+| | the representation | the object it silently became |
+|---|---|---|
+| F17 | decimal scalar | float tolerance |
+| F18 | numerical equality | string identity |
+| F19 | atomic probability measure | grid density |
+
+> **Do not let a numerical representation silently define the mathematical
+> object being represented.**
+
+Three unrelated bugs, one root. The earlier formulation — *resolve
+representation disagreements by defining identity, not by widening equality*
+— is the operational half of this; the sentence above is the half that says
+why it keeps happening. A representation is chosen for convenience and then,
+without anyone deciding to, becomes the definition.
+
+**The architectural consequence, for mixed discrete-continuous priors.** Do
+not ask one quadrature grid to represent both the measure and the integrand:
+
+    E[f | V] = w0·f(0) + ∫₋₀.₁₅⁰ f·p_V dθ + ∫₀⁰·¹⁵ f·p_V dθ
+
+The atom is computed exactly; the slab is integrated by quadrature; θ=0 is
+not a trapezoid node whose weight accidentally decides the atom's fate; and
+the analytic mass table **checks** the quadrature rather than being derived
+from it. That last point is what caught the residual 0.0019 error after the
+main fix.
