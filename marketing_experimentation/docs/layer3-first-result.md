@@ -131,10 +131,22 @@ carrying is not about GeoLift and not about `p < .05`:
 > can destroy most of the usable information even in a well-calibrated
 > method.
 
-GeoLift is the clean illustration and not the subject: correctly calibrated
-inference → a very wide interval → TPR of 8.7% → a significance channel that
-is nearly mute — while its point estimate still carries decision value within
-12% of the best of the four.
+GeoLift is the clean illustration and not the subject. Stated as a
+**conjunction**, because an earlier draft wrote it as a causal chain —
+"calibrated inference → wide interval → TPR 8.7% → mute channel" — and good
+calibration is not what *causes* a wide interval. In this Recast regime
+GeoLift simultaneously:
+
+- is the only tool whose false-positive rate matches its nominal level
+  (4.6% against 5%), **and**
+- produces intervals ~2.5× wider than its own sampling SD would require, **and**
+- detects a real +7.5% lift only 8.7% of the time, so its significance
+  channel is nearly mute, **and**
+- retains a point-estimate channel whose decision value is within 12% of the
+  best of the four.
+
+Those four facts hold together. Which of them explains which is not
+established here, and the claim does not need it to be.
 
 **What would falsify it.** If M7 shows that with a continuous θ and five
 actions the S0 gap *narrows* — that the bit turns out to be close to a
@@ -535,13 +547,17 @@ direct support from the donor's:
 
 > **GeoLift detects a real +7.5% lift 8.7% of the time.** Its interval is
 > 52 pp wide against 19–22 pp for the others. It is the only tool whose false
-> positive rate matches its nominal level, and it achieves that by being
-> almost powerless in this DGP.
+> positive rate matches its nominal level (4.6% against 5%).
 
 Meanwhile its *point estimate* is worth $46,445 — within 12% of the best of
 the four. **Calibrated, nearly powerless, and as informative as anything else
-once you stop thresholding it.** That is a sharper statement than the one it
-replaces, and it is now supported from two independent directions.
+once you stop thresholding it.**
+
+An earlier version of this passage said it "achieves that by being almost
+powerless", which asserts a causal link this evidence does not carry. The
+four properties — nominal FPR, wide interval, low TPR, informative point
+estimate — are observed together in this DGP. Which explains which is not
+established, and the claim does not require it to be.
 
 ### Where this leaves Recast's conclusion and ours
 
