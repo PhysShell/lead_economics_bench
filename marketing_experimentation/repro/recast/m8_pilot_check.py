@@ -215,6 +215,47 @@ def main() -> None:
             f"R2={r2:.5f}  max|new-old|={max_abs:.3e} against a mean |resid| "
             f"of {scale:.3e}   ({len(w)} clusters)")
 
+    print("\n== 5b. the envelope test: is new/old deviation typical? ==")
+    print("   The regression above is the identity for three tools and very")
+    print("   nearly it for causalpy. Saying causalpy's gap is `caused by")
+    print("   sampler noise` would be a mechanism claim this cannot support.")
+    print("   What CAN be checked is whether the new-vs-old deviation is drawn")
+    print("   from the same distribution as the deviation between two truths")
+    print("   ALREADY accepted -- the previously established envelope. If the")
+    print("   new arms sat on different panels, new/old pairs would stand out")
+    print("   against old/old pairs. Max |resid(a) - resid(b)| per cluster,")
+    print("   over every truth pair.\n")
+    import itertools
+    old_truths = {float(t) for t in a.effect_pct.unique()}
+    for tool in sorted(both.tool_label.unique()):
+        g_ = both[both.tool_label == tool]
+        w = g_.pivot_table(index=["scenario", "iteration"],
+                           columns="effect_pct", values="resid").dropna()
+        oo, no = [], []
+        for u, v in itertools.combinations(list(w.columns), 2):
+            mx = float(np.abs(w[u] - w[v]).max())
+            uo = any(np.isclose(u, t) for t in old_truths)
+            vo = any(np.isclose(v, t) for t in old_truths)
+            if uo and vo:
+                oo.append(mx)
+            elif uo != vo:
+                no.append(mx)
+        oo, no = np.array(oo), np.array(no)
+        if not len(oo) or not len(no):
+            continue
+        pct = 100.0 * float((oo < np.median(no)).mean())
+        ok &= report(
+            f"{tool}: new/old deviation typical of old/old",
+            20.0 <= pct <= 80.0,
+            f"old/old median {np.median(oo):.2e} max {oo.max():.2e} | "
+            f"new/old median {np.median(no):.2e} max {no.max():.2e} | "
+            f"median new/old at the {pct:.0f}th percentile of old/old")
+    print("\n   Read this as: whatever produces causalpy's deviation also")
+    print("   produces the deviation between two M7 truths, so it is a")
+    print("   property of the estimator across arms and NOT evidence of a")
+    print("   different panel. It is consistent with the F8 variability; it")
+    print("   is not proof of its mechanism, and F8 remains unexplained.")
+
     print("\n== 6. the preregistered cluster gate on the merged file ==")
     merged = both[np.isfinite(both[["att_pct"]].to_numpy(dtype=float)).all(axis=1)]
     thetas = sorted(float(t) for t in merged.effect_pct.unique())

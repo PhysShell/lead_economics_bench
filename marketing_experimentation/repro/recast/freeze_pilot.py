@@ -92,9 +92,27 @@ def main() -> None:
         "permitted_change_after_this_point": PERMITTED_CHANGE,
 
         "code": {
-            "repo_head": git("rev-parse", "HEAD"),
-            "repo_head_subject": git("log", "-1", "--format=%s"),
-            "tree_clean": git("status", "--porcelain") == "",
+            # NOT "repo_head". A file cannot record the hash of the commit
+            # that contains it -- the hash is a function of the contents,
+            # which would contain the hash. The model is two commits:
+            #
+            #   A = analysis_commit : all code, contracts and gates
+            #   B = freeze commit   : parent A, adds ONLY this file
+            #
+            # This artifact names A. Git names B, and the tag points at it.
+            # An earlier, STALE copy of this file also sits inside A, from a
+            # generation before A existed; it records tree_clean = false and
+            # must not be used. Recorded here because the alternative is a
+            # future reader finding two freezes and picking one.
+            "analysis_commit": git("rev-parse", "HEAD"),
+            "analysis_commit_subject": git("log", "-1", "--format=%s"),
+            "freeze_commit": "the commit containing this file; identified by "
+                             "git and by the tag m8-pilot-freeze, NOT here",
+            "stale_copy_warning":
+                "a superseded copy of this artifact exists in the analysis "
+                "commit itself, recording tree_clean=false. Use the tagged "
+                "one.",
+            "tree_clean_at_generation": git("status", "--porcelain") == "",
             "m8_baseline_commit": "4c892f5",
             "m8_baseline_note":
                 "the commit that introduces the CRN cluster gate. NOT cc38fc2 "
@@ -118,6 +136,21 @@ def main() -> None:
                 "was applied to is unchanged.",
         },
 
+        "quarantine": {
+            "status": "ABORTED_UNAUTHORIZED_EXTENSION",
+            "what": "a 25-iteration extension started before this freeze "
+                    "existed, killed at 2,740 rows",
+            "rows": _rows("/tmp/results_m8_partial_aborted.jsonl"),
+            "sha256": sha256(Path("/tmp/results_m8_partial_aborted.jsonl")),
+            "started_from_freeze": False,
+            "eligible_for_analysis": False,
+            "eligible_for_reuse": False,
+            "payload_disposition": "DELETED after this manifest was written. "
+                                   "The evidence that it happened is kept; "
+                                   "the reusable observations are not, so no "
+                                   "future glob can discover them.",
+        },
+
         "data": {
             "pilot_results": {"path": args.results,
                               "sha256": sha256(Path(args.results)),
@@ -133,12 +166,9 @@ def main() -> None:
                                    "rows": _rows(args.atlas)},
             "known_state_note":
                 "the donor clone's panels/ directory holds 25 iterations, not "
-                "10: an extension was started before this freeze existed and "
-                "aborted. Iterations 1-10 are identical by seed, and the "
-                "aborted partial results are kept at "
-                "/tmp/results_m8_partial_aborted.jsonl and are NOT part of "
-                "any analysis. Recorded because an undocumented surplus is "
-                "how a later run silently uses data nobody authorised.",
+                "10. Iterations 1-10 are identical by seed. See `quarantine`. "
+                "Recorded because an undocumented surplus is how a later run "
+                "silently uses data nobody authorised.",
         },
 
         "design": {

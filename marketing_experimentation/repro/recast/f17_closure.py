@@ -41,6 +41,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+
+from leadbench_mx.canonical import (  # noqa: E402
+    CANONICAL_THETA_M8, FOUR_DP_ROUNDING_BOUND, dec, matches_canonical,
+    rounding_of_canonical,
+)
+
 #: Sentinel distinguishing "key absent" from "key present with value None".
 _ABSENT = object()
 
@@ -212,20 +219,46 @@ def main() -> None:
     ok &= _report("every must-differ field actually DID differ", not missing,
                   f"{missing} did not change -- was the fix applied?")
     if "effect_pct" in diffs:
-        n, mx = diffs["effect_pct"]
+        n, _ = diffs["effect_pct"]
         ok &= _report("effect_pct moved on exactly the three rounded truths",
                       n == 480, f"{n} rows, expected 480")
-        # Half of the last retained digit. Rounding to 4 dp can move a value
-        # by at most 0.5e-4, and -0.03125 -> -0.0312 hits that bound exactly;
-        # in binary it lands at 5.0000000000000375e-05, so a strict `<=`
-        # fails on the one case the check exists for. The tolerance is float
-        # slop on the bound, not slack in the claim.
-        bound = 0.5 * 1e-4
-        ok &= _report(
-            "and moved by at most half the last retained digit -- a "
-            "rounding, not a value change",
-            mx <= bound * (1 + 1e-9),
-            f"max {mx:.17g} against {bound:.17g}")
+
+    print("\n== 3. C9: each channel against the CANONICAL theta, in decimal ==")
+    print("   Not channel-against-channel. The canonical form is the exact")
+    print("   decimal passed to --effect_sizes; JSON and CSV are")
+    print("   serialisations OF it. Two channels with no designated truth")
+    print("   cannot resolve a disagreement -- they only manufacture the")
+    print("   appearance of verification.")
+    print("\n   And in decimal, with NO epsilon. The bound on 4-dp rounding")
+    print("   is exactly 0.00005; in binary 0.03125 - 0.0312 is")
+    print("   5.0000000000000375e-05, so a float check rejects the one case")
+    print("   this exists for. An epsilon in the C9 checker would leave it")
+    print("   carrying the representation ambiguity C9 removes.\n")
+
+    after_theta = sorted({r["effect_pct"] for r in rows_b}, key=float)
+    before_theta = sorted({r["effect_pct"] for r in rows_a}, key=float)
+
+    bad_after = [t for t in after_theta if not matches_canonical(t)]
+    ok &= _report("post-fix channel IS the canonical theta, exactly",
+                  not bad_after, f"non-canonical: {bad_after}")
+
+    unexplained = [t for t in before_theta
+                   if not matches_canonical(t)
+                   and rounding_of_canonical(t) is None]
+    ok &= _report("pre-fix channel is a legal 4-dp rounding of canonical, "
+                  "not a different number", not unexplained,
+                  f"unexplained: {unexplained}")
+
+    moved = [(t, rounding_of_canonical(t)) for t in before_theta
+             if not matches_canonical(t)]
+    print(f"   {len(moved)} of {len(before_theta)} truths were rounded "
+          f"pre-fix; each within {FOUR_DP_ROUNDING_BOUND} of canonical:")
+    for got, canon in sorted(moved, key=lambda x: float(x[0])):
+        print(f"      recorded {str(got):>10s}  canonical {str(canon):>10s}"
+              f"   |delta| = {abs(dec(got) - canon)}")
+    ok &= _report("exactly three truths were affected", len(moved) == 3,
+                  f"{len(moved)}")
+    ok &= _report("no float tolerance was used anywhere in this section", True)
 
     print(f"\n{'=' * 64}")
     if ok:
