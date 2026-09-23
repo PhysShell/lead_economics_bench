@@ -1,19 +1,24 @@
 #!/usr/bin/env python
-"""Is the S1 -> S2 null a property of the data, or of the density estimator?
+"""Is an EVSI gap a property of the data, or of the density estimator?
 
-`information_ladder.py` found that adding the CI width on top of the point
-estimate is worth between -$1,475 and +$96, with a sign that flips across
-bandwidths -- an undetectable effect rather than a small one. Every number in
-that result passes through one Gaussian KDE, and a KDE is exactly the thing
-that degrades when a dimension is added. So the null has an alternative
-explanation that has not been ruled out: the second dimension may carry
-information that the estimator cannot see.
+Every EVSI in this track passes through an estimated density, and a density
+can manufacture or destroy an apparent gap. This script fits four families to
+p(y|theta) at each representation, scores them on held-out log-likelihood --
+a proper scoring rule, so a family cannot win by flexibility alone -- and
+recomputes EVSI under each. A result that survives all four is about the
+data; one that does not is about the estimator.
 
-This script rules it in or out. It fits four likelihood families to p(y|theta)
-at each rung, scores them on held-out log-likelihood -- a proper scoring rule,
-so the comparison is not circular -- and then recomputes EVSI under each. If
-S1 -> S2 stays null under a density that demonstrably fits better, the null is
-about the data. If it moves, the ladder result needs retracting.
+It originally asked whether the "S1 -> S2 null" was real. That question was
+retired with the structure it belonged to: S2 was (att, ci_width), and the
+width is not the signal that determines significance -- the intervals are
+asymmetric, so the width recovers it only 94-97% of the time. The
+comparison is now POINT against INTERVAL, where INTERVAL carries both
+bounds. See Addendum 0 of `docs/layer3-first-result.md`.
+
+Note that Blackwell does NOT order POINT against INTERVAL -- neither is a
+garbling of the other -- so unlike the BIT/INTERVAL chain there is no
+guaranteed sign here, and a disagreement between families is information
+rather than a failure.
 
 The families
 ------------
@@ -47,9 +52,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from leadbench_mx.decision import two_point_problem  # noqa: E402
 
+#: The corrected representation graph -- see `information_ladder.py` and
+#: Addendum 0 of layer3-first-result.md. An earlier version of this file
+#: compared POINT against (att, ci_width), which is not the signal that
+#: determines significance: the intervals are asymmetric, so the width
+#: recovers it only 94-97% of the time. INTERVAL carries both bounds.
 RUNGS = {
-    "S1_point_estimate": ["att_pct"],
-    "S2_estimate_plus_ci": ["att_pct", "ci_width"],
+    "POINT": ["att_pct"],
+    "INTERVAL": ["att_pct", "ci_lower", "ci_upper"],
 }
 
 DEFAULT_RESULTS = (
@@ -151,7 +161,7 @@ FAMILIES = {
 
 def prepare(d: pd.DataFrame, tool: str, scenario: str) -> pd.DataFrame:
     g = d[(d.tool == tool) & (d.scenario == scenario)].copy()
-    g["ci_width"] = g.ci_upper - g.ci_lower
+    g["ci_width"] = g.ci_upper - g.ci_lower  # reporting only
     return g
 
 
@@ -255,16 +265,18 @@ def main() -> None:
                            values="evsi")
     print(ev_piv.round(0).to_string())
 
-    print("\n== S2 - S1, per family ==")
-    print("   (the ladder reported -$1,475 to +$96 under kde, sign flipping)\n")
+    print("\n== INTERVAL - POINT, per family ==")
+    print("   Blackwell does NOT order these two -- neither is a garbling of")
+    print("   the other -- so the sign is not constrained and a disagreement")
+    print("   between families is informative rather than a failure.\n")
     delta = {}
     for fam in FAMILIES:
         sub = r[r.family == fam].pivot_table(index="tool", columns="rung",
                                              values="evsi")
         if set(RUNGS) <= set(sub.columns):
-            delta[fam] = sub["S2_estimate_plus_ci"] - sub["S1_point_estimate"]
+            delta[fam] = sub["INTERVAL"] - sub["POINT"]
     dd = pd.DataFrame(delta)
-    sd = (r[r.rung == "S1_point_estimate"]
+    sd = (r[r.rung == "POINT"]
           .pivot_table(index="tool", columns="family", values="evsi_sd"))
     out = dd.copy()
     for c in out.columns:
@@ -289,7 +301,7 @@ def main() -> None:
     print("   (at S0, the significance bit, the four tools span 11x)\n")
     print(f"   {'family':12s} {'min S1':>10s} {'max S1':>10s} {'spread':>8s}")
     for fam in FAMILIES:
-        s1 = r[(r.family == fam) & (r.rung == "S1_point_estimate")].evsi
+        s1 = r[(r.family == fam) & (r.rung == "POINT")].evsi
         if len(s1) < 2:
             continue
         lo, hi = float(s1.min()), float(s1.max())

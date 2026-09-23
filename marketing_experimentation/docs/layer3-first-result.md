@@ -323,11 +323,26 @@ the fit half:
 | `causalpy` | 0.7581 | 0.8244 | +0.0663 | interval discriminates better |
 | `geolift` | 0.7553 | 0.7224 | **−0.0329** | no better — the extra dimensions cost more than they carry |
 
-Cross-checked against a full-covariance Gaussian, which cannot overfit the
-way a KDE can: the direction survives for the three (+0.07, +0.04, −0.02
-respectively) while the *magnitudes* shrink. So the EVSI levels in the table
-above are KDE-inflated and should be read as an upper bound; the AUC
-direction is the robust part.
+Cross-checked against three other families — **reproduce:**
+`python marketing_experimentation/scripts/likelihood_models.py`. The
+direction survives, and the **magnitudes do not, by a wide margin**:
+
+| tool | INTERVAL EVSI across four families |
+|---|---|
+| `google_mm` | $64,339 – **$171,729** |
+| `causalimpact` | $72,752 – **$148,771** |
+| `causalpy` | $61,021 – $100,672 |
+| `geolift` | $49,856 – $60,053 |
+
+A spread of up to **2.7×**, against roughly 1.3× at POINT. **So the EVSI
+*levels* at INTERVAL carry no weight at all** — a Gaussian mixture wins on
+held-out log-likelihood for every tool and also produces the largest
+numbers, which is exactly the pattern that cannot be told apart from a
+better fit finding real structure without a dimension-agnostic arbiter.
+
+That arbiter is the held-out AUC above, and it is the only part of this
+comparison that should be quoted. The dollar figures are reported so the
+family-dependence is visible, not because any of them is the answer.
 
 **GeoLift is the exception in both families**, which rescues a piece of the
 original claim in a narrower form: for GeoLift specifically, the interval
