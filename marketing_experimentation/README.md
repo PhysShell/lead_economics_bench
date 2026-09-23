@@ -98,8 +98,12 @@ refusing to overclaim:
   marketing experiment. This is the largest limitation by a distance.
 - **Nothing here has touched a real business's data.** No experiment has been
   run, no budget moved.
-- **CausalPy's ~1.3% point-estimate noise is unexplained.** Three mechanisms
-  proposed, three refuted (F8). A fourth is written down as a hypothesis.
+- **CausalPy's ~1.1–1.3% point-estimate noise is unexplained.** Three
+  mechanisms proposed, three excluded (F8) — the last by a *paired exclusion
+  test* rather than a failed null test: `mu` changes the noise by −0.1%
+  [−2.5%, +2.2%] against the −50% the mechanism would require. A fourth is
+  written down as a hypothesis, with what it predicts, and is deliberately
+  **not** queued.
 - **EVSI *levels* are density-dependent** — $46k under a KDE, $67k under a
   Student-t, and the 3-d interval density inflates further. Only the
   orderings and the held-out AUC differences are robust, which is why AUC is

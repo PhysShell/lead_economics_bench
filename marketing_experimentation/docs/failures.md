@@ -183,7 +183,7 @@ specific test attached — M5b runs both posterior types — rather than as a
 mechanism. The A4 result (3.2% on the short panel, 30 pre-period days) is
 coherent with the story and is explicitly not counted as evidence for it.
 
-### F8.1 — the third mechanism is refuted too
+### F8.1 — H3 excluded, by exclusion rather than by a failed null test
 
 The test ran. `config/tools.yaml` lists `posteriors: [y_hat]`; adding `mu`
 enables a code path the donor already ships. Both were run on identical
@@ -194,21 +194,69 @@ panels, 20 iterations, and the determinism identity applied to each:
 | `causalpy[mu]` — parameter uncertainty only | **1.1372%** | **3.1046%** |
 | `causalpy[y_hat]` — posterior predictive | 1.1241% | 3.1384% |
 
-**They are the same.** Removing the posterior predictive's simulated
-observation noise does not remove the Monte Carlo noise in the point
-estimate. The third candidate joins the first two.
+**A first draft of this entry stopped there and called it refuted.** That
+would have ended the investigation with `p > .05 → no difference`, which is
+the inference this project spent most of its length demonstrating to be poor.
+Ending on it would have been comic.
 
-So the honest position after three attempts: **CausalPy's published point
-estimate carries ~1.3% noise and we do not know why.** What has been ruled
-out is the seed, standardisation drift, and the posterior type. What remains
-is that NUTS's trajectory depends on the data and not only on the seed, so
-two panels differing in the post-period can produce different draws under an
-identical seed — but that is a fourth hypothesis, not a conclusion, and it is
-labelled as such rather than offered as the answer.
+**Reproduce:** `python marketing_experimentation/repro/recast/f8_equivalence.py`
 
-Three refutations in a row is the useful outcome here. The temptation each
-time was to stop at a plausible story; each story was checkable, and each one
-was wrong.
+The design supports something better. The same run identities produce both
+variants, so the comparison is **paired** and between-run variance cancels.
+That allows an exclusion test, and the margin is derived from H3 rather than
+chosen for looking round: a mechanism that explains less than **half** of a
+phenomenon is not the explanation of it, so H3 predicts
+`d ≤ −0.5 × baseline`. Preregistered before looking at the differences.
+
+Over 20 paired run identities on A1:
+
+| | |
+|---|---|
+| `y_hat` noise, mean | 4.0576 |
+| `mu` noise, mean | 4.0516 |
+| paired difference `d` | **−0.0060**, 95% bootstrap CI **[−0.1019, +0.0887]** |
+| what H3 requires | `d ≤ −2.0288` |
+
+> **H3 is excluded.** The reduction it predicts lies entirely outside the
+> interval — in relative terms `mu` changes the noise by **−0.1%
+> [−2.5%, +2.2%]** against the **−50%** H3 would need. The interval is about
+> twenty times narrower than the effect under test, so n = 20 is ample *for
+> this question*.
+
+**What the test does not show**, and the distinction is the point: it does
+not show the two variants are identical. A difference smaller than 2.03 —
+that is, smaller than half the noise — remains entirely possible and is not
+addressed. The claim is bounded to match:
+
+> **The posterior representation is not a material explanation of the
+> observed CausalPy point-estimate variability. The residual mechanism
+> remains unexplained.**
+
+Not "posterior type does not matter", and not "finally". An earlier version
+of this entry also argued the conclusion was independent of sample size,
+which is wrong in general: n determines how small a difference can be
+excluded. It happens not to bite here only because H3 was a *large* claim.
+
+So after three attempts: **CausalPy's published point estimate carries
+~1.1–1.3% noise and we do not know why.** Ruled out: the seed,
+standardisation drift, and the posterior representation. What remains is H4
+— that NUTS's trajectory depends on the data and not only on the seed — and
+it is a hypothesis, labelled as one.
+
+**H4 is not queued for testing merely because it is next.** What it predicts
+should be stated first: if data-dependent geometry is the cause, run-level
+variability should track diagnostics the harness already records — R-hat,
+ESS bulk and tail, divergences, tree depth, step size, BFMI. That would be
+an observational probe and hypothesis generation, not proof. The strong test
+is different and more expensive: hold the panel, model and target fixed and
+raise draws, warmup, `target_accept` and chains. If the variability decays
+like Monte Carlo error should, the answer is dull and satisfying — it is
+finite-MCMC noise. If it sits near 1% while the effective sample size grows
+sharply, there is something worth writing about.
+
+Three refutations in a row is the useful outcome. The temptation each time
+was to stop at a plausible story; each story was checkable, and each was
+wrong.
 
 ## F12. A probe that computed on misaligned rows instead of refusing
 
