@@ -112,22 +112,70 @@ def report_bias_shape(s: pd.DataFrame) -> None:
 
 
 def report_variance_shape(s: pd.DataFrame) -> None:
-    print("\n== Q3: does SD move with theta? ==")
-    print("   if it does, an interval calibrated at one effect size is\n"
-          "   miscalibrated at another.\n")
+    """Two questions that an earlier version of this file ran together.
+
+    Heteroskedasticity does not imply miscalibration. An estimator can have
+    SD 2pp at theta = 0 and 5pp at theta = 15% and hold 95% coverage at both,
+    provided its interval procedure adapts. The earlier text said a moving SD
+    meant "an interval calibrated at one effect size is miscalibrated at
+    another", which does not follow.
+
+    They are separated because they have different consequences:
+
+      A  variance moves with theta   -> the LIKELIHOOD is heteroskedastic, so
+                                        a constant-sigma model of p(y|theta)
+                                        is wrong. This is what
+                                        `continuous_ladder.py --mode smooth`
+                                        currently assumes, so A decides
+                                        whether that assumption is admissible.
+      B  coverage moves with theta   -> a CALIBRATION problem in the tool.
+    """
+    print("\n== Q3a: does estimator variance move with theta? ==")
+    print("   consequence: a constant-sigma likelihood model is inadmissible\n")
     for tool, g in s.groupby("tool_label"):
         g = g.sort_values("theta_pct")
         sd = g.sd.to_numpy()
         if len(sd) < 2 or not np.isfinite(sd).all():
             continue
         rng = sd.max() / sd.min() if sd.min() > 0 else np.inf
-        flag = "flat" if rng < 1.15 else "MOVES"
-        print(f"  {tool:18s} SD {sd.min():.3f}–{sd.max():.3f}pp  "
+        flag = ("flat -- constant sigma admissible" if rng < 1.15
+                else "MOVES -- model s(theta)")
+        print(f"  {tool:18s} SD {sd.min():.3f}-{sd.max():.3f}pp  "
               f"ratio {rng:.2f}  {flag}")
 
+    print("\n== Q3b: does INTERVAL COVERAGE move with theta? ==")
+    print("   a different question: heteroskedasticity is not miscalibration.")
+    print("   An estimator whose SD grows with theta can still hold 95%\n"
+          "   coverage everywhere, if its interval adapts.\n")
+    if "coverage" not in s.columns or s.coverage.isna().all():
+        print("   coverage not available in this dataset")
+        return
+    for tool, g in s.groupby("tool_label"):
+        g = g.sort_values("theta_pct")
+        cov = g.coverage.to_numpy(dtype=float)
+        if len(cov) < 2 or not np.isfinite(cov).all():
+            continue
+        spread = cov.max() - cov.min()
+        flag = ("stable" if spread < 5 else "MOVES -- calibration depends on "
+                "the truth")
+        print(f"  {tool:18s} coverage {cov.min():.1f}-{cov.max():.1f}%  "
+              f"spread {spread:.1f}pp  {flag}")
 
-def report_symmetry(d: pd.DataFrame, s: pd.DataFrame) -> None:
-    print("\n== Q4: are errors symmetric about zero? ==")
+
+def report_sign_dependence(d: pd.DataFrame, s: pd.DataFrame) -> None:
+    """Sign-dependent behaviour, NOT symmetry.
+
+    An earlier version averaged bias over all negative theta and over all
+    positive theta and called the comparison a symmetry test. It is not one:
+    the grid is {-10, -5} against {+2, +5, +7.5, +15}, and those halves are
+    not mirror images, so a difference between their averages says as much
+    about which magnitudes were simulated as about the estimator.
+
+    Symmetry needs MATCHED PAIRS, +x against -x. Where such pairs exist in
+    the grid they are tested; where they do not, the weaker sign-dependence
+    question is reported and labelled as such.
+    """
+    print("\n== Q4: sign-dependent behaviour ==")
     neg = sorted(t for t in d.theta_pct.unique() if t < 0)
     pos = sorted(t for t in d.theta_pct.unique() if t > 0)
     if not neg:
@@ -135,19 +183,43 @@ def report_symmetry(d: pd.DataFrame, s: pd.DataFrame) -> None:
               "   asked. A marketing decision cares most about the negative\n"
               "   half, so this is a gap, not an absence of evidence.")
         return
-    print(f"   negative theta: {neg}   positive: {pos}\n")
+    print(f"   negative theta: {neg}   positive: {pos}")
+
+    pairs = [(n, p) for n in neg for p in pos if abs(abs(n) - p) < 1e-9]
+    if pairs:
+        print(f"\n   MATCHED PAIRS present: "
+              f"{[(f'{n:+.1f}', f'{p:+.1f}') for n, p in pairs]}")
+        print("   a true symmetry test is available on these.\n")
+        for tool, g in s.groupby("tool_label"):
+            for n, p in pairs:
+                rn = g[np.isclose(g.theta_pct, n)]
+                rp = g[np.isclose(g.theta_pct, p)]
+                if rn.empty or rp.empty:
+                    continue
+                bn, bp = float(rn.bias.iloc[0]), float(rp.bias.iloc[0])
+                en = float(rn.se_bias.iloc[0]); ep = float(rp.se_bias.iloc[0])
+                se = np.hypot(en, ep)
+                # Symmetric estimator: bias(-x) = -bias(+x), so bias sums to 0.
+                z = (bn + bp) / se if se > 0 else np.nan
+                flag = ("symmetric" if abs(z) < 2 else
+                        "ASYMMETRIC -- bias does not mirror")
+                print(f"  {tool:18s} {n:+.1f}/{p:+.1f}  bias {bn:+.3f} / "
+                      f"{bp:+.3f}  sum {bn+bp:+.3f} (z={z:+.2f})  {flag}")
+    else:
+        print("\n   no matched +x / -x pairs in this grid, so SYMMETRY CANNOT\n"
+              "   BE TESTED. Reporting the weaker sign-dependence comparison,\n"
+              "   which confounds sign with the magnitudes that were "
+              "simulated.\n")
+
+    print("\n   sign-dependence (weaker: the halves are not mirror images)")
     for tool, g in s.groupby("tool_label"):
-        gn = g[g.theta_pct < 0]
-        gp = g[g.theta_pct > 0]
+        gn, gp = g[g.theta_pct < 0], g[g.theta_pct > 0]
         if gn.empty or gp.empty:
             continue
-        bn, bp = gn.bias.mean(), gp.bias.mean()
-        sn, sp = gn.sd.mean(), gp.sd.mean()
-        skew = g.skew.mean()
-        flag = "symmetric" if abs(bn + bp) < 0.1 and 0.85 < sn / sp < 1.18 \
-            else "ASYMMETRIC"
-        print(f"  {tool:18s} bias neg {bn:+.3f} / pos {bp:+.3f}  "
-              f"SD ratio {sn / sp:.2f}  skew {skew:+.2f}  {flag}")
+        print(f"  {tool:18s} bias neg {gn.bias.mean():+.3f} / "
+              f"pos {gp.bias.mean():+.3f}   "
+              f"SD neg {gn.sd.mean():.3f} / pos {gp.sd.mean():.3f}   "
+              f"skew {g.skew.mean():+.2f}")
 
 
 def report_pathology(p: pd.DataFrame) -> None:
@@ -205,7 +277,7 @@ def main() -> None:
 
     report_bias_shape(s)
     report_variance_shape(s)
-    report_symmetry(d, s)
+    report_sign_dependence(d, s)
     report_significance_curve(s)
 
     out = Path("theta_atlas_results.json")

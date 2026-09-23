@@ -54,10 +54,12 @@ The current claim, stated as narrowly as the evidence allows:
   significance bit to ~12% at the point estimate. The disagreement the
   vendors document is largely a disagreement about where to put a threshold
   nobody is obliged to use.
-- **The S0 ranking is a ranking of willingness to reject**, not of quality.
-  It correlates with the tools' published discrimination at Spearman 1.00,
-  and the tool that keeps most value through the gate is the worst-calibrated
-  one.
+- **The bit's value is determined in closed form by its two error rates.**
+  For the published two-point experiment, `EVSI(BIT)` is reconstructed to the
+  dollar ($0.00 difference, all four tools) from Recast's own FPR and FNR.
+  Not a correlation — the 32,000 rows enter that rung through two numbers and
+  nothing else. And the tool keeping most value through the gate is the
+  worst-calibrated one.
 - **In most of the business plane the significance bit is worth ~$0** for
   every tool. For GeoLift it is inert across 83% of cells examined.
 
@@ -112,8 +114,9 @@ refusing to overclaim:
 | | what it answers |
 |---|---|
 | `scripts/voi_v2.py` | is a free experiment ever worth negative value? (no — that was the v1 bug) |
-| `scripts/information_ladder.py` | what does each rung of compression cost? `--sweep` for the business plane |
-| `scripts/likelihood_models.py` | is the S1→S2 null a property of the data or the estimator? |
+| `scripts/information_ladder.py` | what does thresholding cost? Blackwell self-test, held-out AUC, `--sweep` for the business plane |
+| `scripts/likelihood_models.py` | is a null result a property of the data or of the density estimator? |
+| `scripts/s0_reconstruction.py` | is the bit's value determined by its error rates alone? |
 | `scripts/theta_atlas.py` | how does each tool behave as the truth moves? |
 | `scripts/continuous_ladder.py` | the ladder with five actions and a real prior over effect size |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
@@ -129,8 +132,9 @@ Tests: `pytest tests/` from this directory (131 invariants).
   before any replay ran — and revised once *before* seeing output, with the
   evidence for the revision recorded so it cannot later be mistaken for a
   tolerance widened to fit.
-- **`docs/failures.md` is not decoration.** Twelve entries, four of them
-  errors the reader caught rather than me. History is not cleaned into a
+- **`docs/failures.md` is not decoration.** Thirteen entries, five of them
+  errors the reader caught rather than me — including F13, which invalidated
+  the structure the main result was expressed in. History is not cleaned into a
   heroic narrative (brief §75).
 - **No web app, no ad spend** (§76, §77).
 - **Licence hygiene** (§70): the donor has no licence. Nothing of theirs is
