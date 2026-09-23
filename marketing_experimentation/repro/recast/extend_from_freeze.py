@@ -123,6 +123,26 @@ def main() -> None:
     args = ap.parse_args()
 
     fz = json.loads(Path(args.freeze).read_text())
+
+    # The pointer and the artifact must name the same analysis commit. They
+    # drifted once already: freeze_pilot.py regenerates on every invocation,
+    # and running it inside an unrelated commit moved the artifact while the
+    # pointer stayed behind. A freeze that moves is not a freeze, and a
+    # pointer that disagrees with what it points at is worse than no pointer.
+    ptr_path = Path(args.freeze).with_suffix(".commit")
+    if ptr_path.exists():
+        ptr = json.loads(ptr_path.read_text())
+        if ptr.get("analysis_commit") != fz["code"]["analysis_commit"]:
+            print("   REFUSE_EXTENSION_FROM_FREEZE")
+            print(f"   pointer names analysis_commit "
+                  f"{ptr.get('analysis_commit', '?')[:12]}")
+            print(f"   artifact names analysis_commit "
+                  f"{fz['code']['analysis_commit'][:12]}")
+            print("   The freeze moved after the pointer was written. "
+                  "Regenerate\n   the freeze and rewrite the pointer, in that "
+                  "order, before\n   extending anything.")
+            sys.exit(1)
+
     was, now = frozen_state(fz), current_state(args.iterations)
 
     print("== extension gate: what changed since the freeze? ==")
