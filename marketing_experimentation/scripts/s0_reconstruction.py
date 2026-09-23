@@ -26,18 +26,25 @@ Nothing else about the estimator reaches the decision. So for a fixed prior
     EVSI              = sum_z P(Z=z) max_a E[U(a, theta) | Z=z]
                         - max_a E[U(a, theta)]
 
-This script evaluates that expression from Recast's **published** `metrics.csv`
-FPR and FNR -- numbers computed by their code, not ours -- and compares it
-against the S0 figures the ladder obtained by counting significance flags
-row by row. Two independent paths to the same quantity.
+This script evaluates that expression from Recast's **published**
+`metrics.csv` FPR and FNR -- aggregated by their `compute_metrics.py`, not
+ours -- and compares it against the S0 figures the ladder obtained by
+counting significance flags row by row.
 
-If they agree numerically, the claim becomes::
+What the agreement does and does not show, stated carefully because the
+temptation is to oversell it. Both paths ultimately read the same
+`significant` flags, so this is **not** two independent measurements of a
+quantity. What is independent is the aggregating code, and what the
+agreement demonstrates is stronger and more specific than independence::
 
-    The S0 rung is mechanically determined by each tool's binary
-    significance channel under this decision problem.
+    (FPR, TPR) is a SUFFICIENT STATISTIC for EVSI(S0).
 
-which is a statement about what the bit can carry, not about four points
-happening to sort the same way.
+That is, the 32,000 published rows enter the S0 rung only through two
+numbers per tool. Everything else the estimator produced -- every point
+estimate, every interval, every diagnostic -- is discarded before the
+decision sees anything. Which is exactly the claim the compression-tax
+result needs, and it is a statement about what the bit can carry rather
+than about four points happening to sort the same way.
 
     python marketing_experimentation/scripts/s0_reconstruction.py
 """
@@ -112,9 +119,12 @@ def main() -> None:
 
     print(f"scenario {args.scenario} | prior {args.prior} | "
           f"C_FP/C_FN {args.ratio} | C_FN ${c_fn:,.0f}\n")
-    print("Two independent paths to EVSI(S0):")
+    print("Is (FPR, TPR) a sufficient statistic for EVSI(S0)?")
     print("  A  closed form from the donor's PUBLISHED FPR/FNR in metrics.csv")
-    print("  B  the ladder's own count of significance flags, row by row\n")
+    print("  B  the ladder's own count of significance flags, row by row")
+    print("  (both read the same flags -- what differs is the aggregating "
+          "code, so\n   agreement shows sufficiency, not independent "
+          "measurement)\n")
 
     print(f"{'tool':16s} {'FPR':>7s} {'TPR':>7s} "
           f"{'A published':>13s} {'B row-level':>13s} {'|A-B|':>9s}")
@@ -135,9 +145,12 @@ def main() -> None:
     print(f"\nlargest disagreement between the two paths: ${worst:,.2f}")
     if worst < 1.0:
         print("\nSo EVSI(S0) is reconstructed to the dollar from two numbers "
-              "per tool.\nThe S0 rung is MECHANICALLY DETERMINED by the "
-              "binary significance channel\nunder this decision problem -- "
-              "not correlated with it.")
+              "per tool:\n(FPR, TPR) is a SUFFICIENT STATISTIC for it. The "
+              "32,000 published rows enter\nthe S0 rung only through those "
+              "two numbers -- every point estimate, every\ninterval and "
+              "every diagnostic is discarded before the decision sees\n"
+              "anything. That is the compression, measured rather than "
+              "asserted.")
     else:
         print("\nThe paths disagree. Investigate before claiming either.")
 

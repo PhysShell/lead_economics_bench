@@ -357,9 +357,9 @@ EVSI(S0) = min(pi*c_FN, (1-pi)*c_FP)
          - min(pi*TPR*c_FN,     (1-pi)*FPR*c_FP)
 ```
 
-Evaluated from Recast's **published** FPR and FNR — numbers produced by their
-code, not ours — against the S0 figures the ladder obtained by counting
-significance flags row by row:
+Evaluated from Recast's **published** FPR and FNR — aggregated by their
+`compute_metrics.py`, not ours — against the S0 figures the ladder obtained by
+counting significance flags row by row:
 
 | tool | from published rates | from our row counts | difference |
 |---|---|---|---|
@@ -368,9 +368,17 @@ significance flags row by row:
 | `causalpy` | $8,200 | $8,200 | **$0.00** |
 | `geolift` | $3,600 | $3,600 | **$0.00** |
 
-> **EVSI(S0) is reconstructed to the dollar from two numbers per tool.** The
-> S0 rung is not *correlated with* the binary significance channel; it is
-> **mechanically determined by it** under this decision problem.
+> **EVSI(S0) is reconstructed to the dollar from two numbers per tool.**
+> `(FPR, TPR)` is a **sufficient statistic** for it: all 32,000 published
+> rows enter the S0 rung through those two numbers and nothing else. Every
+> point estimate, every interval, every diagnostic is discarded before the
+> decision sees anything.
+
+Stated carefully, because the temptation is to call this two independent
+measurements and it is not — both paths read the same `significant` flags,
+and what differs is the aggregating code. The content is the **sufficiency**,
+which is precisely what the compression-tax result needs: it is not that S0
+correlates with the binary channel, it is that S0 *is* the binary channel.
 
 GeoLift, written out: `200,000 − 182,600 − 13,800 = 3,600`.
 
