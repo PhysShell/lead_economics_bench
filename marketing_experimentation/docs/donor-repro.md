@@ -123,9 +123,9 @@ Only after G4 does an effect-size sweep begin.
 | M4d | host-drift smoke in the robustness lane | deferred; its library was rolled back (D8) |
 | M5a | R1 — DGP reproduced via `true_att_level` | **PASS** — 320/320 exact to 1e-9 (§4d.1) |
 | M5b | R2 — golden estimator replay against published rows | **PASS** — 160 rows/tool, clears the preregistered count (§4d.1) |
-| M6a | θ mutation +2% (six PASS criteria, §5) | static audit **done** (§5a), patch **written and tested** |
-| M6b | θ mutation −5% (sign mutation) | patch covers it; blocked on M6a |
-| M7 | coarse θ likelihood atlas | blocked on M6b |
+| M6a | θ mutation +2% (six PASS criteria, §5) | **PASS 6/6** (§5c); figure fix verified separately |
+| M6b | θ mutation −5% (sign mutation) | running, arms `null` / `eff_m050` |
+| M7 | coarse θ likelihood atlas | queued: θ ∈ {−10,−5,0,+2,+5,+7.5,+15}%, N=25 |
 | M8 | continuous prior + richer action set | blocked on M7 |
 | M9 | business VOI / RUN–DON'T-RUN | blocked on M8 |
 | M10 | regime map / method selection | blocked on M9 |
@@ -954,6 +954,52 @@ against a pristine clone at `5133d37`, both plot files compile after
 applying, `generate_panels.R` parses, and the label function returns
 `null`, `effect`, `eff_p020`, `eff_m050`, `eff_p150` for the values it will
 be given.
+
+### 5c. M6a result — θ = +2%, G4 PASS 6/6
+
+**Reproduce:** `repro/recast/theta-mutation.patch`, then
+`Rscript src/R/generate_panels.R --n_iterations 20 --effect_sizes 0,0.02`,
+then `repro/recast/g4_check.py --theta 0.02`.
+
+640 rows, 20 iterations × 4 scenarios × 2 arms. Arms on disk:
+`null`, `eff_p020` — the magnitude-bearing labels working, so a second θ no
+longer overwrites the first.
+
+| | criterion | | |
+|---|---|---|---|
+| 1 | generator accepts arbitrary θ | **PASS** | `effect_pct` present: 0.0, 0.02 |
+| 2 | true ATT reflects θ, not 7.5 | **PASS** | median `true_att_pct` = **+0.020000** |
+| 3 | all four adapters complete | **PASS** | 160/160 usable rows, each tool |
+| 4 | output schema unchanged | **PASS** | identical to the published artefact |
+| 5 | metrics free of a hard-coded 7.5 | **PASS** | `metrics.csv` records +2.000pp; bias identity residual **0.0000pp** |
+| 6 | decision layer consumes θ | **PASS** | `two_point_problem(effect=0.02)` |
+
+**So the static audit's verdict was right, including where it was uncertain.**
+Criterion 1 was scored PARTIAL there — the generator was parameterised
+internally but the flag was not exported — and one added flag was indeed all
+it took. Criterion 2's worry, that a hard-coded `0.075` sat somewhere in the
+generator, was unfounded: the recorded truth is exactly `+0.020000`.
+
+#### What criterion 5 does and does not cover
+
+The checker verifies the **numbers**. `make figures` is not part of this run,
+so the figure layer — the half of D7 that actually was broken — is untested
+by it. Checked separately, by running the patched `plot_forest.py` against
+the θ = +2% results:
+
+```
+derived true_values : {'eff_p020': 2.0, 'null': 0.0}
+derived col_titles  : ['2% Effect', 'Null (0%)']
+```
+
+The patched figure draws its reference line at 2.0 pp. **The unpatched one
+would have drawn it at 7.5 pp — an error of 5.5 pp, or 275% of the true
+effect.** Every estimator would have appeared to understate the lift by more
+than the lift itself, in a figure captioned "7.5% Effect", with a metrics
+table beside it reporting the correct 2%.
+
+That is the whole of D7 in one number, and it is why the static audit was
+worth doing before the compute rather than after.
 
 ### 5b. θ = −5%, the sign mutation
 
