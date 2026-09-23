@@ -5,12 +5,13 @@ Everything published in this track so far lives in a two-point,
 two-action world: theta in {0, +7.5%}, act or don't. Two limitations were
 recorded there and both are load-bearing:
 
-  * "the interval adds nothing on top of the point estimate" may be an
-    artefact of two truths, where the point estimate nearly identifies the
-    state on its own and leaves the interval nothing to contribute;
+  * with two truths the point estimate nearly identifies the state on its
+    own, which may be why the interval looked as though it added little --
+    see Addendum 0 of layer3-first-result.md, where that claim was already
+    narrowed once for a different reason;
   * with two actions an experiment only has to say which side of a threshold
-    theta falls on, so a significance bit is nearly a sufficient statistic
-    and the measured compression tax is a lower bound.
+    theta falls on, so the significance bit is close to a sufficient summary
+    of the decision and the measured thresholding cost is a LOWER bound.
 
 This script removes both at once, which is the only way to find out whether
 either mattered. It needs the atlas run (M7) -- several simulated truths,
@@ -31,9 +32,13 @@ Two likelihood modes, because the choice is not innocent
                       how the estimator behaves between the simulated
                       truths, and restricts the decision to those truths.
     --mode smooth     y | theta ~ Normal(a + b*theta, s(theta)), fitted
-                      across arms. Uses the whole grid, and assumes the
-                      estimator is well behaved between the points we
-                      simulated -- which the atlas (M7) is what tests.
+                      across arms and evaluated on the full 81-point grid.
+                      s(theta) is genuinely a function -- residual SD per
+                      simulated truth, interpolated -- and the constant-sigma
+                      variant runs alongside so the cost of that assumption
+                      is visible. Assumes the estimator is well behaved
+                      between the simulated points, which is what the atlas
+                      (M7, Q3a) tests.
 
 Reported side by side. If they disagree, the disagreement is the finding,
 and the smooth mode is the one to distrust.
@@ -60,10 +65,16 @@ from leadbench_mx.decision import (  # noqa: E402
     spike_slab_prior, two_point_problem,
 )
 
+#: Same representation graph as `information_ladder.py`, and for the same
+#: reason: `significant` is "the interval excludes zero", so BIT is a
+#: deterministic garbling of INTERVAL (Blackwell applies) while POINT is a
+#: side branch comparable to neither. INTERVAL carries both bounds, not the
+#: width -- the intervals are asymmetric, so (att, width) recovers
+#: significance only 94-97% of the time and would break the nesting.
 RUNGS: dict[str, list[str]] = {
-    "S0_significance_bit": [],
-    "S1_point_estimate": ["att_pct"],
-    "S2_estimate_plus_ci": ["att_pct", "ci_width"],
+    "BIT": [],
+    "POINT": ["att_pct"],
+    "INTERVAL": ["att_pct", "ci_lower", "ci_upper"],
 }
 
 
@@ -74,9 +85,9 @@ def load(path: str) -> pd.DataFrame:
     d["posterior_type"] = d["posterior_type"].fillna("")
     d["tool_label"] = d.tool + d.posterior_type.map(
         lambda s: f"[{s}]" if s else "")
-    d["ci_width"] = pd.to_numeric(d.ci_upper, errors="coerce") - \
-        pd.to_numeric(d.ci_lower, errors="coerce")
-    d["att_pct"] = pd.to_numeric(d.att_pct, errors="coerce")
+    for c in ("att_pct", "ci_lower", "ci_upper"):
+        d[c] = pd.to_numeric(d[c], errors="coerce")
+    d["ci_width"] = d.ci_upper - d.ci_lower  # reporting only
     return d
 
 
@@ -112,11 +123,29 @@ def split_by_theta(g: pd.DataFrame, cols: list[str], seed: int,
 
 def discrete_problem(prior_grid: np.ndarray, prior_p: np.ndarray,
                      thetas: list[float]) -> DecisionProblem:
-    """The budget problem restricted to the simulated truths, with the prior
-    re-normalised onto them. Coarse, and assumption-free about what happens
-    between them."""
-    th = np.array(sorted(thetas))
-    p = np.interp(th, prior_grid, prior_p)
+    """The budget problem restricted to the simulated truths.
+
+    The prior is carried across by **integrating probability mass over
+    Voronoi bins**, not by sampling the density at the seven points.
+
+    An earlier version did `np.interp(th, grid, p); p /= p.sum()`, which
+    takes the *density value* at each theta and renormalises. For a
+    spike-and-slab that is badly wrong: the spike is a narrow bump of width
+    0.005, so its density value is enormous while the mass it actually
+    represents is `p_null`. Sampling the density there and normalising can
+    hand the null point far more or far less weight than the prior says,
+    and the documented properties -- 45% null mass, 27% below zero -- would
+    not survive the transfer.
+
+    Binning by midpoints assigns every region of the continuous prior to its
+    nearest simulated truth, so the mass is conserved by construction.
+    """
+    th = np.array(sorted(thetas), dtype=float)
+    edges = np.concatenate(([-np.inf], (th[:-1] + th[1:]) / 2.0, [np.inf]))
+    idx = np.digitize(prior_grid, edges) - 1
+    p = np.array([prior_p[idx == j].sum() for j in range(len(th))])
+    if p.sum() <= 0:
+        raise SystemExit("no prior mass landed on the simulated truths")
     p = p / p.sum()
     return budget_problem(th, p)
 
@@ -147,39 +176,75 @@ def evsi_discrete(problem: DecisionProblem, fit: dict, ev: dict,
     return total - problem.value_no_experiment()
 
 
-def fit_smooth(g: pd.DataFrame) -> tuple[float, float, float]:
-    """y ~ Normal(a + b*theta, s). Returns (a, b, s) on the att_pct scale.
+def fit_smooth(g: pd.DataFrame, hetero: bool = True):
+    """y ~ Normal(a + b*theta, s(theta)) on the att_pct scale.
 
     `b` is the scale factor the atlas calls a scale error: b == 1 means the
     estimator tracks the truth, b < 1 that it attenuates.
+
+    `s` is a FUNCTION of theta, not a constant. An earlier version of this
+    file documented `s(theta)` and then computed `np.std(all residuals)` --
+    which is amusing next to `theta_atlas.py` Q3a, whose whole job is to ask
+    whether the variance moves. The residual SD is now fitted per simulated
+    truth and interpolated, and the constant-sigma model is available via
+    `hetero=False` so the two can be compared rather than assumed.
+
+    Returns (a, b, sigma_fn) where sigma_fn(theta) -> scale.
     """
     ok = g[g.att_pct.notna()]
     x = ok.effect_pct.to_numpy(dtype=float)
     y = ok.att_pct.to_numpy(dtype=float)
     b, a = np.polyfit(x, y, 1)
-    s = float(np.std(y - (a + b * x), ddof=2))
-    return float(a), float(b), s
+    resid = y - (a + b * x)
+
+    if not hetero:
+        s = float(np.std(resid, ddof=2))
+        return float(a), float(b), (lambda t: np.full_like(np.asarray(t, float), s))
+
+    # Residual SD per simulated truth, then linear interpolation between
+    # them and flat extrapolation outside -- enough to carry a moving
+    # variance without inventing a functional form the data cannot support.
+    tab = (pd.DataFrame({"t": x, "r": resid})
+           .groupby("t").r.std(ddof=1).dropna())
+    if len(tab) < 2:
+        s = float(np.std(resid, ddof=2))
+        return float(a), float(b), (lambda t: np.full_like(np.asarray(t, float), s))
+    ts, ss = tab.index.to_numpy(float), tab.to_numpy(float)
+
+    def sigma_fn(t):
+        return np.interp(np.asarray(t, dtype=float), ts, ss,
+                         left=ss[0], right=ss[-1])
+
+    return float(a), float(b), sigma_fn
 
 
-def evsi_smooth(problem: DecisionProblem, g: pd.DataFrame,
-                seed: int) -> float:
-    """EVSI on the full grid, assuming the estimator behaves between the
-    simulated truths as the fitted line says it does."""
+def evsi_smooth(problem: DecisionProblem, g: pd.DataFrame, seed: int,
+                hetero: bool = True) -> float:
+    """EVSI over the decision problem's own theta grid, assuming the
+    estimator behaves between the simulated truths as the fitted model says.
+
+    The problem passed in decides the grid. Pass the discrete problem for a
+    seven-point evaluation; pass a `budget_problem` on the full 81-point grid
+    for a genuinely continuous one. An earlier docstring claimed this "uses
+    the whole grid" while the caller only ever handed it the seven points.
+    """
     rng = np.random.default_rng(seed)
     ok = g[g.att_pct.notna()]
     idx = rng.permutation(len(ok))
     cut = len(ok) // 2
-    a, b, s = fit_smooth(ok.iloc[idx[:cut]])
-    ev = ok.iloc[idx[cut:]]
-    if s <= 0 or not np.isfinite(s):
-        return np.nan
+    a, b, sigma_fn = fit_smooth(ok.iloc[idx[:cut]], hetero=hetero)
 
     th = problem.theta
+    s_th = np.asarray(sigma_fn(th), dtype=float)
+    if not np.all(np.isfinite(s_th)) or np.any(s_th <= 0):
+        return np.nan
+
     total = 0.0
     for j, t in enumerate(th):
         # Draws that WOULD be seen if the truth were t, under the fitted model.
-        y = rng.normal(a + b * t, s, size=400)
-        like = norm.pdf(y[:, None], loc=a + b * th[None, :], scale=s)
+        y = rng.normal(a + b * t, s_th[j], size=400)
+        like = norm.pdf(y[:, None], loc=a + b * th[None, :],
+                        scale=s_th[None, :])
         post = problem.prior * like
         post /= np.clip(post.sum(axis=1, keepdims=True), 1e-300, None)
         total += problem.prior[j] * float(
@@ -234,6 +299,10 @@ def main() -> None:
     grid = np.linspace(-0.15, 0.25, 81)
     pri = spike_slab_prior(grid)
     problem = discrete_problem(grid, pri, thetas)
+    # The genuinely continuous problem: 81 points, the prior untouched.
+    # `smooth` mode is evaluated on this, which is what its docstring
+    # always claimed and what the code did not do.
+    problem_full = budget_problem(grid, pri)
 
     print("== the decision, now that it has more than two answers ==")
     print(f"   actions: {', '.join(DEFAULT_ACTIONS)}")
@@ -252,7 +321,7 @@ def main() -> None:
     rows = []
     for tool in tools:
         g = d[d.tool_label == tool]
-        rec = {"tool": tool, "S0": evsi_binary(problem, g)}
+        rec = {"tool": tool, "BIT": evsi_binary(problem, g)}
         for rung, cols in RUNGS.items():
             if not cols:
                 continue
@@ -261,21 +330,35 @@ def main() -> None:
                 fit, ev = split_by_theta(g, cols, s)
                 if len(fit) == len(thetas):
                     vals.append(evsi_discrete(problem, fit, ev))
-            rec[rung[:2]] = float(np.nanmean(vals)) if vals else np.nan
-            rec[f"sd_{rung[:2]}"] = (float(np.nanstd(vals))
-                                     if len(vals) > 1 else np.nan)
+            rec[rung] = float(np.nanmean(vals)) if vals else np.nan
+            rec[f"sd_{rung}"] = (float(np.nanstd(vals))
+                                 if len(vals) > 1 else np.nan)
         if args.mode in ("smooth", "both"):
-            sm = [evsi_smooth(problem, g, s) for s in range(args.seeds)]
-            rec["S1_smooth"] = float(np.nanmean(sm))
-            a, b, sd = fit_smooth(g)
+            sm = [evsi_smooth(problem_full, g, s, hetero=True)
+                  for s in range(args.seeds)]
+            rec["POINT_smooth"] = float(np.nanmean(sm))
+            # Same model with a constant sigma, so the cost of that
+            # assumption is visible instead of assumed away.
+            sc = [evsi_smooth(problem_full, g, s, hetero=False)
+                  for s in range(args.seeds)]
+            rec["POINT_smooth_const_sigma"] = float(np.nanmean(sc))
+            a, b, sigma_fn = fit_smooth(g)
             rec["slope_b"] = b
-            rec["resid_sd"] = sd
+            sig = np.asarray(sigma_fn(np.array(thetas)), dtype=float)
+            rec["sigma_min"] = float(sig.min())
+            rec["sigma_max"] = float(sig.max())
         rows.append(rec)
 
     r = pd.DataFrame(rows).set_index("tool")
 
     print("== EVSI by rung, five actions, prior over effect size ==")
-    cols = [c for c in ("S0", "S1", "S2", "S1_smooth") if c in r.columns]
+    print(f"   BIT/POINT/INTERVAL on the {len(thetas)} simulated truths "
+          f"(EVPI ${problem.evpi():,.0f});")
+    print(f"   POINT_smooth on the full {len(grid)}-point grid "
+          f"(EVPI ${problem_full.evpi():,.0f}).")
+    print("   DIFFERENT CEILINGS -- compare within a column, not across.\n")
+    cols = [c for c in ("BIT", "POINT", "INTERVAL", "POINT_smooth",
+                        "POINT_smooth_const_sigma") if c in r.columns]
     disp = r[cols].copy()
     for c in cols:
         disp[c] = [f"${v:,.0f}" if np.isfinite(v) else "n/a" for v in r[c]]
@@ -283,38 +366,48 @@ def main() -> None:
 
     print("\n== the compression tax, now that the decision is richer ==")
     tax = pd.DataFrame(index=r.index)
-    tax["S1-S0"] = r["S1"] - r["S0"]
-    tax["S2-S1"] = r["S2"] - r["S1"]
-    tax["S0 keeps %"] = 100 * r["S0"] / r["S1"]
+    tax["POINT-BIT"] = r["POINT"] - r["BIT"]
+    tax["INTERVAL-POINT"] = r["INTERVAL"] - r["POINT"]
+    tax["BIT keeps %"] = 100 * r["BIT"] / r["POINT"]
     out = tax.copy()
-    for c in ("S1-S0", "S2-S1"):
+    for c in ("POINT-BIT", "INTERVAL-POINT"):
         out[c] = [f"${v:,.0f}" if np.isfinite(v) else "n/a" for v in tax[c]]
-    out["S0 keeps %"] = tax["S0 keeps %"].round(1)
+    out["BIT keeps %"] = tax["BIT keeps %"].round(1)
     print(out.to_string())
 
     print("\n== the two questions this script exists to answer ==")
-    s21 = r["S2"] - r["S1"]
-    sd = r.get("sd_S2", pd.Series(np.nan, index=r.index))
+    s21 = r["INTERVAL"] - r["POINT"]
+    sd = r.get("sd_INTERVAL", pd.Series(np.nan, index=r.index))
     print("\n1. Does the interval earn its keep once theta is continuous?")
-    print("   (in the two-point world S2-S1 was -$1,475 to +$96, sign "
-          "flipping)")
+    print("   Blackwell guarantees INTERVAL >= BIT. It does NOT order")
+    print("   INTERVAL against POINT, so this gap can legitimately go either")
+    print("   way and is an empirical property of this decision problem.")
     for t in r.index:
         v, e = s21.get(t, np.nan), sd.get(t, np.nan)
         verdict = ("detectable" if np.isfinite(v) and np.isfinite(e)
                    and abs(v) > 2 * e else "still undetectable")
-        print(f"     {t:18s} S2-S1 ${v:+9,.0f} (±{e:,.0f})  {verdict}")
+        print(f"     {t:18s} INTERVAL-POINT ${v:+9,.0f} (±{e:,.0f})  {verdict}")
 
-    print("\n2. Does a richer action set widen the S0 gap?")
-    print("   (two points / two actions kept 7.8%-79.9%)")
+    print("\n2. Does a richer action set widen the thresholding gap?")
+    print("   BIT as a share of INTERVAL -- the guaranteed chain, so this is")
+    print("   a compression measurement. Two points / two actions kept")
+    print("   7.2%-34.1% of INTERVAL.")
     for t in r.index:
-        k = 100 * r.loc[t, "S0"] / r.loc[t, "S1"]
-        print(f"     {t:18s} S0 keeps {k:5.1f}%")
+        k = 100 * r.loc[t, "BIT"] / r.loc[t, "INTERVAL"]
+        print(f"     {t:18s} BIT keeps {k:5.1f}% of INTERVAL")
 
     if "slope_b" in r.columns:
         print("\n== smooth-model diagnostics ==")
-        print("   b is the scale factor: 1.0 means the estimator tracks the "
-              "truth.\n")
-        print(r[["slope_b", "resid_sd"]].round(4).to_string())
+        print("   b is the scale factor: 1.0 means the estimator tracks the")
+        print("   truth, b < 1 that it attenuates. sigma_min/max show whether")
+        print("   the variance moves -- if it does, the constant-sigma column")
+        print("   above is the wrong model and the difference is its cost.\n")
+        print(r[["slope_b", "sigma_min", "sigma_max"]].round(5).to_string())
+        if "POINT_smooth_const_sigma" in r.columns:
+            d_ = r["POINT_smooth"] - r["POINT_smooth_const_sigma"]
+            print("\n   cost of assuming constant sigma:")
+            for tool in r.index:
+                print(f"     {tool:18s} ${d_.get(tool, float('nan')):+,.0f}")
 
     Path("continuous_ladder_results.json").write_text(
         r.reset_index().to_json(orient="records", indent=2))
