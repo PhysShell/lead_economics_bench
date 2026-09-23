@@ -394,3 +394,41 @@ def test_an_atom_prior_does_not_leak_across_zero():
         slab = slab / slab.sum()
         neg = 0.55 * float(slab[g < 0].sum())
         assert abs(neg - 0.55 * norm.cdf(0.0, 0.04, 0.06)) < 0.01
+
+
+def test_evsi_scales_exactly_linearly_with_spend():
+    """M9's transportable unit. The utility is spend*d*k*(theta-b) minus
+    spend*c*d^2, so every value-of-information quantity is exactly
+    proportional to spend. That makes "the experiment is worth $2,130" a
+    statement about a $1M budget rather than about geo testing, and the
+    transportable form is a RATE: 0.15-0.26% of the spend under management.
+    """
+    th = np.linspace(-0.15, 0.15, 61)
+    pr = np.ones(61) / 61
+    rates = [budget_problem(th, pr, spend=s).evpi() / s
+             for s in (1e5, 1e6, 1e7, 1e8)]
+    assert max(rates) - min(rates) < 1e-12
+    assert all(r > 0 for r in rates)
+
+
+def test_the_dgp_has_no_spend_variable():
+    """Pins the M9 scoping finding as a property of the DECISION model rather
+    than of the simulator, since the simulator is not importable here.
+
+    `budget_problem` takes `spend` as an argument, so the decision layer knows
+    about money. The DGP does not: generate_panels.R:287 is
+    `Y_treated = Y_cf * (1 + effect_pct)` and contains no budget, no cost and
+    no intervention. Delta-spend and direction are therefore not design
+    dimensions of this world, and treating scenarios A1-A4 as "designs" would
+    be sweeping data regimes under an economics label.
+    """
+    import inspect
+
+    sig = inspect.signature(budget_problem)
+    assert "spend" in sig.parameters, "the decision layer prices money"
+    # theta enters the utility ONLY through (theta - breakeven): the model has
+    # no channel by which spend could cause theta. That asymmetry is the
+    # scoping limitation, stated as an assertion about the code.
+    src = inspect.getsource(budget_problem)
+    assert "theta - breakeven" in src
+    assert "spend" in src

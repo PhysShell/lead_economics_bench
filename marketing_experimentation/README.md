@@ -75,6 +75,22 @@ The current claim, stated as narrowly as the evidence allows:
   verdict is nearly mute and there is nothing for the sign to carry.
   Addendum 3, Finding A.
 
+### What the information is worth — `docs/layer3-first-result.md` Addendum 4
+
+- **The sign loss, on the documented prior.** Computed on
+  `0.45·δ₀ + 0.55·N(0.04, 0.06²)` conditioned on the validated support, with
+  the spike kept as an **atom**: CausalPy **$2,130 [1,546–3,459]** against a
+  significance bit worth **$0**; CausalImpact $1,088; Google MM $1,064;
+  GeoLift $214, not established. EVPI $22,120.
+- **82–90% of it (net) comes from prior mass below zero.** The economically
+  important information an unsigned signal destroys is *directional
+  information in adverse-effect states* — an unsigned `significant` cannot
+  tell a business to cut.
+- **The transportable unit is a rate, not a dollar.** Utility is exactly
+  linear in spend, so a signed verdict is worth **0.15–0.26% of the spend it
+  governs, per decision**. M9 asks whether any experiment design clears that
+  bar; see `docs/m9-preregistration.md`.
+
 ### The donor reproduces — `docs/donor-repro.md`
 
 An independent end-to-end reproduction of the Recast study, on a different
@@ -160,7 +176,7 @@ refusing to overclaim:
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
-Tests: `pytest tests/` from this directory (230 invariants).
+Tests: `pytest tests/` from this directory (232 invariants).
 
 ---
 
