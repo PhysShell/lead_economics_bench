@@ -21,9 +21,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from leadbench_mx.decision import budget_problem, spike_slab_prior  # noqa: E402
 from signed_verdict import (  # noqa: E402
-    GARBLE, audit_bit_is_garbling, evsi_analytic, reweight_negative,
-    verdict_index,
+    GARBLE, audit_bit_is_garbling, dirichlet_draws, evsi_batch,
+    reweight_negative, sign_loss_posterior, verdict_index,
 )
+
+
+def evsi_analytic(problem, p):
+    """Single-likelihood convenience over the batched implementation."""
+    return float(evsi_batch(problem, np.asarray(p)[None])[0])
 
 
 def a_problem(thetas=(-0.10, -0.05, 0.0, 0.05, 0.15)):
@@ -157,3 +162,72 @@ def test_reweight_negative_preserves_shape_within_each_half():
     assert np.allclose(after.prior[neg] / after.prior[neg].sum(), before)
     assert np.isclose(after.prior.sum(), 1.0)
     assert np.isclose(after.prior[neg].sum(), 0.4)
+
+
+# ---------------------------------------------------------------------------
+# The Dirichlet posterior propagation. Added after a reader pointed out that a
+# plug-in number plus the sentence "alpha moves this by 2-3x" is not a
+# measurement of anything -- the uncertainty belongs inside the result.
+# ---------------------------------------------------------------------------
+
+def test_dirichlet_draws_are_probability_vectors():
+    rng = np.random.default_rng(0)
+    counts = np.array([[10.0, 40.0, 0.0], [0.0, 5.0, 45.0]])
+    p = dirichlet_draws(counts, 0.5, 500, rng)
+    assert p.shape == (500, 2, 3)
+    assert np.allclose(p.sum(axis=-1), 1.0)
+    assert (p > 0).all(), "a zero cell would make a held-out row impossible"
+
+
+def test_dirichlet_concentrates_as_counts_grow():
+    """The posterior must tighten with data. If it does not, the interval is
+    decorative and the 'more runs per truth' recommendation is unfounded."""
+    rng = np.random.default_rng(1)
+    thin = dirichlet_draws(np.array([[5.0, 15.0, 5.0]]), 0.5, 4000, rng)
+    thick = dirichlet_draws(np.array([[500.0, 1500.0, 500.0]]), 0.5, 4000, rng)
+    assert thick[:, 0, 0].std() < thin[:, 0, 0].std() / 5
+
+
+def test_alpha_pulls_an_unobserved_cell_off_zero():
+    """The whole reason alpha is load-bearing: p(negative | theta=+15%) is
+    0/100 for two tools, and alpha alone decides how impossible that is."""
+    rng = np.random.default_rng(2)
+    counts = np.array([[0.0, 40.0, 60.0]])
+    small = dirichlet_draws(counts, 0.05, 4000, rng)[:, 0, 0].mean()
+    large = dirichlet_draws(counts, 2.0, 4000, rng)[:, 0, 0].mean()
+    assert large > 10 * small
+
+
+@pytest.mark.parametrize("seed", range(10))
+def test_every_posterior_draw_satisfies_blackwell(seed):
+    """Not 'on average' and not 'to within Monte Carlo error'. Each draw is a
+    complete likelihood, so V >= B is exact for each one, and the minimum over
+    draws is the assertion worth making."""
+    rng = np.random.default_rng(seed)
+    problem = a_problem()
+    counts = rng.integers(0, 30, size=(len(problem.theta), 3)).astype(float)
+    p = dirichlet_draws(counts, 0.5, 2000, rng)
+    gap = evsi_batch(problem, p) - evsi_batch(problem, p @ GARBLE.T)
+    assert gap.min() >= -1e-9
+    assert evsi_batch(problem, p).min() >= -1e-9
+
+
+def test_sign_loss_posterior_reports_a_real_interval():
+    problem = a_problem()
+    counts = np.array([[40.0, 10.0, 0.0], [20.0, 25.0, 5.0],
+                       [5.0, 40.0, 5.0], [2.0, 30.0, 18.0],
+                       [0.0, 15.0, 35.0]])
+    r = sign_loss_posterior(problem, counts, 0.5, 4000, seed=0)
+    assert r["gap_lo"] <= r["gap_med"] <= r["gap_hi"]
+    assert r["gap_lo"] >= -1e-9, "a credible interval below zero breaks Blackwell"
+    assert r["worst_blackwell"] >= -1e-6
+
+
+def test_a_mute_channel_gives_an_interval_touching_zero():
+    """GeoLift's case: when almost nothing is ever significant, the sign loss
+    must come back indistinguishable from zero rather than small-but-certain.
+    A method that returns a confident tiny number here is broken."""
+    problem = a_problem()
+    counts = np.tile(np.array([0.0, 24.0, 1.0]), (len(problem.theta), 1))
+    r = sign_loss_posterior(problem, counts, 0.5, 4000, seed=0)
+    assert r["gap_lo"] == pytest.approx(0.0, abs=1e-6)

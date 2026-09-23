@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Where does the compression loss actually go: thresholding, or the sign?
+"""Where does the compression loss go: thresholding, or the discarded sign?
 
 The finding this exists to test
 -------------------------------
 M7 put six non-null truths on the table, two of them negative. That exposed
 something the two-point world could not show: `significant` in this harness
 is "the confidence interval excludes zero", **unsigned**. A channel that
-destroys 10% of revenue and a channel that adds 15% both produce
+destroys 10% of revenue and one that adds 15% both produce
 `significant = True`. The bit answers "is something happening" and refuses to
 say what.
 
@@ -20,13 +20,11 @@ decision has two candidate explanations, and they are very different:
       "cut hard" and "increase hard" to the same symbol.
 
 (a) is a statement about statistics in general. (b) is a statement about one
-specific, fixable convention. If (b) carries most of the loss, the remedy is
-trivial -- report the sign -- and the whole line of argument about
-thresholding is far weaker than it looks.
+specific, fixable convention.
 
-The decomposition
------------------
-Insert the missing rung, so the chain runs::
+Two findings of different strength, kept apart on purpose
+---------------------------------------------------------
+Inserting the missing rung gives a chain of two deterministic garblings::
 
       INTERVAL   (att, ci_lo, ci_hi)
         |
@@ -36,74 +34,43 @@ Insert the missing rung, so the chain runs::
         v   discard the sign
       BIT        significant / not significant
 
-Both steps are deterministic garblings, so **Blackwell's theorem applies to
-the whole chain**: EVSI(INTERVAL) >= EVSI(VERDICT) >= EVSI(BIT) for any
-prior, any utility. That gives two non-negative quantities that sum to the
-total loss already published:
+Blackwell orders the whole chain. But the two steps are **not measurable to
+the same standard**, and an earlier version of this file reported them in one
+table as though they were:
 
-    I - V   the price of thresholding (magnitude and uncertainty discarded)
-    V - B   the price of literally throwing away the sign
+    FINDING A -- the cost of discarding the sign.  VERDICT and BIT are both
+    discrete. p(verdict | theta) is a multinomial estimated from counts, and
+    p(bit | theta) follows from it exactly through the garbling map. **No
+    density estimation is involved anywhere.** The uncertainty is a Dirichlet
+    posterior over the transition matrix, propagated through EVSI, so the
+    result is an interval rather than a plug-in number.
 
-Two estimators, because they answer different questions
--------------------------------------------------------
-    model     the exact EVSI of the FITTED likelihood, integrated over its
-              own implied marginal. Answers "what is this signal worth if
-              the likelihood we estimated is the truth". Biased upward by
-              estimation noise, and **guaranteed non-negative**.
-    held-out  fit the likelihood on half the runs, then score the resulting
-              plug-in policy on the other half. Answers "what does a team
-              actually get when it calibrates on a pilot and then acts".
-              Not an unbiased estimate of EVSI and **can be negative** -- a
-              policy built on a wrong likelihood is worse than no policy.
+    FINDING B -- the cost of thresholding.  INTERVAL needs a 3-d density from
+    ~50 runs per truth. That is the estimator this project has already caught
+    running out of sample twice. Provisional, and labelled so.
 
-Reporting only the first would flatter every signal; reporting only the
-second would confound a signal's value with the difficulty of estimating it.
-INTERVAL has no closed form here, so it appears in the held-out column only,
-and the I-V comparison is made there, within one column.
+Keeping them in one table let an unreliable KDE contaminate a conclusion
+about a perfectly reliable three-state channel. They are now separate
+sections and the share between them is printed only where it is resolved.
 
-Where the Blackwell inequality is exact, and where it is not
-------------------------------------------------------------
-p(BIT | theta) is **never** estimated by counting bits. It is derived from
-the estimated p(VERDICT | theta) through the garbling map, and each held-out
-row's bit is derived from that same row's verdict. In the **model** column
-that makes V >= B an algebraic identity -- it is Jensen's inequality on a
-convex function of the posterior, using the model's own marginals -- so a
-violation there is a coding error and is asserted as such.
+What `alpha` is doing, and why it gets a posterior rather than a footnote
+-------------------------------------------------------------------------
+What makes a signed verdict valuable is the rare cell: `p(negative |
+theta=+15%)` is 0 out of 100 for two of these tools, and seeing `negative`
+then nearly proves the truth is below zero. Smoothing sets the probability of
+exactly those decisive-but-unobserved events. A plug-in number hides that
+entirely. `Dirichlet(counts + alpha)` does not: alpha remains a prior choice,
+but its consequences arrive as a visible interval, at three values.
 
-In the **held-out** column it is not an identity: the expectation is taken
-over the empirical frequency of the evaluation rows rather than the model
-marginal, and Jensen needs the model's weights. Violations there are
-possible and should be small and rare; they are counted rather than
-asserted away. An earlier version of this file claimed the held-out
-inequality was algebraic. It is not, and the distinction is exactly the one
-this project keeps having to make: a theorem about the truth is not a
-theorem about an estimate of the truth.
-
-I >= V is not exact in either column, because INTERVAL's likelihood comes
-from a 3-d kernel density estimated separately. A violation there is the
-density estimator running out of sample, as in `information_ladder.py`.
-
-What is deliberately conservative
----------------------------------
-VERDICT has three cells to estimate per truth, BIT has two, from the same
-~13 fitted rows. More cells estimated from the same data means a noisier
-likelihood and a *lower* held-out EVSI. The design therefore handicaps
-VERDICT relative to BIT. If VERDICT wins anyway, it wins against the bias.
-
-The prior problem, which is not a detail here
+The scenarios are not a sample from anything
 ---------------------------------------------
-The continuous spike-and-slab puts 27% of its mass below zero. Binned onto
-the seven simulated truths it puts ~8% there, because the bin nearest zero
-spans (-2.5%, +1%] and swallows most of the negative shoulder. That is
-already recorded as a caveat in `continuous_ladder.py` -- but for THIS
-question it is not a caveat, it is the whole experiment: the value of
-knowing the sign is a function of how much prior mass sits on the wrong
-side of zero. So `--neg-sweep` varies that mass directly and reports the
-decomposition across it. A conclusion that holds only at 8% negative mass is
-not a conclusion about the sign.
+A1-A4 are four regimes the donor chose. Pooling them weights each one
+equally, which is a belief about a population that does not exist. Results
+are reported **per scenario**, and the pooled figure is offered as a
+sensitivity analysis rather than the headline.
 
     python marketing_experimentation/scripts/signed_verdict.py \
-        --results /tmp/results_atlas.jsonl --neg-sweep
+        --results /tmp/results_atlas.jsonl --neg-sweep --alpha-scan
 """
 
 from __future__ import annotations
@@ -132,19 +99,20 @@ VERDICT_LEVELS = ("negative", "inconclusive", "positive")
 GARBLE = np.array([[0.0, 1.0, 0.0],
                    [1.0, 0.0, 1.0]])
 
-#: Jeffreys smoothing on the verdict counts. With ~13 rows fitted per truth
-#: and three cells, an unobserved cell is common; unsmoothed it has
-#: likelihood zero, so a single held-out row landing there annihilates that
-#: truth's posterior entirely. Applied to VERDICT only -- BIT is derived
-#: through GARBLE, so the chain stays exact in the model column.
-#:
-#: It is not a free choice: smoothing shrinks the likelihood toward uniform
-#: and therefore LOWERS EVSI, and it lowers VERDICT's more than BIT's
-#: because three cells are shrunk instead of two. `--alpha` exists so that
-#: cost is measured rather than assumed negligible.
+#: Dirichlet concentration added to the verdict counts. Not a nuisance
+#: parameter: it sets the probability of the decisive cells that were never
+#: observed, and it shrinks VERDICT's three cells harder than BIT's two.
+#: `--alpha-scan` reports the posterior at three values instead of pretending
+#: one of them is right.
 ALPHA = 0.5
 
 INTERVAL_COLS = ["att_pct", "ci_lower", "ci_upper"]
+
+#: The negative mass of the continuous spike-and-slab prior. The seven-point
+#: Voronoi binning moves it to ~0.071, so the sweep includes this value --
+#: but a seven-point prior matched on this ONE MARGINAL is not the documented
+#: prior. See `reweight_negative`.
+DOCUMENTED_NEGATIVE_MASS = 0.267
 
 
 def load(path: str) -> pd.DataFrame:
@@ -184,24 +152,98 @@ def audit_bit_is_garbling(d: pd.DataFrame) -> tuple[int, int]:
     inconclusive". If it is not, the chain below is not a garbling chain and
     every inequality in this file is unearned -- the same structural error
     recorded as F13, which is why it is checked rather than assumed."""
-    v = verdict_index(d)
-    derived = v != 1
+    derived = verdict_index(d) != 1
     actual = d.significant.astype(bool).to_numpy()
     return int((derived == actual).sum()), len(d)
 
 
 # ---------------------------------------------------------------------------
-# One split, three signals. Every rung is scored on the SAME held-out rows,
-# so the comparison is paired and no rung can win by being handed more data.
+# FINDING A -- the sign, measured from counts. No density estimation.
 # ---------------------------------------------------------------------------
 
-def signal_matrices(g: pd.DataFrame, thetas: list[float], seed: int,
-                    frac_fit: float = 0.5, bw="scott", alpha: float = ALPHA):
-    """Return per-held-out-row likelihoods under every truth, for each rung.
+def verdict_counts(g: pd.DataFrame, thetas: list[float]) -> np.ndarray | None:
+    """(n_theta, 3) counts of negative / inconclusive / positive.
 
-    ``L[i, j] = p(y_i | theta_j)`` and ``src[i]`` is the truth row i came
-    from. Separating this from the EVSI arithmetic means a prior sweep costs
-    nothing: the likelihoods do not depend on the prior.
+    Uses every row. Finding A involves no density and no held-out evaluation,
+    so there is nothing to protect against overfitting and no reason to
+    discard half the data -- the estimation uncertainty is carried by the
+    Dirichlet posterior instead of by a fit/eval split.
+    """
+    out = np.zeros((len(thetas), 3))
+    for j, th in enumerate(thetas):
+        sub = g[np.isclose(g.effect_pct, th, atol=1e-9)]
+        if sub.empty:
+            return None
+        out[j] = np.bincount(verdict_index(sub), minlength=3)
+    return out
+
+
+def dirichlet_draws(counts: np.ndarray, alpha: float, n_draws: int,
+                    rng: np.random.Generator) -> np.ndarray:
+    """Posterior draws of p(verdict | theta), independently per truth.
+
+    Returns (n_draws, n_theta, 3). Independent across truths because each
+    truth's runs are a separate multinomial sample -- nothing in the design
+    links them, and pretending otherwise would be a smoothing assumption
+    smuggled in as a prior.
+    """
+    a = counts + alpha
+    g = rng.gamma(a, size=(n_draws,) + a.shape)
+    return g / g.sum(axis=-1, keepdims=True)
+
+
+def evsi_batch(problem: DecisionProblem, P: np.ndarray) -> np.ndarray:
+    """Exact EVSI of each discrete likelihood in a batch.
+
+    ``P`` is (n_draws, n_theta, n_levels) = p(y | theta). The expectation runs
+    over each draw's OWN implied marginal, which is what makes `EVSI >= 0` and
+    Blackwell exact for every draw rather than approximately true on average.
+    """
+    joint = problem.prior[None, :, None] * P
+    marg = joint.sum(axis=1)                                # (D, n_levels)
+    post = joint / np.clip(marg, 1e-300, None)[:, None, :]
+    vals = np.einsum("aj,djy->day", problem.utility, post)
+    total = (marg * vals.max(axis=1)).sum(axis=1)
+    return total - problem.value_no_experiment()
+
+
+def sign_loss_posterior(problem: DecisionProblem, counts: np.ndarray,
+                        alpha: float = ALPHA, n_draws: int = 20_000,
+                        seed: int = 0) -> dict:
+    """Posterior for EVSI(VERDICT), EVSI(BIT) and the sign loss between them.
+
+    Every draw satisfies V >= B exactly (Jensen on that draw's own marginals),
+    so `P(V - B > 0)` is close to vacuous here -- Blackwell has already ruled
+    out the other sign. The informative quantity is the **lower credible
+    bound**: how much of the loss survives the worst plausible transition
+    matrix.
+    """
+    rng = np.random.default_rng(seed)
+    pv = dirichlet_draws(counts, alpha, n_draws, rng)
+    pb = pv @ GARBLE.T
+    v, b = evsi_batch(problem, pv), evsi_batch(problem, pb)
+    gap = v - b
+    return {
+        "v_med": float(np.median(v)), "b_med": float(np.median(b)),
+        "gap_med": float(np.median(gap)),
+        "gap_lo": float(np.quantile(gap, 0.025)),
+        "gap_hi": float(np.quantile(gap, 0.975)),
+        "p_gap_pos": float((gap > 1e-9).mean()),
+        "worst_blackwell": float(gap.min()),
+    }
+
+
+# ---------------------------------------------------------------------------
+# FINDING B -- thresholding. Needs a 3-d density, and is weaker for it.
+# ---------------------------------------------------------------------------
+
+def held_out_pair(g: pd.DataFrame, thetas: list[float], seed: int,
+                  frac_fit: float = 0.5, bw="scott", alpha: float = ALPHA):
+    """INTERVAL and VERDICT likelihoods on the SAME held-out rows.
+
+    Finding B is a comparison, so both rungs must be scored on one split or
+    the difference confounds information with sample size. Finding A does not
+    use this at all.
     """
     rng = np.random.default_rng(seed)
     fit_rows, ev_rows = [], []
@@ -214,7 +256,6 @@ def signal_matrices(g: pd.DataFrame, thetas: list[float], seed: int,
         fit_rows.append(sub.iloc[idx[:cut]])
         ev_rows.append(sub.iloc[idx[cut:]])
 
-    # -- INTERVAL: one 3-d KDE per truth, fitted on the fit half ------------
     kdes = []
     for f in fit_rows:
         X = f[INTERVAL_COLS].to_numpy(dtype=float)
@@ -225,53 +266,25 @@ def signal_matrices(g: pd.DataFrame, thetas: list[float], seed: int,
         except np.linalg.LinAlgError:
             return None
 
-    # -- VERDICT: smoothed multinomial per truth ----------------------------
     pv = np.empty((len(thetas), 3))
     for j, f in enumerate(fit_rows):
-        counts = np.bincount(verdict_index(f), minlength=3).astype(float)
-        pv[j] = (counts + alpha) / (counts.sum() + 3 * alpha)
-    # BIT is DERIVED, never counted. p(bit | theta) = GARBLE @ p(verdict|theta)
-    pb = pv @ GARBLE.T                                   # (n_theta, 2)
+        c = np.bincount(verdict_index(f), minlength=3).astype(float)
+        pv[j] = (c + alpha) / (c.sum() + 3 * alpha)
 
     ev = pd.concat(ev_rows, ignore_index=True)
     src = np.concatenate([[j] * len(e) for j, e in enumerate(ev_rows)])
-    ev_v = verdict_index(ev)
-    ev_b = (ev_v != 1).astype(int)
-
     pts = ev[INTERVAL_COLS].to_numpy(dtype=float).T
-    L_int = np.column_stack([np.clip(k(pts), 1e-300, None) for k in kdes])
-    # [i, j] = p(observed label of row i | theta_j)
-    L_ver = pv[:, ev_v].T
-    L_bit = pb[:, ev_b].T
-
-    return {"INTERVAL": L_int, "VERDICT": L_ver, "BIT": L_bit,
-            "src": src, "p_verdict": pv, "p_bit": pb,
-            "n_fit": int(min(len(f) for f in fit_rows)),
-            "n_ev": int(min(len(e) for e in ev_rows))}
+    return {
+        "INTERVAL": np.column_stack([np.clip(k(pts), 1e-300, None)
+                                     for k in kdes]),
+        "VERDICT": pv[:, verdict_index(ev)].T,
+        "src": src, "n_fit": int(min(len(f) for f in fit_rows)),
+    }
 
 
-def evsi_analytic(problem: DecisionProblem, p: np.ndarray) -> float:
-    """Exact EVSI of a discrete signal whose likelihood is ``p``.
-
-    ``p`` is (n_theta, n_levels) = p(y | theta). The expectation runs over
-    the signal's OWN implied marginal, which is what makes this the exact
-    value of the fitted model rather than a sample estimate -- and what makes
-    ``EVSI >= 0`` and Blackwell hold exactly.
-    """
-    joint = problem.prior[:, None] * p              # (n_theta, n_levels)
-    marg = joint.sum(axis=0)                        # (n_levels,)
-    total = 0.0
-    for y in range(p.shape[1]):
-        if marg[y] <= 0:
-            continue
-        post = joint[:, y] / marg[y]
-        total += marg[y] * float((problem.utility @ post).max())
-    return total - problem.value_no_experiment()
-
-
-def evsi_from_likelihoods(problem: DecisionProblem, L: np.ndarray,
-                          src: np.ndarray) -> float:
-    """EVSI on held-out draws: posterior per row, best action per posterior.
+def evsi_held_out(problem: DecisionProblem, L: np.ndarray,
+                  src: np.ndarray) -> float:
+    """EVSI of the plug-in policy, scored on fresh runs.
 
     The outer expectation is taken under the PRIOR, not under the empirical
     frequency of the held-out rows -- the simulation ran equal iterations per
@@ -290,9 +303,21 @@ def evsi_from_likelihoods(problem: DecisionProblem, L: np.ndarray,
 
 
 def reweight_negative(problem: DecisionProblem, w: float) -> DecisionProblem:
-    """The same problem with prior mass ``w`` below zero, shape preserved
-    within each half. The point of the sweep: the value of the sign is a
-    function of how often the sign is bad news."""
+    """The same seven-point problem with prior mass ``w`` below zero.
+
+    **This does not reconstruct the continuous prior.** It matches ONE
+    marginal -- total mass below zero -- and preserves the relative weights
+    inside each half. The spike-and-slab has structure near zero that a
+    seven-point grid cannot represent at all, and where the negative mass
+    sits matters enormously to a five-action decision: mass at -10% and -5%
+    argues for `cut hard`, the same mass at -2% and -1% argues for `hold`.
+
+    So a run at w = 0.267 is a **seven-point sensitivity prior whose negative
+    mass matches the documented continuous prior**, and must be described
+    that way. Calling it "the documented prior" -- as an earlier version of
+    this file's output did -- claims a reconstruction that has not happened
+    and cannot happen until the theta grid is finer near zero.
+    """
     p = np.asarray(problem.prior, dtype=float).copy()
     neg = problem.theta < 0
     if not neg.any() or p[neg].sum() <= 0 or p[~neg].sum() <= 0:
@@ -303,36 +328,38 @@ def reweight_negative(problem: DecisionProblem, w: float) -> DecisionProblem:
                            problem.action_names)
 
 
+def build_problem(thetas: list[float]) -> tuple[DecisionProblem, float]:
+    grid = np.linspace(-0.15, 0.25, 81)
+    pri = spike_slab_prior(grid)
+    th = np.array(thetas)
+    edges = np.concatenate(([-np.inf], (th[:-1] + th[1:]) / 2, [np.inf]))
+    idx = np.digitize(grid, edges) - 1
+    p7 = np.array([pri[idx == j].sum() for j in range(len(thetas))])
+    return budget_problem(th, p7 / p7.sum()), float(pri[grid < 0].sum())
+
+
+def money(v: float) -> str:
+    return f"${v:,.0f}" if np.isfinite(v) else "n/a"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="/tmp/results_atlas.jsonl")
-    ap.add_argument("--scenario", default="A1")
-    ap.add_argument("--pool-scenarios", action="store_true",
-                    help="4x the sample per (tool, theta); p(y|theta) becomes "
-                         "a mixture over the donor's regimes")
     ap.add_argument("--seeds", type=int, default=16)
-    ap.add_argument("--alpha", type=float, default=ALPHA,
-                    help="Dirichlet smoothing on the verdict counts; it "
-                         "lowers EVSI and lowers VERDICT's more than BIT's, "
-                         "so vary it rather than trusting one value")
+    ap.add_argument("--draws", type=int, default=20_000)
+    ap.add_argument("--alpha", type=float, default=ALPHA)
     ap.add_argument("--neg-sweep", action="store_true")
-    ap.add_argument("--alpha-scan", action="store_true",
-                    help="how much of the sign's value is the smoothing "
-                         "constant?")
+    ap.add_argument("--alpha-scan", action="store_true")
+    ap.add_argument("--skip-interval", action="store_true",
+                    help="Finding A only; it needs no density estimation")
     args = ap.parse_args()
 
     d = load(args.results)
     guard_unique(d)
-    if not args.pool_scenarios:
-        d = d[d.scenario == args.scenario]
-
-    # Paired throughout: a row unusable by one rung is unusable by all.
     n0 = len(d)
     d = d[np.isfinite(d[INTERVAL_COLS].to_numpy(dtype=float)).all(axis=1)
           & d.significant.notna()]
-    where = ("pooled " + ",".join(sorted(d.scenario.unique()))
-             if args.pool_scenarios else f"scenario {args.scenario}")
-    print(f"{where} | {len(d):,} usable rows"
+    print(f"{len(d):,} usable rows"
           + (f" ({n0 - len(d)} dropped for non-finite interval)"
              if n0 != len(d) else ""))
 
@@ -344,280 +371,224 @@ def main() -> None:
         raise SystemExit(
             f"   {tot-ok} rows disagree. BIT is then NOT a deterministic\n"
             f"   function of VERDICT, Blackwell does not apply, and this\n"
-            f"   whole decomposition is unearned. This is the F13 error\n"
-            f"   again; stop and re-derive the chain.")
-    print("   exact. The chain INTERVAL -> VERDICT -> BIT is a garbling")
-    print("   chain, so Blackwell orders all three.")
+            f"   whole decomposition is unearned -- the F13 error again.")
+    print("   exact. INTERVAL -> VERDICT -> BIT is a garbling chain.")
 
     thetas = sorted(float(t) for t in d.effect_pct.unique())
     tools = sorted(d.tool_label.unique())
-    grid = np.linspace(-0.15, 0.25, 81)
-    pri = spike_slab_prior(grid)
-    edges = np.concatenate(([-np.inf], (np.array(thetas)[:-1]
-                                        + np.array(thetas)[1:]) / 2, [np.inf]))
-    idx = np.digitize(grid, edges) - 1
-    p7 = np.array([pri[idx == j].sum() for j in range(len(thetas))])
-    problem = budget_problem(np.array(thetas), p7 / p7.sum())
+    scenarios = sorted(d.scenario.unique())
+    problem, cont_neg = build_problem(thetas)
 
     print(f"\n== the decision ==")
     print(f"   actions: {', '.join(DEFAULT_ACTIONS)}")
     print(f"   truths:  {[round(100*t, 1) for t in thetas]} (%)")
-    print(f"   prior:   {np.round(problem.prior, 3).tolist()}")
-    print(f"   prior mass below zero: {float(problem.prior[problem.theta<0].sum()):.3f}"
-          f"   (the continuous prior's is {float(pri[grid<0].sum()):.3f} --")
-    print(f"   the binning moves it, which is why --neg-sweep exists)")
+    print(f"   prior mass below zero: "
+          f"{float(problem.prior[problem.theta<0].sum()):.3f} on this grid, "
+          f"{cont_neg:.3f} in the continuous prior.")
+    print(f"   Those are different decision problems, and matching the one")
+    print(f"   marginal does not make them the same -- see --neg-sweep.")
     print(f"   no-experiment action: {problem.best_action_no_experiment()!r}"
-          f"   |   EVPI ${problem.evpi():,.0f}")
+          f"   |   EVPI {money(problem.evpi())}")
 
-    # -- what the bit actually conflates, before any decision theory --------
-    # Per tool, not pooled. Pooling four estimators here would average four
-    # different sign-error rates into one number that describes none of them,
-    # and the sign-error rate is the entire mechanism under test.
-    print(f"\n== what the unsigned bit merges, per truth ==")
-    conflate = {}
+    # -- what the bit merges, per tool, per scenario ------------------------
+    print(f"\n== what the unsigned bit merges ==")
+    print("   P(verdict | theta), per tool. Pooling tools here would average")
+    print("   four different sign-error rates into a number describing none.")
     for tool in tools:
         gt = d[d.tool_label == tool]
-        print(f"\n   {tool}")
-        print(f"     {'theta':>7s} {'n':>4s}  {'P(neg)':>7s} {'P(incon)':>9s} "
+        print(f"\n   {tool}   (all scenarios, n=100 per truth)")
+        print(f"     {'theta':>7s}  {'P(neg)':>7s} {'P(incon)':>9s} "
               f"{'P(pos)':>7s}   {'P(significant)':>14s}")
-        conf = {}
         for th in thetas:
             sub = gt[np.isclose(gt.effect_pct, th, atol=1e-9)]
             f = np.bincount(verdict_index(sub), minlength=3) / len(sub)
-            conf[th] = f
-            print(f"     {100*th:+6.1f}% {len(sub):4d}  {f[0]:7.3f} "
-                  f"{f[1]:9.3f} {f[2]:7.3f}   {f[0]+f[2]:14.3f}")
-        pn = sum(problem.prior[j] * conf[th][0] for j, th in enumerate(thetas))
-        pp = sum(problem.prior[j] * conf[th][2] for j, th in enumerate(thetas))
-        conflate[tool] = (pn, pp)
-        if pn + pp > 0:
-            print(f"     -> when this tool's bit says SIGNIFICANT, the interval "
-                  f"behind it\n        is NEGATIVE {100*pn/(pn+pp):.1f}% of the "
-                  f"time under this prior, positive "
-                  f"{100*pp/(pn+pp):.1f}%.")
+            print(f"     {100*th:+6.1f}%  {f[0]:7.3f} {f[1]:9.3f} "
+                  f"{f[2]:7.3f}   {f[0]+f[2]:14.3f}")
 
-    # -- the decomposition ---------------------------------------------------
-    mats: dict[str, list] = {}
-    for tool in tools:
+    # =====================================================================
+    # FINDING A
+    # =====================================================================
+    print(f"\n\n{'='*72}")
+    print("FINDING A -- the cost of discarding the sign")
+    print(f"{'='*72}")
+    print("VERDICT -> BIT is a purely discrete channel. Multinomial counts,")
+    print("an exact garbling map, no kernel density anywhere. The uncertainty")
+    print(f"is a Dirichlet(counts + {args.alpha}) posterior over the transition")
+    print(f"matrix, propagated through EVSI: {args.draws:,} draws.")
+    print("\nPer scenario, because A1-A4 are four regimes the donor chose and")
+    print("not a sample from any population. Pooled is a sensitivity check.\n")
+
+    def counts_for(tool: str, scen: str | None):
         g = d[d.tool_label == tool]
-        ms = [m for m in (signal_matrices(g, thetas, s, alpha=args.alpha)
-                          for s in range(args.seeds)) if m is not None]
-        if not ms:
-            print(f"   {tool}: no usable split")
-            continue
-        mats[tool] = ms
+        if scen is not None:
+            g = g[g.scenario == scen]
+        return verdict_counts(g, thetas)
 
-    def measure(pr: DecisionProblem, tool: str) -> dict:
-        """Both estimators for one tool under one prior."""
-        ms = mats[tool]
-        out: dict[str, float] = {}
-        for k in ("INTERVAL", "VERDICT", "BIT"):
-            v = [evsi_from_likelihoods(pr, m[k], m["src"]) for m in ms]
-            out[k] = float(np.nanmean(v))
-            out[f"sd_{k}"] = float(np.nanstd(v))
-        for k, key in (("VERDICT", "p_verdict"), ("BIT", "p_bit")):
-            out[f"model_{k}"] = float(np.nanmean(
-                [evsi_analytic(pr, m[key]) for m in ms]))
-        return out
+    print(f"   {'tool':18s} {'where':8s} {'n/truth':>7s} {'VERDICT':>9s} "
+          f"{'BIT':>9s} {'V-B median':>11s} {'95% credible':>22s}")
+    finding_a = {}
+    for tool in tools:
+        for scen in scenarios + [None]:
+            c = counts_for(tool, scen)
+            if c is None:
+                continue
+            res = sign_loss_posterior(problem, c, args.alpha, args.draws)
+            finding_a[(tool, scen)] = res
+            label = scen or "pooled"
+            print(f"   {tool:18s} {label:8s} {int(c[0].sum()):>7d} "
+                  f"{money(res['v_med']):>9s} {money(res['b_med']):>9s} "
+                  f"{money(res['gap_med']):>11s} "
+                  f"  [{money(res['gap_lo'])}, {money(res['gap_hi'])}]")
+        print()
 
-    r = pd.DataFrame([dict(tool=t, **measure(problem, t)) for t in mats]
-                     ).set_index("tool")
-    nf = mats[tools[0]][0]["n_fit"]
-    ne = mats[tools[0]][0]["n_ev"]
-
-    print(f"\n== EVSI along the chain, {args.seeds} paired fit/eval splits ==")
-    print(f"   {nf} runs fitted / {ne} held out per truth, alpha={args.alpha}.")
-    print("   Same split, same held-out rows, all three rungs -- no rung can")
-    print("   win by being handed more data. VERDICT is handicapped: three")
-    print("   cells estimated from the rows that give BIT two.\n")
-    print(f"   {'tool':18s} {'INTERVAL':>10s} {'VERDICT':>10s} {'BIT':>10s}"
-          f"   |{'VERDICT':>10s} {'BIT':>10s}")
-    print(f"   {'':18s} {'--- held-out (plug-in policy) ---':^32s}"
-          f"   |{'-- model (exact) --':^21s}")
-    for tool in r.index:
-        print(f"   {tool:18s} ${r.loc[tool,'INTERVAL']:>9,.0f} "
-              f"${r.loc[tool,'VERDICT']:>9,.0f} ${r.loc[tool,'BIT']:>9,.0f}"
-              f"   |${r.loc[tool,'model_VERDICT']:>9,.0f} "
-              f"${r.loc[tool,'model_BIT']:>9,.0f}")
-    print(f"   {'(sd over splits)':18s} "
-          + " ".join(f"±{r.loc[tools[0], f'sd_{c}']:>8,.0f}"
-                     for c in ("INTERVAL", "VERDICT", "BIT"))
-          + f"   for {tools[0]}")
-
-    print(f"\n== the split the whole question turns on ==")
-    print(f"   {'tool':18s} {'I-V thresholding':>18s} {'V-B the sign':>14s} "
-          f"{'sign share':>11s} {'  model V-B':>12s}")
-    for tool in r.index:
-        iv = r.loc[tool, "INTERVAL"] - r.loc[tool, "VERDICT"]
-        vb = r.loc[tool, "VERDICT"] - r.loc[tool, "BIT"]
-        mvb = r.loc[tool, "model_VERDICT"] - r.loc[tool, "model_BIT"]
-        tot_loss = iv + vb
-        share = 100 * vb / tot_loss if tot_loss > 1e-9 else np.nan
-        print(f"   {tool:18s} ${iv:>17,.0f} ${vb:>13,.0f} "
-              + (f"{share:10.1f}%" if np.isfinite(share) else f"{'n/a':>11s}")
-              + f" ${mvb:>11,.0f}")
-
-    print(f"\n== self-tests ==")
-    nsplit = sum(len(m) for m in mats.values())
-    print("   (1) MODEL column: V >= B and EVSI >= 0 are exact. p(bit|theta)")
-    print("       is derived from p(verdict|theta) through GARBLE, so this is")
-    print("       Jensen on the model's own marginals. A failure is a bug in")
-    print("       this file, not a property of the data.")
-    bad_v, bad_neg = 0, 0
-    for tool, ms in mats.items():
-        for m in ms:
-            mv = evsi_analytic(problem, m["p_verdict"])
-            mb = evsi_analytic(problem, m["p_bit"])
-            bad_v += mb > mv + 1e-6
-            bad_neg += (mv < -1e-6) or (mb < -1e-6)
-    print(f"       V >= B    {bad_v} violations in {nsplit} splits   "
-          f"{'PASS' if bad_v == 0 else 'FAIL -- STOP'}")
-    print(f"       EVSI >= 0 {bad_neg} violations in {nsplit} splits   "
-          f"{'PASS' if bad_neg == 0 else 'FAIL -- STOP'}")
-
-    print("   (2) HELD-OUT column: neither is exact. The expectation runs")
-    print("       over the empirical frequency of the evaluation rows, and")
-    print("       Jensen needs the model's marginals. Violations are expected")
-    print("       to be rare and small; a negative EVSI here is not a bug, it")
-    print("       is a plug-in policy built on a likelihood fitted to "
-          f"{nf} runs.")
-    hv = hneg = 0
-    for tool, ms in mats.items():
-        for m in ms:
-            v = evsi_from_likelihoods(problem, m["VERDICT"], m["src"])
-            b = evsi_from_likelihoods(problem, m["BIT"], m["src"])
-            hv += b > v + 1e-6
-            hneg += (v < -1e-6) or (b < -1e-6)
-    print(f"       V >= B    {hv} violations in {nsplit} splits")
-    print(f"       EVSI < 0  {hneg} splits")
-
-    print("   (3) I >= V is Blackwell on an ESTIMATED density. A violation")
-    print("       beyond Monte Carlo error means the 3-d KDE has run out of")
-    print("       sample, as in information_ladder.py.")
-    for tool in r.index:
-        i, v = r.loc[tool, "INTERVAL"], r.loc[tool, "VERDICT"]
-        e = max(r.loc[tool, "sd_INTERVAL"], r.loc[tool, "sd_VERDICT"])
-        okf = i >= v - 2 * e
-        print(f"       {tool:18s} I-V ${i-v:>+10,.0f} (±{e:,.0f})   "
-              f"{'ok' if okf else 'VIOLATION -- suspect the KDE'}")
+    worst = min(r["worst_blackwell"] for r in finding_a.values())
+    print(f"   self-test: min(V - B) over all "
+          f"{len(finding_a) * args.draws:,} draws = {worst:+.3e}")
+    print(f"   {'PASS' if worst >= -1e-6 else 'FAIL -- STOP'}. V >= B is exact "
+          f"per draw (Jensen on that draw's own\n   marginals), which is why "
+          f"P(V-B > 0) is near-vacuous here:")
+    print(f"   Blackwell has already excluded the other sign. The informative")
+    print(f"   number is the LOWER credible bound -- how much of the loss")
+    print(f"   survives the worst plausible transition matrix.")
 
     if args.alpha_scan:
-        print(f"\n== how much of the sign's value is the smoothing constant? ==")
-        print("   This is not a nuisance parameter here. What makes a signed")
-        print("   verdict valuable is the RARE cell: p(negative | theta=+15%)")
-        print(f"   is 0/{nf} for two of these tools, and seeing `negative`")
-        print("   then nearly proves the truth is below zero. Smoothing sets")
-        print("   the probability of exactly those decisive-but-unobserved")
-        print("   events, moving them by more than an order of magnitude,")
-        print("   and it shrinks VERDICT's three cells harder than BIT's two.")
-        print("   So alpha bounds the answer rather than perturbing it:")
-        print("   light smoothing is the optimistic end, heavy the "
-              "pessimistic.\n")
-        print(f"   {'tool':18s} " + " ".join(
-            f"{'a=' + str(a):>16s}" for a in (0.05, 0.5, 2.0)))
-        print(f"   {'':18s} " + " ".join(
-            f"{'V-B / share':>16s}" for _ in range(3)))
+        print(f"\n== Finding A under three smoothing priors ==")
+        print("   alpha sets the probability of the decisive cells that were")
+        print("   never observed -- p(negative | theta=+15%) is 0/100 for two")
+        print("   tools. It stays a prior choice; what changes is that its")
+        print("   consequences now arrive as intervals rather than as a")
+        print("   factor-of-three wobble in a plug-in number.\n")
+        print(f"   {'tool':18s} " + "".join(
+            f"{'alpha=' + str(a):>26s}" for a in (0.05, 0.5, 2.0)))
         for tool in tools:
+            c = counts_for(tool, None)
             cells = []
             for a in (0.05, 0.5, 2.0):
-                ms = [m for m in (signal_matrices(d[d.tool_label == tool],
-                                                  thetas, s, alpha=a)
-                                  for s in range(args.seeds)) if m is not None]
-                iv = float(np.nanmean(
-                    [evsi_from_likelihoods(problem, m["INTERVAL"], m["src"])
-                     - evsi_from_likelihoods(problem, m["VERDICT"], m["src"])
-                     for m in ms]))
-                vb = float(np.nanmean(
-                    [evsi_from_likelihoods(problem, m["VERDICT"], m["src"])
-                     - evsi_from_likelihoods(problem, m["BIT"], m["src"])
-                     for m in ms]))
-                tl = iv + vb
-                cells.append(f"${vb:>7,.0f} /{100*vb/tl:5.1f}%"
-                             if tl > 1e-9 else f"{'$-- / n/a':>16s}")
-            print(f"   {tool:18s} " + " ".join(cells))
-        print("\n   The ordering never reverses: heavier smoothing always")
-        print("   costs the sign. What it does change is the magnitude, by")
-        print("   a factor of 2-3, so the sign's share is reported as a range")
-        print("   and not as a point. Pinning it down needs more runs per")
-        print("   truth, not a better choice of alpha.")
+                r_ = sign_loss_posterior(problem, c, a, args.draws)
+                cells.append(f"{money(r_['gap_med']):>7s} "
+                             f"[{money(r_['gap_lo'])},{money(r_['gap_hi'])}]"
+                             .rjust(26))
+            print(f"   {tool:18s} " + "".join(cells))
+        print("\n   (pooled; the credible intervals overlap heavily across")
+        print("   alpha, which the earlier plug-in presentation could not show)")
+
+    if args.skip_interval:
+        return
+
+    # =====================================================================
+    # FINDING B
+    # =====================================================================
+    print(f"\n\n{'='*72}")
+    print("FINDING B -- the cost of thresholding  (PROVISIONAL)")
+    print(f"{'='*72}")
+    print("INTERVAL needs a 3-d density per truth. This project has already")
+    print("caught that estimator running out of sample twice. Both rungs are")
+    print("scored on the same held-out rows so the difference is paired, and")
+    print("the split-to-split SD is printed because it is the point.\n")
+    print(f"   {'tool':18s} {'where':8s} {'fit/truth':>9s} {'INTERVAL':>9s} "
+          f"{'VERDICT':>9s} {'I-V':>9s} {'±':>7s}  verdict")
+    finding_b, finding_b_verdict = {}, {}
+    for tool in tools:
+        for scen in scenarios + [None]:
+            g = d[d.tool_label == tool]
+            if scen is not None:
+                g = g[g.scenario == scen]
+            ms = [m for m in (held_out_pair(g, thetas, s, alpha=args.alpha)
+                              for s in range(args.seeds)) if m is not None]
+            if not ms:
+                continue
+            iv = np.array([evsi_held_out(problem, m["INTERVAL"], m["src"])
+                           - evsi_held_out(problem, m["VERDICT"], m["src"])
+                           for m in ms])
+            i_ = float(np.nanmean([evsi_held_out(problem, m["INTERVAL"],
+                                                 m["src"]) for m in ms]))
+            v_ = float(np.nanmean([evsi_held_out(problem, m["VERDICT"],
+                                                 m["src"]) for m in ms]))
+            mean, sd = float(np.nanmean(iv)), float(np.nanstd(iv))
+            finding_b[(tool, scen)] = (mean, sd)
+            finding_b_verdict[(tool, scen)] = v_
+            verdict = ("separated from zero" if mean > 2 * sd else
+                       "BLACKWELL VIOLATION" if mean < -2 * sd else
+                       "NOT separated from zero")
+            print(f"   {tool:18s} {scen or 'pooled':8s} {ms[0]['n_fit']:>9d} "
+                  f"{money(i_):>9s} {money(v_):>9s} {money(mean):>9s} "
+                  f"{sd:>7,.0f}  {verdict}")
+        print()
+
+    # =====================================================================
+    # The share -- only where it is resolved
+    # =====================================================================
+    print(f"{'='*72}")
+    print("THE SHARE BETWEEN THEM -- printed only where it is resolved")
+    print(f"{'='*72}")
+    print("sign share = (V-B) / ((I-V) + (V-B)). An earlier version printed")
+    print("this as `63.3%+`, a LOWER BOUND, wherever I-V was indistinguishable")
+    print("from zero. That was wrong, and wrong in the direction that")
+    print("flattered the finding: uncertainty in the DENOMINATOR moves the")
+    print("true share both ways. If I-V is really $300 rather than the $100")
+    print("estimated, a share of 67% is really 40%. An unresolved denominator")
+    print("makes the ratio unresolved, not bounded below.\n")
+    print("One more inconsistency, stated rather than hidden: the numerator")
+    print("comes from Finding A (Dirichlet median, every row) and the")
+    print("denominator's first part from Finding B (held-out, half the rows).")
+    print("Those use different estimators for VERDICT. `V_A` and `V_B` below")
+    print("are the two, so the reader can see whether the mixing matters.\n")
+    print(f"   {'tool':18s} {'where':8s} {'V_A':>8s} {'V_B':>8s} {'I-V':>9s} "
+          f"{'V-B':>9s} {'share':>18s}")
+    for tool in tools:
+        for scen in scenarios + [None]:
+            if (tool, scen) not in finding_b or (tool, scen) not in finding_a:
+                continue
+            mean, sd = finding_b[(tool, scen)]
+            gap = finding_a[(tool, scen)]["gap_med"]
+            va = finding_a[(tool, scen)]["v_med"]
+            vb = finding_b_verdict[(tool, scen)]
+            if mean > 2 * sd and mean + gap > 0:
+                share = f"{100 * gap / (mean + gap):17.1f}%"
+            elif mean < -2 * sd:
+                share = f"{'unresolved (KDE)':>18s}"
+            else:
+                share = f"{'unresolved':>18s}"
+            print(f"   {tool:18s} {scen or 'pooled':8s} {money(va):>8s} "
+                  f"{money(vb):>8s} {money(mean):>9s} {money(gap):>9s} "
+                  f"{share}")
+        print()
+    print("   Where it reads `unresolved`, both dollar figures are still")
+    print("   sound -- V-B never touches the density estimator. It is the")
+    print("   RATIO that has no defensible value, and the honest output is")
+    print("   the two magnitudes rather than a percentage of them.")
 
     if args.neg_sweep:
-        print(f"\n== does the sign matter, or does this prior just not care? ==")
-        print("   The seven-point binning leaves ~8% of prior mass below zero.")
-        print("   The value of a sign is a function of how often it is bad")
-        print("   news, so reporting the decomposition at one such value would")
-        print("   be reporting an accident of the grid.\n")
-        print("   Held-out columns, then the model column for V-B, which is")
-        print("   the one where the inequality is exact.")
-        print("   A share is only a share while BOTH parts are positive.")
-        print("   Three states, because collapsing them would hide the two")
-        print("   most interesting outcomes behind a percentage:")
-        print("     n.n%   both parts positive and separated from zero")
-        print("     n.n%+  I-V is not separable from zero, so the share is a")
-        print("            LOWER BOUND: the sign accounts for at least this")
-        print("            much and the data cannot rule out all of it.")
-        print("            Reported as a number rather than a label, because")
-        print("            'the sign carries most of it' and 'the sign carries")
-        print("            all of it' are different claims and the point")
-        print("            estimate distinguishes them.")
-        print("     KDE!   I-V is negative by more than two split SDs, which")
-        print("            Blackwell forbids. The 3-d density is the suspect,")
-        print("            not the information ordering. V-B is unaffected --")
-        print("            it never touches the KDE -- but it is not a share.")
-        # 0.267 is not a round number chosen for the grid: it is the negative
-        # mass of the spike-and-slab prior this project actually documents,
-        # before the seven-point binning moves it to 0.071. It is the cell
-        # the conclusion should be read off.
-        ws = [0.02, 0.05, 0.10, 0.20, 0.267, 0.30, 0.40, 0.50]
-        broken = flat = 0
-        for tool in r.index:
-            print(f"\n   {tool}")
-            print(f"     {'P(th<0)':>8s} {'EVPI':>9s} | {'INTERVAL':>9s} "
-                  f"{'VERDICT':>9s} {'BIT':>9s} {'V-B':>9s} {'sign sh':>8s}"
-                  f" | {'model V-B':>10s}")
+        print(f"\n{'='*72}")
+        print("SENSITIVITY: where the negative prior mass sits")
+        print(f"{'='*72}")
+        print("The seven-point grid carries "
+              f"{float(problem.prior[problem.theta<0].sum()):.3f} of the mass "
+              f"below zero; the continuous\nprior carries {cont_neg:.3f}. "
+              "Matching that ONE MARGINAL does not reconstruct\nthe prior: "
+              "mass at -10% and -5% argues for `cut hard`, the same mass\n"
+              "at -2% and -1% argues for `hold`, and a seven-point grid cannot"
+              "\ntell them apart. So w = 0.267 below is a **seven-point "
+              "sensitivity\nprior matched on negative mass**, not the "
+              "documented prior.\n")
+        print("V-B in dollars with its credible interval. No share column:")
+        print("the denominator is Finding B, which is provisional.\n")
+        ws = [0.02, 0.05, 0.10, 0.20, DOCUMENTED_NEGATIVE_MASS, 0.40, 0.50]
+        for tool in tools:
+            c = counts_for(tool, None)
+            print(f"   {tool}")
+            print(f"     {'P(th<0)':>8s} {'EVPI':>9s} {'VERDICT':>9s} "
+                  f"{'BIT':>9s} {'V-B median':>11s} {'95% credible':>22s}")
             for w in ws:
                 pw = reweight_negative(problem, w)
-                got = measure(pw, tool)
-                iv = got["INTERVAL"] - got["VERDICT"]
-                vb = got["VERDICT"] - got["BIT"]
-                mvb = got["model_VERDICT"] - got["model_BIT"]
-                # The Blackwell check, at THIS prior rather than only at the
-                # base one. Checking it once at the base prior and then
-                # printing shares across six others is how a 113% "share"
-                # gets published.
-                e = max(got["sd_INTERVAL"], got["sd_VERDICT"])
-                tl = iv + vb
-                frac = 100 * vb / tl if tl > 1e-9 else np.nan
-                if iv < -2 * e:
-                    sh, broken = f"{'KDE!':>8s}", broken + 1
-                elif iv <= 2 * e:
-                    # Clamped at 100: a negative I-V inside noise otherwise
-                    # prints a share above 100%, which is how the first
-                    # version of this sweep produced "113%".
-                    sh = f"{min(frac, 100.0):6.1f}%+" if np.isfinite(frac) \
-                        else f"{'n/a':>8s}"
-                    flat += 1
-                elif np.isfinite(frac):
-                    sh = f"{frac:7.1f}%"
-                else:
-                    sh = f"{'n/a':>8s}"
-                print(f"     {w:8.2f} ${pw.evpi():>8,.0f} | "
-                      f"${got['INTERVAL']:>8,.0f} ${got['VERDICT']:>8,.0f} "
-                      f"${got['BIT']:>8,.0f} ${vb:>8,.0f} {sh}"
-                      f" | ${mvb:>9,.0f}")
-        if broken:
-            print(f"\n   {broken} cell(s) marked KDE!: a Blackwell violation "
-                  f"on an estimated\n   density. Treat INTERVAL as unreliable "
-                  f"there.")
-        if flat:
-            print(f"\n   {flat} cell(s) marked `+`: the thresholding loss is "
-                  f"not separable from\n   zero there, so the printed share "
-                  f"is a lower bound -- the sign accounts\n   for at least "
-                  f"that much, and the data cannot rule out its accounting\n"
-                  f"   for all of it. Two readings stay live: the verdict "
-                  f"really is as good\n   as the interval, or a 3-d density "
-                  f"on this sample is too weak to show\n   otherwise. More "
-                  f"runs per truth separate them; nothing else will.")
+                r_ = sign_loss_posterior(pw, c, args.alpha, args.draws)
+                mark = " <- matched to continuous" if w == \
+                    DOCUMENTED_NEGATIVE_MASS else ""
+                print(f"     {w:8.3f} {money(pw.evpi()):>9s} "
+                      f"{money(r_['v_med']):>9s} {money(r_['b_med']):>9s} "
+                      f"{money(r_['gap_med']):>11s} "
+                      f"  [{money(r_['gap_lo'])}, {money(r_['gap_hi'])}]{mark}")
+            print()
 
 
 if __name__ == "__main__":

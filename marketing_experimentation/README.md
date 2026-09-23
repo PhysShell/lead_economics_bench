@@ -65,13 +65,15 @@ The current claim, stated as narrowly as the evidence allows:
 - **Part of that loss is not thresholding at all — it is the missing sign.**
   `significant` is unsigned: a channel destroying 10% and one adding 15% emit
   the same symbol. Inserting the signed verdict (negative / inconclusive /
-  positive) between the interval and the bit gives a second garbling chain,
-  and splits the loss in two. At the prior this project documents (26.7% of
-  mass below zero) the discarded **sign** carries 63% and 79% of the loss for
-  two tools, ~49% for a third, and 7% for GeoLift — which has almost no power
-  at this sample size, so its verdict is near-inert to begin with. A large
-  part of what this track was attributing to significance testing is
-  recoverable by printing a sign. Addendum 3.
+  positive) gives a second garbling chain, and `VERDICT → BIT` is measurable
+  from multinomial counts with **no density estimation at all** — a
+  `Dirichlet(counts + α)` posterior propagated through EVSI. The sign loss is
+  **$2,792 [1,538–4,537]** for CausalPy, whose significance bit is worth
+  **$0 in all four scenarios**; $1,402 [692–3,262] for Google MM; $937
+  [512–1,375] for CausalImpact. For GeoLift it is **not established**
+  ([0–1,337]) — its `P(significant)` is 0.05–0.19 at *every* truth, so its
+  verdict is nearly mute and there is nothing for the sign to carry.
+  Addendum 3, Finding A.
 
 ### The donor reproduces — `docs/donor-repro.md`
 
@@ -107,12 +109,21 @@ refusing to overclaim:
   negative, but reproducing a simulation faithfully still says nothing about
   whether it resembles a real marketing experiment. This is the largest
   limitation by a distance.
-- **The sign/thresholding split is a range, not a point.** Its size depends
-  on the Dirichlet smoothing constant by a factor of 2–3, because what makes
-  a signed verdict valuable is a cell observed 0 times in 50 — and smoothing
-  is what sets the probability of exactly those decisive, unobserved events.
-  The ordering never reverses; the magnitude is unpinned until there are more
-  runs per truth.
+- **The *other* half of the split — thresholding — is provisional.**
+  `INTERVAL → VERDICT` needs a 3-d density from ~50 runs per truth, the
+  estimator this project has already caught running out of sample twice. It
+  separates from zero pooled for three tools and not for CausalPy, and at 12
+  fitted rows per truth the per-scenario figures are noise. The **ratio**
+  between the two halves is therefore resolved in only 9 of 20 cells; where
+  it is not, the honest output is two dollar figures, not a percentage of
+  them. Previously published shares of 63%, 79% and 68.4% are withdrawn —
+  see F15.
+- **The sweep's `P(θ<0) = 0.267` row is a sensitivity, not a reconstruction.**
+  It matches one marginal of the documented continuous prior onto a
+  seven-point grid. Where the negative mass *sits* decides a five-action
+  problem — mass at −10% argues for `cut hard`, the same mass at −1% argues
+  for `hold` — and seven points cannot tell them apart. A finer grid near
+  zero and near the +3% breakeven (M8) is what would fix it.
 - **Nothing here has touched a real business's data.** No experiment has been
   run, no budget moved.
 - **CausalPy's ~1.1–1.3% point-estimate noise is unexplained.** Three
@@ -144,7 +155,7 @@ refusing to overclaim:
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
-Tests: `pytest tests/` from this directory (170 invariants).
+Tests: `pytest tests/` from this directory (185 invariants).
 
 ---
 
@@ -154,7 +165,7 @@ Tests: `pytest tests/` from this directory (170 invariants).
   before any replay ran — and revised once *before* seeing output, with the
   evidence for the revision recorded so it cannot later be mistaken for a
   tolerance widened to fit.
-- **`docs/failures.md` is not decoration.** Fourteen entries, five of them
+- **`docs/failures.md` is not decoration.** Fifteen entries, six of them
   errors the reader caught rather than me — including F13, which invalidated
   the structure the main result was expressed in. History is not cleaned into a
   heroic narrative (brief §75).

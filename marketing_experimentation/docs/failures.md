@@ -451,3 +451,57 @@ a metric that is simply always positive.
 **Caught by me, not by the reader.** Recorded anyway, because §75 asks for
 every invalid comparison that *could* have changed conclusions, and an
 invalid comparison caught by a lucky ceiling is not a process that works.
+
+## F15. A lower bound that was not a bound, and a prior that was not the prior
+
+Three defects in the signed-verdict result published as `26d2f6f`, all found
+by the reader, all in the same direction: each one made the finding look more
+established than it was.
+
+**(a) `63.3%+` was not a lower bound.** The sweep printed the sign share with
+a `+` marker wherever `I − V` was indistinguishable from zero, on the reading
+"the sign accounts for at least this much". That does not follow. The share
+is `(V−B) / ((I−V) + (V−B))`, and uncertainty in the **denominator** moves
+the true value in *both* directions. With point estimates `I−V = 100` and
+`V−B = 200` the share reads 67%; if `I−V` is really 300 the share is 40%. An
+unresolved denominator makes the ratio unresolved, not bounded below.
+
+*What it changed.* The headline figures 63%, 79% and 68.4% — every one of
+them a ratio whose denominator had failed to separate from zero. Withdrawn.
+The script now prints `unresolved` and both dollar magnitudes instead, and
+the share survives in only 9 of 20 cells, running 0.0–24.8%.
+
+**(b) "the prior the project actually documents" was a seven-point prior
+matched on one marginal.** `reweight_negative(problem, 0.267)` sets
+`P(θ<0) = 0.267` and preserves the relative weights inside each half. The
+spike-and-slab has structure near zero that a seven-point grid cannot
+represent, and *where* the negative mass sits is decisive for a five-action
+decision: mass at −10% and −5% argues for `cut hard`, the same mass at −2%
+and −1% argues for `hold`. Matching a marginal is not reconstructing a prior.
+Now described as a **seven-point sensitivity prior whose negative mass
+matches the documented continuous prior**, and the docstring of
+`reweight_negative` says why the stronger phrasing is unavailable until the θ
+grid is finer.
+
+**(c) One table mixed a reliable measurement with an unreliable one.**
+VERDICT → BIT is a discrete channel measurable from multinomial counts with
+no density estimation at all. INTERVAL → VERDICT needs a 3-d KDE, the
+estimator this log already records failing twice. Reporting them in one table
+let the weaker one contaminate the stronger. They are now Finding A
+(discrete, robust) and Finding B (continuous, provisional), and the ratio
+between them is printed only where it is resolved.
+
+**A fourth thing, which was my own claim and also wrong.** I reported that α
+moves the sign share "by a factor of 2–3" and called that a fundamental
+limitation needing more runs. With a `Dirichlet(counts + α)` posterior
+propagated through EVSI, the credible intervals at α ∈ {0.05, 0.5, 2.0}
+overlap heavily — `causalpy` gives [1,642–4,759], [1,538–4,537],
+[1,238–3,962]. The factor of 2–3 was the spread between three plug-in point
+estimates, each with an interval far wider than the spread between them. α
+was never the binding constraint; reporting a point estimate was.
+
+**Caught by the reader** — the sixth such entry. The pattern across (a), (b)
+and (c) is one thing: a quantity was named more strongly than its derivation
+supported. F13 was the same error about a garbling chain, F14 about a
+Blackwell check. Naming something a bound, a prior, or a measurement is a
+claim, and it needs the same evidence as a number does.
