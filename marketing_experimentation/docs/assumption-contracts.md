@@ -215,6 +215,38 @@ convenience — pandas among them — will merge them into one comfortable
 swamp. A comparison that has already merged them cannot answer a question
 about which one it was.
 
+### C11 — every M9-B cell is a slice of one maximal world
+
+    SOURCE       docs/m9-preregistration.md, M9-B Addendum 1; the measured
+                 behaviour of draw_baselines()/select_treated() when n_geos
+                 moves (treated geo City 3/5/11/21 at n_geos 6/10/21/41)
+    CLAIM        Moving T or G_c changes the DESIGN and not the WORLD:
+                 the treated geo, its trajectory, the donor ordering and
+                 the shared panel_seed are identical across all 16 cells of
+                 a replication.
+    CONSEQUENCE  r_EVSI(T, G_c) - r_EVSI(T', G_c') is a design effect. Under
+                 the donor's own knobs it would also carry a change of
+                 world, and the axis would mean something false.
+    CHECK        repro/recast/m9b_world_check.py, W1-W7. W6 is the negative
+                 test (strip the maximal cell down to the smallest and
+                 require equality); W3d re-derives the donor permutation
+                 from perm_seed in a separate R process. Five generator
+                 mutations are required to be refused -- see F20.
+
+### C12 — a metamorphic suite is not evidence until it has refused a real defect
+
+    SOURCE       F20: the first M9-B suite passed 10/10 while accepting the
+                 sorted-baseline-prefix shortcut it existed to forbid
+    CLAIM        Passing checks bound nothing on their own. What bounds
+                 something is a check that fails when the property does.
+    CONSEQUENCE  A green suite may be silent rather than reassuring, and it
+                 is silent exactly where the relations happen to be
+                 satisfied by the defect too.
+    CHECK        every new metamorphic suite in this track ships with the
+                 mutations it must refuse, and the refusal is recorded
+                 alongside the pass. For M9-B: M-a..M-e in the addendum's
+                 mutation table.
+
 ## Metamorphic relations
 
 Where no oracle exists — and for a simulator there usually is none — the
@@ -229,6 +261,8 @@ failure log arrived at several of these before anyone named the technique:
 | θ negated | the sign propagates to the estimate |
 | a richer exact signal | Blackwell ordering |
 | a useless signal | EVSI is exactly 0, not merely small |
+| a design axis moves | the latent world does not (M9-B W1–W7) |
+| a slice of a larger run | equals the smaller run exactly (M9-B W6) |
 
 Each one is already an executable check somewhere in this repository. The
 point of listing them together is that they are the same tool, and the next

@@ -1,0 +1,430 @@
+Design axes as slices of one maximal world (M9-B).
+==================================================
+
+Applies ON TOP of theta-mutation.patch and m8-seed-log.patch, in the
+disposable clone only:
+
+    cd /home/user/donor-smoke
+    git apply .../theta-mutation.patch
+    git apply .../m8-seed-log.patch
+    git apply .../m9b-axes.patch
+
+This is a diff, not vendored source (D5: the donor has no licence).
+
+WHY
+---
+M9-B asks what a longer test window or a larger donor pool is worth. That
+question only has an answer if the WORLD is held fixed while the DESIGN
+moves. The donor's own knobs cannot do that, and the reason is not a bug --
+it is that nothing ever asked them to:
+
+  * `draw_baselines()` calls rlnorm(n_geos, ...) and then sort()s. The RNG
+    stream is nested, the sorted vector is not: a 6-geo draw is not a prefix
+    of a 10-geo draw at the same seed.
+  * `select_treated()` picks the geo closest to the MEDIAN baseline, and the
+    median moves with pool size. Measured at seed 52001, the treated geo is
+        n_geos =  6  ->  City 3   (baseline 2650.4)
+        n_geos = 10  ->  City 5   (2760.0)
+        n_geos = 21  ->  City 11  (3305.1)
+        n_geos = 41  ->  City 21  (3305.1)
+  * the noise loop is `for (geo) { for (day) }`, so raising total_days moves
+    the stream for every geo after the first. T = 15 is not a prefix of
+    T = 42 either.
+
+So a 16-cell sweep over (T, G_c) using the donor's knobs would compare 16
+different worlds and call the difference a design effect. Every number would
+be internally correct and the axis would mean something false -- the same
+class as F13-F19, conceptual-model contract failure.
+
+THE CONTRACT
+------------
+Every replication generates ONE maximal latent world:
+
+    90 pre days + MAX_POST_DAYS (42) post days
+    n_treated (1) + MAX_CONTROLS (40) geos
+
+and each cell is a slice of it:
+
+    treated geo   selected ONCE from the 41-geo world, by the unchanged
+                  median-baseline rule. The same city in every cell.
+    donor pools   the other 40 geos in a fixed random order; each cell takes
+                  a prefix, so D5 subset D9 subset D20 subset D40.
+    durations     prefixes of the maximal post-period, so
+                  Y15 subset Y21 subset Y28 subset Y42.
+
+The donor order comes from a DEDICATED RNG substream (panel_seed + 900000),
+not from the DGP's noise stream and not from the sorted baselines. Sorted
+baselines would have been cheaper and wrong twice over: "fewer donors" would
+silently also mean "donors closer to the treated geo in size", and the pool
+would stop being independent of the treated selection. Both offsets in use
+(1e5 noise, 9e5 permutation) are disjoint from panel_seed's range
+[52001, 82025] for this study.
+
+WHAT IT ADDS
+------------
+1. `--post_days N --n_control G`. Both or neither: a partial invocation
+   REFUSES, because one axis sliced and the other taken from a donor default
+   is not a slice of the same world as its neighbours.
+
+2. MAX_POST_DAYS / MAX_CONTROLS vs requested_post_days / requested_n_control,
+   named apart on purpose. The MAX_* pair sizes the world; the requested_*
+   pair cuts the slice. If a later "optimisation" generates a world sized to
+   the request -- which looks like pure savings, about 1.7 CPU-hours across
+   the grid -- every nesting property dies and no downstream statistic
+   notices. A stopifnot() in the loop is the tripwire; m9b_world_check.py's
+   W6 is the proof.
+
+3. M9B_SEED_SLOT = 1L. panel_seed would otherwise be
+   master_seed*1000 + match(sc_id, names(scenarios))*10000 + it, and every
+   cell happens to be the sole element of its own scenarios list, so the
+   slot would be 1 by accident. Pinned, so "all 16 cells share one world" is
+   a stated contract rather than a property of list length.
+
+4. One cell per invocation, id `M9B_T{post}_G{controls}`, on the A1 template
+   (no outlier, 90 pre days). Scenario ids are directory names and the join
+   key in results.jsonl; a shared id would have cells overwrite each other,
+   which is the defect theta-mutation.patch had to fix for effect labels.
+
+5. Seed-log columns: perm_seed, world_n_geos, world_total_days,
+   requested_post_days, requested_n_control, treated_geo, donor_order (the
+   full 40-geo permutation) and cell_donors. The nesting is therefore
+   auditable from the CSV without re-running R. The log is ALSO written
+   beside the panels, because results/raw/panel_seeds.csv is a fixed path in
+   the CWD and the next cell's run overwrites it -- 15 of 16 would survive
+   only by the orchestrator remembering to copy each one out. F11's lesson:
+   make losing the evidence structurally impossible, not procedurally
+   avoided.
+
+6. In M9-B mode the run exits before the diagnostic plot. That section
+   re-derives the treated geo from draw_baselines() at the SCENARIO's geo
+   count, which here is the slice size and not the world's -- it would name
+   the wrong city and draw a confident, wrong picture. The donor's figure
+   layer already lies on any theta != 7.5%; this is the same coupling.
+   Refusing to draw beats drawing something false.
+
+LEGACY IS UNTOUCHED
+-------------------
+With neither flag, `m9b_mode` is FALSE and every changed line is bypassed.
+The `else` branch in the main loop is the original Steps 1-4, re-indented by
+two spaces and otherwise character-for-character unchanged; the seed-log
+record gains its extra columns only inside `if (m9b_mode)`; the one line
+that always evaluates differently is
+
+    seed_slot <- if (m9b_mode) M9B_SEED_SLOT else match(sc_id, names(scenarios))
+
+whose else-branch is the original expression.
+
+That is the argument. The evidence is L1 in m9b_world_check.py, which
+recovers the pre-M9B file by REVERSE-APPLYING this patch (not by a copy
+taken by hand, which would only prove a copy matches itself), runs both
+versions with no flags, and compares every output byte.
+
+A1/A3 REPRODUCTION IS NOT AN M9-B ACCEPTANCE CONDITION
+-------------------------------------------------------
+M9-B cells are deliberately NOT the donor's A1/A3. A1 has 21 geos drawn as
+21; M9B_T15_G20 has 21 geos drawn as 41 and sliced. Their numbers differ,
+and must: that difference is precisely the confound this patch removes.
+Only the LEGACY invocation is required to reproduce A1-A4, and it does,
+byte-for-byte. Anyone comparing an M9-B cell against a published A-scenario
+number is comparing two different worlds.
+
+VERIFIED, not illustrative
+--------------------------
+    Rscript parse()     generate_panels.R parses, 67 expressions
+    git apply --check   clean against the theta-mutation + m8-seed-log state
+                        (donor file sha256 7d690e9b..., the hash the M8
+                        freeze records)
+    reverse apply       recovers that exact sha256
+    live run            see m9b_world_check.py output, reproduced in
+                        docs/m9-preregistration.md
+
+WHAT IT DOES NOT CHANGE
+-----------------------
+No estimator, no tool config, no RNG algorithm, no legacy output. It adds
+two flags, one branch, eight seed-log columns and nine metadata fields. What
+it does change is what a cell-to-cell difference is ALLOWED TO MEAN, and
+that change is the entire point.
+
+diff --git a/src/R/generate_panels.R b/src/R/generate_panels.R
+--- a/src/R/generate_panels.R
++++ b/src/R/generate_panels.R
+@@ -136,6 +136,77 @@
+        paste(effect_labels, collapse = ", "))
+ }
+ 
++# ── M9-B: design axes as SLICES OF ONE MAXIMAL WORLD ──────────────────
++#
++#   --post_days 15 --n_control 5
++#
++# Both flags or neither. They select a slice; they do NOT size the world.
++#
++# Why this exists. The donor's own knobs cannot express a design axis
++# honestly. `draw_baselines()` calls rlnorm(n_geos) and then sort()s, so a
++# 6-geo draw is not a prefix of a 10-geo draw even at the same seed; and
++# `select_treated()` picks the geo nearest the MEDIAN, which moves with pool
++# size. Measured at seed 52001: treated geo is City 3 / City 5 / City 11 /
++# City 21 at n_geos = 6 / 10 / 21 / 41. The noise loop is `for (geo) { for
++# (day) }`, so raising total_days shifts the stream for every geo after the
++# first -- T = 15 is not a prefix of T = 42 either. Varying the donor's knobs
++# therefore changes the WORLD as well as the design, and any cell-to-cell
++# difference confounds the two. See docs/m9-preregistration.md.
++#
++# The fix is to generate one maximal latent world per replication and read
++# the cells out of it:
++#
++#   world   pre_days (90) + MAX_POST_DAYS days, n_treated + MAX_CONTROLS geos
++#   treated chosen ONCE from the maximal world, by the unchanged median rule
++#   donors  the remaining MAX_CONTROLS geos in a fixed random order, so the
++#           pools nest by prefix: D5 subset D9 subset D20 subset D40
++#   days    prefix: Y15 subset Y21 subset Y28 subset Y42
++#
++# MAX_* and requested_* are named apart on purpose. If a later
++# "optimisation" generates a world sized to the request, every nesting
++# property above dies silently and the design axis stops meaning what it
++# says. The stopifnot() in the main loop is the tripwire; the metamorphic
++# tests in repro/recast/m9b_world_check.py are the proof.
++MAX_POST_DAYS <- 42L
++MAX_CONTROLS  <- 40L
++
++# The world is the A1 world. Pinned rather than derived from
++# match(sc_id, names(scenarios)), so that "every M9-B cell shares one world"
++# is a stated contract and not an accident of the scenarios list having one
++# element.
++M9B_SEED_SLOT <- 1L
++
++# Dedicated substream for the donor permutation. It must not be drawn from
++# the DGP's noise stream: the donor ordering has to be identical for every
++# theta, T, G_c and tool, and a stream shared with the DGP would move with
++# any of them. panel_seed lies in [52001, 82025] for this study, so the
++# three offsets (0 baselines, 1e5 noise, 9e5 permutation) cannot collide.
++M9B_PERM_SEED_OFFSET <- 900000L
++
++requested_post_days <- parse_cli("--post_days", NA)
++requested_n_control <- parse_cli("--n_control", NA)
++m9b_mode <- !is.na(requested_post_days) || !is.na(requested_n_control)
++if (m9b_mode) {
++  # Partial flags REFUSE. A run with only one axis set would silently take
++  # the other from the donor defaults, and the resulting cell would not be a
++  # slice of the same world as its neighbours.
++  if (is.na(requested_post_days) || is.na(requested_n_control)) {
++    stop("--post_days and --n_control must be given together (M9-B mode). ",
++         "One without the other would silently mix a sliced axis with a ",
++         "donor default.")
++  }
++  requested_post_days <- as.integer(requested_post_days)
++  requested_n_control <- as.integer(requested_n_control)
++  if (is.na(requested_post_days) || requested_post_days < 1L ||
++      requested_post_days > MAX_POST_DAYS) {
++    stop("--post_days must be an integer in 1..", MAX_POST_DAYS)
++  }
++  if (is.na(requested_n_control) || requested_n_control < 1L ||
++      requested_n_control > MAX_CONTROLS) {
++    stop("--n_control must be an integer in 1..", MAX_CONTROLS)
++  }
++}
++
+ # ── Helper Functions ────────────────────────────────────────────────
+ 
+ draw_baselines <- function(n_geos, baseline_mean, baseline_spread, seed) {
+@@ -342,6 +413,18 @@
+   A4 = list(total_days = 45, pre_days = 30)
+ )
+ 
++# M9-B replaces the scenario grid with ONE cell, on the A1 template: no
++# outlier, no shortened pre-period, nothing varying except the two axes. The
++# cell id carries both axes because effect and scenario labels are directory
++# names -- a second cell written under a shared id would overwrite the first,
++# which is the same defect the theta-mutation patch had to fix for labels.
++if (m9b_mode) {
++  scenarios <- setNames(
++    list(list()),
++    sprintf("M9B_T%02d_G%02d", requested_post_days, requested_n_control)
++  )
++}
++
+ # ── Main Loop ───────────────────────────────────────────────────────
+ cat("══════════════════════════════════════════════════════\n")
+ cat("Parameterized DGP: Generating panels\n")
+@@ -364,6 +447,14 @@
+   sc_pre_days <- if (!is.null(sc$pre_days)) sc$pre_days else pre_days
+   sc_is_outlier <- isTRUE(sc$outlier)
+ 
++  # M9-B: sc_* are the SLICE dimensions -- what lands on disk and what
++  # metadata.json tells run_tools.py. They are never used to size the world.
++  if (m9b_mode) {
++    stopifnot(length(sc) == 0L)  # A1 template only; no overrides allowed
++    sc_n_control  <- requested_n_control
++    sc_total_days <- sc_pre_days + requested_post_days
++  }
++
+   n_geos <- n_treated + sc_n_control
+ 
+   cat(sprintf(
+@@ -387,6 +478,19 @@
+     n_iterations = n_iterations,
+     master_seed = master_seed
+   )
++  if (m9b_mode) {
++    # Provenance for the slice, so a cell on disk states its own contract:
++    # what was requested, and what world it was cut from.
++    metadata$m9b <- TRUE
++    metadata$requested_post_days <- requested_post_days
++    metadata$requested_n_control <- requested_n_control
++    metadata$max_post_days <- MAX_POST_DAYS
++    metadata$max_controls <- MAX_CONTROLS
++    metadata$world_total_days <- sc_pre_days + MAX_POST_DAYS
++    metadata$world_n_geos <- n_treated + MAX_CONTROLS
++    metadata$seed_slot <- M9B_SEED_SLOT
++    metadata$perm_seed_offset <- M9B_PERM_SEED_OFFSET
++  }
+   meta_path <- file.path(output_base, sc_id, "metadata.json")
+   dir.create(dirname(meta_path), recursive = TRUE, showWarnings = FALSE)
+   # digits = NA: maximum precision. jsonlite's DEFAULT is digits = 4, which
+@@ -408,14 +512,102 @@
+     for (it in seq_len(n_iterations)) {
+       # Seed: unique per scenario + iteration, shared across effect sizes
+       # so null and effect panels have identical pre-treatment data
+-      panel_seed <- master_seed * 1000 + match(sc_id, names(scenarios)) * 10000 + it
++      # M9-B pins the slot instead: every cell must cut from the SAME world,
++      # so the seed cannot depend on which cell is being generated.
++      seed_slot <- if (m9b_mode) M9B_SEED_SLOT else match(sc_id, names(scenarios))
++      panel_seed <- master_seed * 1000 + seed_slot * 10000 + it
+ 
+-      seed_log[[length(seed_log) + 1L]] <- data.frame(
++      seed_rec <- data.frame(
+         scenario = sc_id, effect_label = eff_label, iteration = it,
+         effect_pct = eff, panel_seed = panel_seed,
+         noise_seed = panel_seed + 100000, stringsAsFactors = FALSE
+       )
++      if (m9b_mode) {
++        seed_rec$perm_seed <- panel_seed + M9B_PERM_SEED_OFFSET
++        seed_rec$world_n_geos <- n_treated + MAX_CONTROLS
++        seed_rec$world_total_days <- sc_pre_days + MAX_POST_DAYS
++        seed_rec$requested_post_days <- requested_post_days
++        seed_rec$requested_n_control <- requested_n_control
++      }
+ 
++      if (m9b_mode) {
++        # ── M9-B: generate the MAXIMAL world, then cut the cell out of it ──
++        n_geos_world     <- n_treated + MAX_CONTROLS
++        total_days_world <- sc_pre_days + MAX_POST_DAYS
++
++        # Tripwire. If someone later "optimises" generation by sizing the
++        # world to the request, the CRN contract across cells dies without a
++        # single test failing downstream -- the numbers would still look
++        # fine, they would just no longer be the same world. Fail here.
++        stopifnot(
++          n_geos_world     == n_treated + MAX_CONTROLS,
++          total_days_world == sc_pre_days + MAX_POST_DAYS,
++          MAX_CONTROLS  >= requested_n_control,
++          MAX_POST_DAYS >= requested_post_days
++        )
++
++        baselines <- draw_baselines(n_geos_world, baseline_mean,
++          baseline_spread,
++          seed = panel_seed
++        )
++        # Treated geo: the unchanged median rule, applied ONCE to the
++        # 41-geo world. It is therefore the same city in every cell, which
++        # is exactly what varying n_geos could not deliver.
++        sel <- select_treated(baselines, n_treated)
++        noise_baselines <- baselines
++
++        df_world <- generate_panel(
++          baselines = baselines,
++          treated_idx = sel$treated_idx,
++          effect_pct = eff,
++          total_days = total_days_world,
++          pre_days = sc_pre_days,
++          trend_slope = trend_slope,
++          seasonality_amplitude = seasonality_amplitude,
++          dow_profile = dow_profile,
++          autocorrelation = autocorrelation,
++          noise_level = noise_level,
++          noise_baselines = noise_baselines,
++          seed = panel_seed + 100000
++        )
++
++        # Donor order: a deterministic permutation of the geos that are not
++        # treated, drawn from its OWN substream. Not the sorted-baseline
++        # prefix -- that would make G_c and donor SIZE-SIMILARITY the same
++        # axis, and a "smaller pool" cell would silently also become a
++        # "smaller donors" cell. draw_baselines() and generate_panel() both
++        # set.seed() on entry, so re-seeding here perturbs neither.
++        control_idx <- setdiff(seq_len(n_geos_world), sel$treated_idx)
++        set.seed(panel_seed + M9B_PERM_SEED_OFFSET)
++        donor_order <- control_idx[sample.int(length(control_idx))]
++
++        keep_geos <- names(baselines)[
++          c(sel$treated_idx, donor_order[seq_len(requested_n_control)])
++        ]
++        keep_days <- seq_len(sc_pre_days + requested_post_days)
++        df <- df_world[df_world$geo %in% keep_geos &
++                         df_world$date %in% keep_days, ]
++        rownames(df) <- NULL
++
++        stopifnot(
++          sum(df$treated) == sc_pre_days + requested_post_days,
++          length(unique(df$geo)) == n_treated + requested_n_control,
++          nrow(df) == (n_treated + requested_n_control) *
++            (sc_pre_days + requested_post_days)
++        )
++
++        # The nesting, recorded rather than re-derived. `donor_order` is the
++        # FULL order of all MAX_CONTROLS donors; every cell's pool is its
++        # prefix, so an auditor can check D5 subset D9 subset D20 subset D40
++        # from this column alone, without re-running R.
++        seed_rec$treated_geo  <- names(baselines)[sel$treated_idx]
++        seed_rec$donor_order  <- paste(names(baselines)[donor_order],
++                                       collapse = "|")
++        seed_rec$cell_donors  <- paste(
++          names(baselines)[donor_order[seq_len(requested_n_control)]],
++          collapse = "|"
++        )
++      } else {
+       # Step 1: Draw baselines (same seed for null and effect)
+       baselines <- draw_baselines(n_geos, baseline_mean, baseline_spread,
+         seed = panel_seed
+@@ -446,6 +638,9 @@
+         noise_baselines = noise_baselines,
+         seed = panel_seed + 100000
+       )
++      }
++
++      seed_log[[length(seed_log) + 1L]] <- seed_rec
+ 
+       # Step 5: Save
+       save_panel(df, sc_id, eff_label, it, output_base)
+@@ -478,6 +673,32 @@
+     "Wrote %d seed records to results/raw/panel_seeds.csv\n",
+     nrow(seeds_df)
+   ))
++  # M9-B: also write it BESIDE the panels. results/raw/panel_seeds.csv is a
++  # fixed path in the CWD, so the next cell's run overwrites it -- 15 of 16
++  # cells' seed logs would survive only if the orchestrator remembered to
++  # copy each one out. Make losing it structurally impossible instead.
++  if (m9b_mode) {
++    for (sc_id in names(scenarios)) {
++      cell_path <- file.path(output_base, sc_id, "panel_seeds.csv")
++      write.csv(seeds_df[seeds_df$scenario == sc_id, ], cell_path,
++        row.names = FALSE
++      )
++      cat(sprintf("Wrote the same records to %s\n", cell_path))
++    }
++  }
++}
++
++# M9-B: stop before the figure layer. It re-derives the treated geo from a
++# fresh draw_baselines(n_geos, ...) at the SCENARIO's geo count, which in
++# M9-B mode is the slice size and not the world size -- so it would name a
++# city that is not the treated one and draw a confident, wrong picture. The
++# donor's figure layer already lies on any theta != 7.5%; this is the same
++# class of coupling. Refusing to draw beats drawing something false. The
++# seed log is written above, so nothing is lost by exiting here.
++if (m9b_mode) {
++  cat("M9-B mode: skipping the diagnostic plot (its treated-geo derivation ",
++      "assumes the scenario's geo count IS the world's).\n", sep = "")
++  quit(save = "no", status = 0)
+ }
+ 
+ 

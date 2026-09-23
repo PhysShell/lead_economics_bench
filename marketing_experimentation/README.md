@@ -173,6 +173,7 @@ refusing to overclaim:
 | `repro/recast/extend_from_freeze.py` | refuses to extend the run unless exactly one thing changed since the freeze |
 | `scripts/theta_interpolation.py` | can `q(θ)` be interpolated between simulated truths? leave-one-θ-out against bootstrap noise |
 | `src/leadbench_mx/clusters.py` | the common-random-numbers gate: refuses any analysis whose truths rest on different latent panels |
+| `repro/recast/m9b_world_check.py` | do the M9-B design axes move the design without moving the world? 11 metamorphic relations, plus the five generator mutations they must refuse |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
@@ -186,8 +187,11 @@ Tests: `pytest tests/` from this directory (232 invariants).
   before any replay ran — and revised once *before* seeing output, with the
   evidence for the revision recorded so it cannot later be mistaken for a
   tolerance widened to fit.
-- **`docs/failures.md` is not decoration.** Eighteen entries, seven of them
-  errors the reader caught rather than me. Four of them — F13–F16 — are one
+- **`docs/failures.md` is not decoration.** Twenty entries, seven of them
+  errors the reader caught rather than me. F20 is the one caught by
+  attacking the checker rather than the code: a metamorphic suite that
+  passed 11/11 also passed the exact shortcut it was written to forbid, and
+  only mutation testing found the hole. Four of them — F13–F16 — are one
   class, **conceptual-model contract failure**: correct arithmetic under a
   structural assumption that was never checked. `docs/assumption-contracts.md`
   is the response: every load-bearing claim carries a source and an

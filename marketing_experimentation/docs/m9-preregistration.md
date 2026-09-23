@@ -325,3 +325,147 @@ M8 baseline (mean `n_geos` 19.5 against 21; mean `total_days` 116.5 against
 upward since CausalPy dominates and scales with panel size.
 
 That is ~6× the largest run in this project so far. **Not launched.**
+
+---
+
+# M9-B Addendum 1 — the axes are slices of one world, and that cost the two free cells
+
+*Written before any M9-B cell was generated for analysis. The investigation
+below was run first; the decision follows from it.*
+
+## The question that had to be asked before launching
+
+The frozen design varies `T` and `G_c` and reads the difference in `r_EVSI`
+as the marginal value of a longer test or a bigger donor pool. That reading
+has a precondition nobody had checked: **the world must be the same on both
+sides of the comparison.** The preregistration's "two cells already paid for"
+line assumed something stronger still — that `(T=15, G_c=20)` *is* A1 and
+`(T=15, G_c=9)` *is* A3, so their rows could be reused.
+
+Both assumptions were tested against the generator. Both are false.
+
+## What the generator actually does when you move an axis
+
+Running the donor's own `draw_baselines()` and `select_treated()` at a fixed
+seed (52001), varying only the geo count:
+
+    n_geos= 6   first3: 1700.7, 2459.6, 2650.4   treated: City 3  (2650.4)
+    n_geos=10   first3: 1038.2, 1700.7, 2459.6   treated: City 5  (2760.0)
+    n_geos=21   first3:  854.7,  989.3, 1038.2   treated: City 11 (3305.1)
+    n_geos=41   first3:  854.7,  989.3, 1038.2   treated: City 21 (3305.1)
+
+    baselines nested?              NO
+    treated geo stable across G_c? NO
+
+Three independent mechanisms, none of them a bug — nothing in the donor's
+design ever asked for nesting:
+
+1. `draw_baselines` calls `rlnorm(n_geos, ...)` and then `sort()`s. The RNG
+   *stream* is nested; the sorted vector is not, so a 6-geo draw is not a
+   prefix of a 10-geo draw.
+2. `select_treated` picks the geo nearest the **median** baseline, and the
+   median moves with pool size. A different city is treated in every cell.
+3. The noise loop is `for (geo) { for (day) }`, so raising `total_days`
+   shifts the stream for every geo after the first. `T=15` is not a prefix
+   of `T=42` either.
+
+So a 16-cell sweep on the donor's knobs compares **16 different worlds**.
+Every number in it would be correctly computed, and the axis would mean
+something false — the F13–F19 class exactly: *a computation that is
+internally correct under a structural assumption that was never checked.*
+Nothing downstream would have noticed. An EVSI difference between `G_c=5` and
+`G_c=40` would have been reported as the value of a larger donor pool when
+part of it is the value of a different treated city.
+
+## The decision
+
+The two readings were mutually exclusive — keep the donor's sampling and
+accept confounded axes, or nest the worlds and pay to regenerate the two
+"free" cells. **Nested, all 16 cells regenerated.** Reusing A1 and A3 saves
+about 1.7 CPU-hours and buys an axis whose meaning is false.
+
+## The world contract, as implemented
+
+`repro/recast/m9b-axes.patch` adds `--post_days` and `--n_control` (both or
+neither; a partial invocation refuses). Every replication generates one
+**maximal latent world** —
+
+    90 pre days + MAX_POST_DAYS (42) post days,  1 treated + MAX_CONTROLS (40) geos
+
+— and every cell is a slice of it:
+
+| | |
+|---|---|
+| treated geo | chosen **once**, from the 41-geo world, by the unchanged median rule. The same city in every cell. |
+| donor pools | the other 40 geos in a fixed random order; each cell takes a prefix, so `D5 ⊂ D9 ⊂ D20 ⊂ D40`. |
+| durations | prefixes of the maximal post-period: `Y15 ⊂ Y21 ⊂ Y28 ⊂ Y42`. |
+
+The donor order comes from a **dedicated RNG substream** (`panel_seed +
+900000`), not from the DGP's noise stream and not from the sorted baselines.
+The sorted-baseline prefix was the cheap option and is wrong twice: "fewer
+donors" would silently also mean "donors closer to the treated geo in size",
+collapsing two axes into one, and the pool would stop being independent of
+the treated selection.
+
+`MAX_*` and `requested_*` are named apart deliberately. Sizing the world to
+the request looks like pure savings and destroys every property above
+without a single downstream test failing. A `stopifnot()` in the loop is the
+tripwire; W6 below is the proof.
+
+## Evidence, before the freeze
+
+`repro/recast/m9b_world_check.py`, 11/11 at generator sha256 `fac70c97`:
+
+| | check | result |
+|---|---|---|
+| L1 | no flags → byte-identical to the pre-M9B generator, A1–A4 | PASS, 20 files |
+| W1 | treated geo identical across every cell | PASS, `City 21` |
+| W2 | treated `Y`/`Y_cf` invariant in `G_c` | PASS, exact |
+| W3 | `D5 ⊂ D9 ⊂ D20 ⊂ D40`, per replication | PASS, sizes 6/10/21/41 |
+| W3b | each pool is the prefix of one recorded permutation, **and equals the geo set on disk** | PASS |
+| W3c | `[desc]` D5 City indices = 1, 13, 18, 22, 38 (a size-sorted prefix would read 1–5) | descriptive |
+| W3d | donor order **re-derived from `perm_seed` alone**, outside the generator, matches exactly | PASS |
+| W4 | `Y15 == prefix(Y21) == prefix(Y28) == prefix(Y42)` | PASS, exact |
+| W5 | `Y_counterfactual` invariant in θ; `Y` invariant outside the treated post-period | PASS |
+| W6 | **negative test** — strip `M9B_T42_G40` to the smaller cell's geos and days → equals `M9B_T15_G05` | PASS, exact |
+| W7 | one world per replication: `panel_seed`, `donor_order`, `treated_geo`, world size constant across cells | PASS |
+| W8 | `[structural]` `run_panel` reads the panel once; all four tool inputs derive from it | PASS |
+
+L1 recovers the pre-M9B file by **reverse-applying the patch**, not from a
+copy taken by hand — a hand copy only proves that a copy matches itself.
+
+### The suite was then attacked
+
+A passing suite that has never failed on a real defect is an assertion. Five
+mutations were introduced into the generator; the harness must refuse each:
+
+| mutation | outcome |
+|---|---|
+| M-a world sized to the request, tripwire left in | generator **exits 1** — nothing is written |
+| M-b same, tripwire deleted | REFUSED, 6/11 fail (W1, W2, W3b, W4, W6, W7) |
+| M-c donors are the sorted-baseline prefix | REFUSED — **by W3d alone** |
+| M-d permutation drawn from the DGP noise seed | REFUSED — **by W3d alone** |
+| M-e treated geo chosen from the slice, not the world | REFUSED, 6/11 fail |
+| — restored | 11/11 PASS |
+
+M-c and M-d are the finding. See `docs/failures.md` F20.
+
+## What is no longer claimed
+
+**A1/A3 reproduction is not an M9-B acceptance condition.** `M9B_T15_G20`
+has 21 geos drawn as 41 and sliced; A1 has 21 geos drawn as 21. Their
+numbers differ, and must — that difference *is* the confound being removed.
+Only the legacy invocation must reproduce A1–A4, and it does, byte-for-byte
+(L1). Anyone comparing an M9-B cell against a published A-scenario figure is
+comparing two different worlds.
+
+## Revised cost
+
+16 cells × 16 truths × 4 tools × 25 iterations = **25,600 rows**, none
+reused. At M8's measured 1.92 s/row and the same mean slice size (`n_geos`
+19.5, `total_days` 116.5), the central estimate is **~13.7 CPU-hours**,
+against ~12 for the 14-cell reuse plan. Generation is now always 41×132 per
+panel, which is cheap; estimation still runs on the slice.
+
+Uncertainty remains upward: CausalPy dominates and scales with panel size,
+and `G_c=40` is larger than anything M8 ran.

@@ -835,3 +835,71 @@ not a trapezoid node whose weight accidentally decides the atom's fate; and
 the analytic mass table **checks** the quadrature rather than being derived
 from it. That last point is what caught the residual 0.0019 error after the
 main fix.
+
+## F20. The M9-B test suite passed 10/10 while accepting the exact shortcut it was written to forbid
+
+**What happened.** The M9-B world contract says each cell's donor pool is a
+prefix of a *random* permutation of the 40 controls, drawn from a dedicated
+RNG substream. The cheap alternative — take the first `G_c` geos of the
+sorted-baseline vector — is forbidden because it fuses two axes: "fewer
+donors" would silently also mean "donors closer to the treated geo in size".
+
+The metamorphic suite written to guard that contract checked:
+
+    W3   D5 ⊂ D9 ⊂ D20 ⊂ D40
+    W3b  each pool is the prefix of one recorded permutation
+    W3c  [desc] the City indices of D5
+
+It passed 11/11 against the real generator. Then the generator was mutated to
+use `donor_order <- control_idx` — the sorted-baseline prefix, the forbidden
+shortcut, in one line.
+
+**The suite passed it 10/10.**
+
+**Why.** Prefixes of a sorted list nest exactly as happily as prefixes of a
+shuffled one. W3 is satisfied. W3b is satisfied, because `cell_donors` is
+still the prefix of the recorded `donor_order` — the log faithfully recorded
+the wrong thing. W3c saw `[1, 2, 3, 4, 5]` and said nothing, because it was
+written as descriptive: a uniform permutation *can* begin with City 1–5, so
+asserting that it does not would be asserting that a random draw avoided a
+particular value. Every check was individually correct and the set of them
+had a hole exactly the shape of the defect.
+
+The same mutation applied to the *seed* rather than the ordering — drawing
+the permutation from the DGP's noise stream, `panel_seed + 100000` — also
+passed 10/10, for the same reason: the recorded provenance was internally
+consistent with itself.
+
+**The fix (W3d).** Recompute the permutation **outside the generator**, in a
+separate R process, from `perm_seed` alone:
+
+    set.seed(perm_seed); ci <- setdiff(seq_len(41), treated_i)
+    paste("City", ci[sample.int(length(ci))])
+
+and require element-for-element equality with the recorded order. This is
+exact, not probabilistic, and it pins all three things at once: the
+substream's seed, the sampling operation, and that it is not a baseline sort.
+Both mutations are now refused by W3d alone.
+
+A second gap closed on the same pass: W3b compared the seed log against
+itself and never against the panels on disk, so a seed log could have
+described a slice that was never taken. It now also asserts that the geo set
+in the parquet equals `{treated_geo} ∪ cell_donors`.
+
+**The general form.** *A verification suite that has never failed on a real
+defect is an assertion, not evidence.* Five mutations were run — world sized
+to the request with and without the tripwire, sorted-baseline donors,
+noise-stream seed, treated geo chosen from the slice — and two of the five
+were caught only by a check that did not exist until the suite was attacked.
+The 10/10 was not weak evidence; it was, for the property that most needed
+guarding, no evidence at all.
+
+This is a sibling of F11, where two-lane isolation was asserted and only a
+broken library exposed it. There the environment claim went unchecked; here
+the *checker* went unchecked. Mutation testing is now the entry condition
+for any new metamorphic suite in this track: write the relations, then write
+the defect they are supposed to catch, and require the suite to refuse it.
+
+**Near-miss, not an error in a result.** No M9-B cell had been generated for
+analysis. The cost was one hour, not a withdrawn finding — which is the only
+reason it reads as a method note rather than as F15 did.
