@@ -1,13 +1,13 @@
 {
-  "frozen_at": "2026-09-23T14:23:23+00:00",
+  "frozen_at": "2026-09-23T15:33:17+00:00",
   "purpose": "M8 pilot accepted; freeze before the iteration count changes",
   "permitted_change_after_this_point": "n_iterations: 10 -> 25, for the nine new truths only",
   "code": {
-    "analysis_commit": "578c069c43fc8c9a0511a7442cba5df496b498c2",
-    "analysis_commit_subject": "F18: two bugs inside the machinery built to prevent bugs",
+    "analysis_commit": "f1202c2b447ec4566f57a3202c0aff87cc5d5ec5",
+    "analysis_commit_subject": "Point at the freeze commit from outside it",
     "freeze_commit": "recorded in docs/m8-pilot-freeze.commit by the commit AFTER this file's; not recordable here, since a file cannot contain the hash of the commit that contains it",
     "tag_note": "this remote refuses tag pushes, so do not rely on a tag to find the freeze",
-    "stale_copy_warning": "a superseded copy of this artifact exists in the analysis commit itself, recording tree_clean=false. Use the tagged one.",
+    "stale_copy_warning": "a superseded copy of this artifact exists in the analysis commit itself, recording tree_clean=false. Use the one named by docs/m8-pilot-freeze.commit.",
     "tree_clean_at_generation": false,
     "m8_baseline_commit": "4c892f5",
     "m8_baseline_note": "the commit that introduces the CRN cluster gate. NOT cc38fc2 -- that is F16 only and reproduces a pilot with no gate."
@@ -112,7 +112,7 @@
   "result": {
     "pilot_acceptance": "ACCEPTED, 21/21 after the F17 fix",
     "f17_closure": "CLOSED: only effect_pct and runtime_seconds differ between the pre- and post-fix runs; consumer inventory has no entry in class `estimation`",
-    "attach_equivalence": "slope 1.00000 / intercept <=1.6e-09 / R2 1.00000 for three tools; causalpy slope 0.99920, intercept -1.6e-04, R2 0.99997, max|new-old| 1.1e-03, consistent with its own sampler noise rather than a different panel",
+    "attach_equivalence": "slope 1.00000 / intercept <=1.6e-09 / R2 1.00000 for three tools. CausalPy: slope 0.99920, intercept -1.6e-04, R2 0.99997. Its new/old deviations are COMPATIBLE with the previously observed old/old variability envelope, median at the 33rd percentile of accepted old/old pair deviations. No evidence here of an attach-equivalence failure. The mechanism underlying that variability remains unidentified (F8). NOT a claim that the distributions are the same -- 21 old/old pairs, not independent, and the new/old max slightly exceeds the old/old max.",
     "boundary_leave_one_out": "PASS, 0/56 above the 95th percentile",
     "boundary_stress": "PASS, 0/16 above the 95th percentile, spans 3.00-7.50pp",
     "caveat_on_the_gate": "the yardstick is sampling noise, which shrinks with cluster count. This is a PASS AT n=10. The gate must be re-run at n=25 before a continuous-prior EVSI is built on it, and it may fail there. That is the gate working."

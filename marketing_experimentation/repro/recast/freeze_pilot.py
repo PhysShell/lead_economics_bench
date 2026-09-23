@@ -99,7 +99,9 @@ def main() -> None:
             #   A = analysis_commit : all code, contracts and gates
             #   B = freeze commit   : parent A, adds ONLY this file
             #
-            # This artifact names A. Git names B, and the tag points at it.
+            # This artifact names A. B is named by a pointer file written
+            # one commit later -- not by a tag, since this remote refuses
+            # tag pushes and a tag absent from origin identifies nothing.
             # An earlier, STALE copy of this file also sits inside A, from a
             # generation before A existed; it records tree_clean = false and
             # must not be used. Recorded here because the alternative is a
@@ -120,8 +122,8 @@ def main() -> None:
                         "tag to find the freeze",
             "stale_copy_warning":
                 "a superseded copy of this artifact exists in the analysis "
-                "commit itself, recording tree_clean=false. Use the tagged "
-                "one.",
+                "commit itself, recording tree_clean=false. Use the one "
+                "named by docs/m8-pilot-freeze.commit.",
             "tree_clean_at_generation": git("status", "--porcelain") == "",
             "m8_baseline_commit": "4c892f5",
             "m8_baseline_note":
@@ -204,9 +206,15 @@ def main() -> None:
                            "`estimation`",
             "attach_equivalence":
                 "slope 1.00000 / intercept <=1.6e-09 / R2 1.00000 for three "
-                "tools; causalpy slope 0.99920, intercept -1.6e-04, R2 "
-                "0.99997, max|new-old| 1.1e-03, consistent with its own "
-                "sampler noise rather than a different panel",
+                "tools. CausalPy: slope 0.99920, intercept -1.6e-04, R2 "
+                "0.99997. Its new/old deviations are COMPATIBLE with the "
+                "previously observed old/old variability envelope, median at "
+                "the 33rd percentile of accepted old/old pair deviations. No "
+                "evidence here of an attach-equivalence failure. The "
+                "mechanism underlying that variability remains unidentified "
+                "(F8). NOT a claim that the distributions are the same -- 21 "
+                "old/old pairs, not independent, and the new/old max slightly "
+                "exceeds the old/old max.",
             "boundary_leave_one_out": "PASS, 0/56 above the 95th percentile",
             "boundary_stress": "PASS, 0/16 above the 95th percentile, spans "
                                "3.00-7.50pp",

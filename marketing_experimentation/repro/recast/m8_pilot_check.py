@@ -219,12 +219,16 @@ def main() -> None:
     print("   The regression above is the identity for three tools and very")
     print("   nearly it for causalpy. Saying causalpy's gap is `caused by")
     print("   sampler noise` would be a mechanism claim this cannot support.")
-    print("   What CAN be checked is whether the new-vs-old deviation is drawn")
-    print("   from the same distribution as the deviation between two truths")
-    print("   ALREADY accepted -- the previously established envelope. If the")
-    print("   new arms sat on different panels, new/old pairs would stand out")
-    print("   against old/old pairs. Max |resid(a) - resid(b)| per cluster,")
-    print("   over every truth pair.\n")
+    print("   What CAN be shown is whether the new-vs-old deviation is")
+    print("   COMPATIBLE with the previously observed old/old envelope. Not")
+    print("   `drawn from the same distribution` -- 21 old/old pairs is far")
+    print("   too few for that, the pairs are not independent, and the")
+    print("   new/old max slightly exceeds the old/old max. Descriptive, and")
+    print("   reported as such.")
+    print("\n   This is NOT a pass/fail gate. Any band drawn around these")
+    print("   percentiles would have been drawn after seeing them, which is")
+    print("   how a careful experiment turns into a search for a law that")
+    print("   fits. Max |resid(a) - resid(b)| per cluster, over every pair.\n")
     import itertools
     old_truths = {float(t) for t in a.effect_pct.unique()}
     for tool in sorted(both.tool_label.unique()):
@@ -244,17 +248,21 @@ def main() -> None:
         if not len(oo) or not len(no):
             continue
         pct = 100.0 * float((oo < np.median(no)).mean())
-        ok &= report(
-            f"{tool}: new/old deviation typical of old/old",
-            20.0 <= pct <= 80.0,
-            f"old/old median {np.median(oo):.2e} max {oo.max():.2e} | "
-            f"new/old median {np.median(no):.2e} max {no.max():.2e} | "
-            f"median new/old at the {pct:.0f}th percentile of old/old")
-    print("\n   Read this as: whatever produces causalpy's deviation also")
-    print("   produces the deviation between two M7 truths, so it is a")
-    print("   property of the estimator across arms and NOT evidence of a")
-    print("   different panel. It is consistent with the F8 variability; it")
-    print("   is not proof of its mechanism, and F8 remains unexplained.")
+        print(f"   [desc] {tool:18s} old/old median {np.median(oo):.2e} "
+              f"max {oo.max():.2e} | new/old median {np.median(no):.2e} "
+              f"max {no.max():.2e}")
+        print(f"          median new/old at the {pct:.0f}th percentile of "
+              f"old/old")
+    print("\n   CausalPy's new/old deviations are COMPATIBLE with the")
+    print("   previously observed old/old variability envelope; their median")
+    print("   lies at the 33rd percentile of accepted old/old pair")
+    print("   deviations. We observe no evidence here of an")
+    print("   attach-equivalence failure. The mechanism underlying that")
+    print("   variability remains unidentified (F8).")
+    print("\n   Proving `same distribution` would need a preregistered")
+    print("   equivalence or permutation test accounting for the dependence")
+    print("   between pairs. It is deliberately NOT added now: a criterion")
+    print("   invented after seeing the data is not a test of the data.")
 
     print("\n== 6. the preregistered cluster gate on the merged file ==")
     merged = both[np.isfinite(both[["att_pct"]].to_numpy(dtype=float)).all(axis=1)]

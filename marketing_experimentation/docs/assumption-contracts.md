@@ -188,6 +188,33 @@ looking the same. This is the same family as F13-F16 — an instrument whose
 described behaviour and actual behaviour differed — which is why it is a
 contract and not a code comment.
 
+## The principle underneath C9, C9a and C10
+
+F17 and F18 are the same shape twice:
+
+    F17   a decimal fact -> a binary serialisation -> a tolerance
+          -> the tolerance itself fails on the one case it existed for
+
+    F18   a "canonical" form -> two spellings of one value
+          -> a false CHANGED -> the temptation to relax the checker
+
+So:
+
+> **Representation disagreements are resolved by defining identity, not by
+> widening equality.**
+
+Every time a representation question in this project was answered with a
+tolerance, the tolerance was the bug. Half the last retained digit is exact
+in decimal and inexact in binary. `0.10` and `0.1` are equal as numbers and
+unequal as strings. Neither needed an epsilon; both needed the question asked
+in the domain where the answer is exact.
+
+The same principle is what C10 is about from the other side: `absent`,
+`null`, `NaN` and `""` are four distinct states, and systems built for
+convenience — pandas among them — will merge them into one comfortable
+swamp. A comparison that has already merged them cannot answer a question
+about which one it was.
+
 ## Metamorphic relations
 
 Where no oracle exists — and for a simulator there usually is none — the
