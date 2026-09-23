@@ -231,3 +231,46 @@ def test_a_mute_channel_gives_an_interval_touching_zero():
     counts = np.tile(np.array([0.0, 24.0, 1.0]), (len(problem.theta), 1))
     r = sign_loss_posterior(problem, counts, 0.5, 4000, seed=0)
     assert r["gap_lo"] == pytest.approx(0.0, abs=1e-6)
+
+
+def _evsi_reference(problem, p):
+    """A transparent, slow EVSI for ONE likelihood matrix.
+
+    Written as loops on purpose. `evsi_batch` is now the only implementation
+    in the file, and every other test in here -- Blackwell, monotonicity,
+    the mute channel -- computes through it, so all of them would agree with
+    an einsum that reduced over the wrong axis. A reference that shares no
+    code with it is the only thing that can catch that.
+    """
+    prior, util = problem.prior, problem.utility
+    total = 0.0
+    for y in range(p.shape[1]):
+        marg = sum(prior[j] * p[j, y] for j in range(len(prior)))
+        if marg <= 0:
+            continue
+        post = [prior[j] * p[j, y] / marg for j in range(len(prior))]
+        best = max(sum(util[a, j] * post[j] for j in range(len(prior)))
+                   for a in range(util.shape[0]))
+        total += marg * best
+    return total - problem.value_no_experiment()
+
+
+@pytest.mark.parametrize("seed", [0, 1, 2])
+def test_the_vectorised_evsi_matches_an_independent_loop(seed):
+    """The einsum has no second implementation to disagree with."""
+    rng = np.random.default_rng(seed)
+    pr = a_problem()
+    P = rng.dirichlet(np.ones(3), size=(6, len(pr.theta)))
+    got = evsi_batch(pr, P)
+    want = np.array([_evsi_reference(pr, P[d]) for d in range(P.shape[0])])
+    assert np.allclose(got, want, atol=1e-10), (got, want)
+
+
+def test_the_reference_also_agrees_on_a_two_level_signal():
+    """BIT has two levels, VERDICT three; an axis bug can hide in one shape."""
+    rng = np.random.default_rng(5)
+    pr = a_problem()
+    P = rng.dirichlet(np.ones(2), size=(4, len(pr.theta)))
+    got = evsi_batch(pr, P)
+    want = np.array([_evsi_reference(pr, P[d]) for d in range(P.shape[0])])
+    assert np.allclose(got, want, atol=1e-10)
