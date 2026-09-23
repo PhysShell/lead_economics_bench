@@ -1,14 +1,14 @@
 {
-  "frozen_at": "2026-09-23T15:33:17+00:00",
+  "frozen_at": "2026-09-23T15:34:16+00:00",
   "purpose": "M8 pilot accepted; freeze before the iteration count changes",
   "permitted_change_after_this_point": "n_iterations: 10 -> 25, for the nine new truths only",
   "code": {
-    "analysis_commit": "f1202c2b447ec4566f57a3202c0aff87cc5d5ec5",
-    "analysis_commit_subject": "Point at the freeze commit from outside it",
+    "analysis_commit": "18c5d9f7fe292b7af59e6a021cbedb1006b931b4",
+    "analysis_commit_subject": "Refuse to extend when the freeze and its pointer disagree",
     "freeze_commit": "recorded in docs/m8-pilot-freeze.commit by the commit AFTER this file's; not recordable here, since a file cannot contain the hash of the commit that contains it",
     "tag_note": "this remote refuses tag pushes, so do not rely on a tag to find the freeze",
     "stale_copy_warning": "a superseded copy of this artifact exists in the analysis commit itself, recording tree_clean=false. Use the one named by docs/m8-pilot-freeze.commit.",
-    "tree_clean_at_generation": false,
+    "tree_clean_at_generation": true,
     "m8_baseline_commit": "4c892f5",
     "m8_baseline_note": "the commit that introduces the CRN cluster gate. NOT cc38fc2 -- that is F16 only and reproduces a pilot with no gate."
   },
