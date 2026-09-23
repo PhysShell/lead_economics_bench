@@ -115,6 +115,24 @@ Two rules make it work rather than decorate:
     CHECK        action_boundaries() against a 500,001-point brute-force
                  argmax sweep; and an assertion that +3% is not among them
 
+### C9 — the recorded θ is the θ the DGP actually used
+
+    SOURCE       two independent write paths for the same quantity:
+                 panel_seeds.csv via write.csv, results.jsonl via
+                 jsonlite::toJSON (whose default is digits = 4)
+    CONSEQUENCE  the two must agree exactly
+    CHECK        m8_pilot_check.py section 1b, exact float equality.
+                 This is how F17 was found: θ = −0.03125 was recorded as
+                 −0.0312, moving a preregistered decision-boundary truth
+                 0.005pp off the boundary it exists to sit on.
+
+A note on why this contract exists at all. It was not foreseen. The seed log
+was added to evidence a *different* claim — that new arms attach to old
+clusters — and happened to create a second write path for θ. The comparison
+then fell out for free. That is worth generalising: **a provenance record is
+worth more when it duplicates something already recorded elsewhere**, because
+the duplication is what makes a silent corruption visible.
+
 ## Metamorphic relations
 
 Where no oracle exists — and for a simulator there usually is none — the

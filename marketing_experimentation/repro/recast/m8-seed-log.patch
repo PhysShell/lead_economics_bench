@@ -20,6 +20,15 @@ exposed it.
 
 WHAT IT ADDS
 ------------
+0. generate_panels.R writes metadata.json with `digits = NA`. jsonlite's
+   DEFAULT is digits = 4, and run_tools.py:445 reads effect_pct from exactly
+   that file -- so theta = -0.03125 was recorded as -0.0312, moving a
+   preregistered decision-boundary truth off the boundary it exists to sit
+   on. The donor never hit it (0 and 0.075 are 4-dp exact); the
+   theta-mutation patch introduced values that are not. Same mechanism as
+   D12, whose own remedy line already read "one argument, digits = NA" --
+   applied there to the tool-output path and not to this one. See F17.
+
 1. generate_panels.R writes results/raw/panel_seeds.csv, one row per panel:
        scenario, effect_label, iteration, effect_pct, panel_seed, noise_seed
    The checkable property is that panel_seed is CONSTANT across effect_label
@@ -44,16 +53,21 @@ VERIFIED, not illustrative
     live run            360 seed records written; panel_seed constant across
                         all 9 effect labels in all 40 clusters; every seed
                         equal to 42000 + 10000*scenario_idx + iteration
+    metadata precision  {"eff_m031": -0.03125, "eff_p052": 0.051875,
+                        "eff_p104": 0.104375} -- exact after the fix,
+                        -0.0312 / 0.0519 / 0.1044 before it
     labels              no collision with the existing seven truths
 
 WHAT IT DOES NOT CHANGE
 -----------------------
-No estimator input, no RNG, no output value. It adds one CSV and one JSON
-field. A run with this patch produces byte-identical att/ci columns to a run
-without it.
+No estimator input, no RNG, no estimate. It adds one CSV, one JSON field,
+and precision to a field that was already there. The pilot was re-run from
+scratch after the precision fix and the first run kept as a baseline, so
+"metadata precision does not touch estimation" is measured rather than
+assumed -- see m8_pilot_check.py section 7.
 
 diff --git a/src/R/generate_panels.R b/src/R/generate_panels.R
-index 2f8cfbb..42be893 100644
+index 2f8cfbb..cd5891b 100644
 --- a/src/R/generate_panels.R
 +++ b/src/R/generate_panels.R
 @@ -349,6 +349,12 @@ cat("═════════════════════════
@@ -69,7 +83,24 @@ index 2f8cfbb..42be893 100644
  for (sc_id in names(scenarios)) {
    sc <- scenarios[[sc_id]]
  
-@@ -396,6 +402,12 @@ for (sc_id in names(scenarios)) {
+@@ -383,7 +389,15 @@ for (sc_id in names(scenarios)) {
+   )
+   meta_path <- file.path(output_base, sc_id, "metadata.json")
+   dir.create(dirname(meta_path), recursive = TRUE, showWarnings = FALSE)
+-  writeLines(toJSON(metadata, auto_unbox = TRUE, pretty = TRUE), meta_path)
++  # digits = NA: maximum precision. jsonlite's DEFAULT is digits = 4, which
++  # silently rounded theta = -0.03125 to -0.0312 in metadata.json, and
++  # run_tools.py reads effect_pct from exactly this file. The donor never hit
++  # it because its own thetas (0, 0.075) are 4-dp exact; the theta-mutation
++  # patch introduced values that are not. Same mechanism as D12. See F17.
++  writeLines(
++    toJSON(metadata, auto_unbox = TRUE, pretty = TRUE, digits = NA),
++    meta_path
++  )
+ 
+   for (ei in seq_along(effect_sizes)) {
+     eff <- effect_sizes[ei]
+@@ -396,6 +410,12 @@ for (sc_id in names(scenarios)) {
        # so null and effect panels have identical pre-treatment data
        panel_seed <- master_seed * 1000 + match(sc_id, names(scenarios)) * 10000 + it
  
@@ -82,7 +113,7 @@ index 2f8cfbb..42be893 100644
        # Step 1: Draw baselines (same seed for null and effect)
        baselines <- draw_baselines(n_geos, baseline_mean, baseline_spread,
          seed = panel_seed
-@@ -441,6 +453,25 @@ for (sc_id in names(scenarios)) {
+@@ -441,6 +461,25 @@ for (sc_id in names(scenarios)) {
  }
  
  cat(sprintf("Done. Total panels generated: %d\n", total_panels))

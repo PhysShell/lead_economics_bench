@@ -88,14 +88,18 @@ def main() -> None:
     ap.add_argument("--pilot", default="/tmp/results_m8_pilot.jsonl")
     ap.add_argument("--atlas", default="/tmp/results_atlas.jsonl")
     ap.add_argument("--seeds", default="/tmp/panel_seeds_m8_pilot.csv")
+    ap.add_argument("--baseline", default="/tmp/results_m8_pilot_rounded.jsonl",
+                    help="the pre-fix run, kept as an F17 control")
     args = ap.parse_args()
 
     p = load(args.pilot)
+    p_df = p
     a = load(args.atlas)
     ok = True
 
     print("== 1. arithmetic: the seed the run actually used ==")
-    s = pd.read_csv(args.seeds)
+    s_df = pd.read_csv(args.seeds)
+    s = s_df
     idx = {k: i + 1 for i, k in enumerate(sorted(s.scenario.unique()))}
     exp = 42 * 1000 + s.scenario.map(idx) * 10000 + s.iteration
     ok &= report("panel_seed matches the formula the analysis assumes",
@@ -104,6 +108,19 @@ def main() -> None:
     g = s.groupby(["scenario", "iteration"]).panel_seed.nunique()
     ok &= report("panel_seed constant across effect labels in a cluster (C3)",
                  bool((g == 1).all()), f"{int((g > 1).sum())}/{len(g)} clusters differ")
+
+    print("\n== 1b. C9: is the RECORDED theta the theta the DGP actually used? ==")
+    print("   panel_seeds.csv goes through write.csv; results.jsonl goes")
+    print("   through jsonlite::toJSON, whose default is digits = 4. Two")
+    print("   independent write paths for the same quantity, so they can be")
+    print("   compared -- which is how F17 was found.")
+    seed_theta = sorted(float(t) for t in s_df.effect_pct.unique())
+    res_theta = sorted(float(t) for t in p.effect_pct.unique())
+    same = (len(seed_theta) == len(res_theta)
+            and all(a == b for a, b in zip(seed_theta, res_theta)))
+    ok &= report("results.jsonl theta == panel_seeds.csv theta, EXACTLY", same,
+                 "" if same else
+                 f"seeds {seed_theta}\n          results {res_theta}")
 
     print("\n== 2. identity: is the pilot the shape it was preregistered as? ==")
     ok &= report("row count", len(p) == 1440, f"{len(p)} rows, expected 1,440")
@@ -188,6 +205,35 @@ def main() -> None:
     except SystemExit as e:
         ok &= report("merged file gates to iterations 1-10 (C7)", False,
                      str(e).split("\n")[0])
+
+    if args.baseline and Path(args.baseline).exists():
+        print("\n== 7. F17 control: does metadata precision touch estimation? ==")
+        print("   The pilot was re-run after the jsonlite precision fix rather")
+        print("   than corrected in place. The panels come from the same seeds,")
+        print("   so the estimates MUST be identical -- if att_level moved,")
+        print("   metadata precision was reaching the estimator and something")
+        print("   worse than a rounded label is wrong.")
+        base = load(args.baseline)
+        key = ["tool_label", "scenario", "effect_label", "iteration"]
+        m = base.merge(p_df, on=key, suffixes=("_old", "_new"))
+        ok2 = len(m) == len(base)
+        report("every row of the first run is matched in the second", ok2,
+               f"{len(m)} of {len(base)}")
+        if ok2:
+            for col in ("att_level", "ci_lower_level", "ci_upper_level"):
+                if f"{col}_old" not in m.columns:
+                    continue
+                a_ = pd.to_numeric(m[f"{col}_old"], errors="coerce")
+                b_ = pd.to_numeric(m[f"{col}_new"], errors="coerce")
+                d_ = (a_ - b_).abs()
+                report(f"{col} identical across the two runs",
+                       bool(d_.max() == 0 or d_.max() < 1e-12),
+                       f"max |diff| = {d_.max():.3e}")
+            t_old = pd.to_numeric(m["effect_pct_old"], errors="coerce")
+            t_new = pd.to_numeric(m["effect_pct_new"], errors="coerce")
+            moved = (t_old != t_new).sum()
+            report("and effect_pct DID move -- that is the fix",
+                   moved > 0, f"{moved} of {len(m)} rows corrected")
 
     print(f"\n{'=' * 64}")
     if ok:

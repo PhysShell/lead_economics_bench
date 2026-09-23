@@ -602,3 +602,53 @@ than passing quietly in a test file.
 It will not stop the next error. It narrows the class. F16 had both a comment
 in the donor's own source and a correlation of +1.000 sitting in the results
 file, and neither was consulted, because nothing required it.
+
+## F17. A preregistered decision boundary, rounded off the boundary it exists to sit on
+
+**What was wrong.** The M8 pilot placed truths at the four points where the
+optimal budget action changes: −3.125%, +1.25%, +5.1875%, +10.4375%. The
+results file recorded them as **−0.0312, 0.0125, 0.0519, 0.1044**.
+
+**The chain.** `generate_panels.R` writes `metadata.json` through
+`jsonlite::toJSON(...)`, whose default is `digits = 4`. `run_tools.py:445`
+reads `effect_pct` from exactly that file and copies it into every result
+row. The panels themselves were generated from the **exact** θ — the DGP is
+correct, `true_att_pct` is correct — but the *recorded* nominal θ is not.
+
+**Same mechanism as D12**, where the identical default was traced as the
+source of a 3e-5 "solver floor". D12 was recorded, understood, and its blast
+radius was never checked. The donor never hit this one because its own
+truths, 0 and 0.075, are 4-dp exact; the θ-mutation patch introduced values
+that are not, and did not raise the precision. **That makes it our defect
+operating through their default**, not a donor bug.
+
+**What it changed.** A boundary truth sitting 0.005pp off the boundary. Small
+in dollars, and fatal to the purpose: the whole reason those four truths
+exist is to sit *at* the indifference point, and a grid that misses it is a
+grid of ordinary points with boundary names. The preregistered acceptance
+check asserted exactness and failed, which is the one part of this that
+worked as designed.
+
+**How it was caught.** Not by looking. The seed log added to evidence an
+unrelated claim — that new arms attach to old clusters — happened to write θ
+through `write.csv` instead of `toJSON`, creating a **second, independent
+record of the same quantity**. The two disagreed. Without that accident the
+rounded grid would have gone into the full run and into the continuous-prior
+EVSI built on top of it, where a 0.005pp shift in a boundary truth is
+invisible in every output.
+
+Generalising the accident into a rule, as C9: *a provenance record is worth
+more when it duplicates something already recorded elsewhere*, because the
+duplication is what makes a silent corruption visible. A log that only
+records things nothing else records can confirm but never contradict.
+
+**How it is prevented now.** `toJSON(..., digits = NA)` in the patch, and C9
+compares the two write paths for exact float equality on every pilot. The
+pilot was re-run from scratch rather than corrected in place; the first run
+is kept as the comparison baseline, so "metadata precision does not touch
+estimation" is a measured claim rather than an assumed one.
+
+**Caught by the pilot, which is what the pilot is for.** The preregistration
+said 10 iterations before 25 exist to catch labelling, sign and boundary
+defects before the full spend. It cost ~1.25 CPU-hours and saved the same
+defect from reaching 3,600 rows and every number built on them.

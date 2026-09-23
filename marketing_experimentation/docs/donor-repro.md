@@ -551,6 +551,25 @@ estimate, and the S1/S2 results are unaffected.
 observation in §4a — that three of four tools are deterministic — verifiable
 at full precision instead of censored.
 
+#### D12, second site — found at the M8 pilot, and it is ours
+
+D12's own remedy line reads *"yes — one argument, `digits = NA`"*. That
+argument was applied to the tool-output path and **not** to
+`generate_panels.R`'s `metadata.json` write, which goes through the same
+`jsonlite::toJSON` default.
+
+`run_tools.py:445` reads `effect_pct` from that file, so every result row
+carried a 4-dp-rounded nominal θ. The donor never hit it — 0 and 0.075 are
+4-dp exact — and the M7 atlas escaped by luck, since all seven of its truths
+are too. The M8 grid deliberately places truths at −3.125%, +5.1875% and
++10.4375%, none of which survive four decimal places, and those are exactly
+the points whose purpose is to sit on a decision boundary.
+
+So the mechanism is the donor's default and the defect is **ours**: a
+documented remedy applied to one call site and not the other, for a year of
+milestones, because nothing checked the second one. Recorded as F17.
+Prevented by C9, which compares θ across two independent write paths.
+
 ### D13 — crash recovery duplicates rows when the config gains an option
 
 `run_tools.py` scans an existing `results.jsonl` and skips work already
