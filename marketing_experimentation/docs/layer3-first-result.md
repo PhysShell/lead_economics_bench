@@ -990,48 +990,90 @@ significance verdict.**
 
 **Reproduce:** `python marketing_experimentation/scripts/continuous_finding_a.py`
 
-The first Finding A computed on the prior the project actually documents,
-rather than on a seven-point surrogate bent to fit the simulator. The M8
-boundary gate is what made this legitimate: `q(θ)` survived leave-one-out
-across every action boundary at n=25, so the likelihood can be evaluated
-where the prior lives instead of the prior being dragged to where the
-likelihood was measured.
+The first Finding A computed on the prior the project documents, rather than
+on a seven-point surrogate bent to fit the simulator. The M8 boundary gate is
+what made it legitimate: `q(θ)` survived leave-one-out across every action
+boundary at n=25, so the likelihood can be evaluated where the prior lives
+instead of the prior being dragged to where the likelihood was measured.
 
-## The prior, in its declared form
+## 1. Declared prior
 
     p(θ) = 0.45·δ₀ + 0.55·N(0.04, 0.06²)
 
-The spike is an **atom**, not a normal of width 0.005 on a grid, so `π₀` is
-exactly 0.45 at any resolution. Support restricted to [−15%, +15%], the
-interval the gate validated — 1.88% of prior mass above +15% is dropped
-rather than extrapolated into.
+The spike is an **atom**. Representing it as a normal of width 0.005 on a
+grid is what produced F19, and the correction is structural rather than
+numerical: a point mass and a density are different objects, and discretising
+the first into the second changes the topology of the prior before anyone
+looks at its probabilities.
 
-**Its negative mass is 0.139, not 0.267.** The 0.267 was an artefact of the
-gridded spike leaking across zero; see F19. The "sensitivity prior matched on
-negative mass" retires, and its label was wrong as well as its purpose.
+## 2. Validated-domain policy
+
+`q(θ)` was validated on [−15%, +15%] and nowhere else, so the analysis is
+**conditioned** on that interval:
+
+    p_V(θ) = p(θ | −0.15 ≤ θ ≤ 0.15)
+
+Mass outside, as a share of total prior mass: **0.0424% below −15%, 1.8357%
+above +15%, 1.8781% in total.** An earlier draft quoted the total as though
+it were the upper tail; almost all of it is, but not all.
+
+Conditioning is the choice, not truncation-without-renormalisation. The
+latter leaves a measure of mass 0.981219, and EVSI is an expectation under a
+probability distribution — every figure would read 1.88% low for a reason
+that is bookkeeping rather than decision theory.
+
+**The atom stays an atom, but its weight is no longer 0.45.** Under
+conditioning it is `0.45 / 0.981219 = 0.45861`. Both sentences — "π₀ is
+exactly 0.45 at any resolution" and "the EVSI uses π₀ = 0.45861" — appeared
+in an earlier draft, describing two different objects under one name.
+
+## 3. Exact prior masses
+
+Closed form, both columns:
+
+| | declared | conditioned |
+|---|---|---|
+| spike (θ = 0) | 0.45000 | **0.45861** |
+| slab < 0 | 0.13887 | **0.14110** |
+| slab > 0 | 0.41113 | **0.40029** |
+
+**Not 0.267.** That figure was the n=81 value of a discretisation artefact
+that *grows* with resolution — 0.267, 0.344, 0.359 at n = 81, 401, 1601 —
+converging toward `0.1389 + 0.225 ≈ 0.364`, which is the slab's true negative
+tail plus half the leaked atom. It was never an approximation of the right
+number; it was a different quantity. The sweep row labelled "matched to the
+continuous prior" keeps its figures as a sensitivity point and loses its
+label. See F19.
+
+*(The 246-point quadrature reads slab < 0 as 0.13924 against the exact
+0.14110, because the cell at θ = 0 straddles the sign boundary and its whole
+weight lands above it. Reported rather than absorbed; it is two orders of
+magnitude below the credible intervals.)*
 
     246 support points (1 atom + 245 slab), the four action boundaries
-    inserted exactly    |    prior-optimal action 'hold'    |    EVPI $22,313
+    inserted exactly    |    prior-optimal action 'hold'    |    EVPI $22,120
 
-## The sign loss
+## 4. q(θ) from validated interpolation
 
-`q(θ)` interpolated from 16 simulated truths; cluster bootstrap over
-(scenario, iteration), 2,000 draws, α = 0.5.
+Interpolated in multinomial-logit space from the 16 simulated truths; cluster
+bootstrap over (scenario, iteration), 2,000 draws, α = 0.5.
+
+## 5. Sign loss
 
 | tool | VERDICT | BIT | **V − B** | 95% credible |
 |---|---|---|---|---|
-| `causalpy[y_hat]` | $2,171 | **$0** | **$2,170** | [1,563 – 3,547] |
-| `causalimpact` | $2,508 | $1,397 | **$1,096** | [642 – 1,662] |
-| `google_mm` | $1,448 | $193 | **$1,079** | [672 – 2,104] |
-| `geolift` | $218 | $0 | $218 | [0 – 762] |
+| `causalpy[y_hat]` | $2,130 | **$0** | **$2,129** | [1,546 – 3,459] |
+| `causalimpact` | $2,579 | $1,472 | **$1,088** | [639 – 1,657] |
+| `google_mm` | $1,504 | $315 | **$1,064** | [666 – 1,991] |
+| `geolift` | $214 | $0 | $214 | [0 – 749] |
 
-Three of four exclude zero. `geolift` still does not, for the reason it never
-did: its `P(significant)` is 0.05–0.19 at *every* truth, so its verdict is
-nearly mute and there is little for the sign to carry.
+Three of four exclude zero. `geolift` does not, for the reason it never did:
+its `P(significant)` is 0.05–0.19 at *every* truth, so its verdict is nearly
+mute and there is little for the sign to carry.
 
 Self-test: `min(V − B)` over all 8,000 draws = **0.0**.
 
-## Where the value comes from — the part worth more than the total
+## 6. State-region decomposition
 
 EVSI is not a sum over θ, but the gain over the baseline action is, exactly:
 
@@ -1039,42 +1081,43 @@ EVSI is not a sum over θ, but the gain over the baseline action is, exactly:
 
 | tool | spike (θ=0) | slab < 0 | slab > 0 | median total |
 |---|---|---|---|---|
-| `causalpy[y_hat]` | $405 | **$1,658** | −$206 | $2,170 |
-| `causalimpact` | $324 | **$1,033** | −$216 | $1,096 |
-| `google_mm` | $209 | **$866** | −$102 | $1,079 |
-| `geolift` | $0 | $170 | $0 | $218 |
+| `causalpy[y_hat]` | 23.4% | **88.1%** | −11.5% | $2,129 |
+| `causalimpact` | 29.1% | **89.7%** | −18.7% | $1,088 |
+| `google_mm` | 22.2% | **88.1%** | −10.3% | $1,064 |
+| `geolift` | 18.4% | **81.6%** | 0.0% | $214 |
 
-**The sign's value is almost entirely about the negative half.** 76–100% of
-it comes from slab mass below zero, and the positive slab contributes
-**negatively** for three of four tools.
+**The sign's value is almost entirely the negative half.** 82–90% of it comes
+from slab mass below zero, and the positive slab contributes **negatively**
+for three of four tools.
 
-That negative contribution is not an error and is not clipped. Blackwell
-guarantees `V ≥ B` in *total*, not at every truth: the extra resolution can
-move the policy to an action that happens to be worse at one θ while paying
-for itself on average. Here it does exactly that on the positive side.
+That negative contribution violates nothing. Blackwell orders the experiments
+*ex ante in expected utility*, not state by state: extra resolution can move
+the policy to an action that is worse at one θ while paying for itself on
+average. Here it does exactly that on the positive side, and it is reported
+rather than clipped.
 
-Which gives the mechanism a plain reading. An unsigned `significant` cannot
-tell a business to **cut**. On the positive half, "something is happening"
-plus a prior centred at +4% is already nearly enough to act on; on the
-negative half it is worse than useless, because the same symbol that means
-*scale this* also means *stop this*. The money is in not funding a channel
-that is destroying revenue.
+So the mechanism has a plain reading:
 
-*(Medians are not additive — the three regional medians need not sum to the
-median total. The residual is printed alongside rather than normalised away;
-it runs $45 to −$313.)*
+> An unsigned `significant` cannot tell a business to **cut**. On the positive
+> half, "something is happening" plus a prior centred at +4% is already close
+> to enough to act on. On the negative half the same symbol means both *scale
+> this* and *stop this*. The money is in not funding a channel that is
+> destroying revenue.
 
-## It is not a sliver
+*(Medians are not additive, so the three regional medians need not sum to the
+median total. Shares are taken against the sum of the parts and the residual
+is printed: it runs +$46 to −$259.)*
 
-50% of |contribution| sits in 36–57 of 246 support points, 90% spans roughly
-[−14%, +7%]. Broadly spread with a concentration on the negative side, rather
-than a headline manufactured by a narrow band near one boundary — which the
-single dollar figure could not have distinguished.
+**It is not a sliver.** 50% of |contribution| sits in 36–50 of 246 support
+points and 90% spans roughly [−14%, +7%] — broadly spread with a
+concentration on the negative side, rather than a headline manufactured by a
+narrow band near one boundary. A single dollar figure could not have
+distinguished those two worlds.
 
 ## What this still is not
 
 The DGP is synthetic. This says how these four estimators behave in *this*
-simulation world, and it can support an EVSI comparison within it. It says
+simulation world and can support an EVSI comparison within it. It says
 nothing about the θ, variances, correlations or response dynamics of a real
 advertising campaign. The distance from "this can be done correctly" to "this
 predicts Meta and Google Ads in the wild" is not crossed by any number above.

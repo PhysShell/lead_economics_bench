@@ -94,12 +94,32 @@ SUPPORT = (-0.15, 0.15)
 
 
 def build_prior(n_slab: int = 241) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Return (theta, prior, kind) with the spike as its own support point.
+    """The declared prior CONDITIONED on the validated support.
+
+    Three different objects are available here and an earlier version of this
+    function silently built the third one. Naming them, because "the prior"
+    stopped being unambiguous the moment the support was restricted::
+
+        0) DECLARED, untruncated        spike 0.45000   P(theta<0) 0.13887
+        A) CONDITIONED on the support   spike 0.45861   P(theta<0) 0.14153
+        B) slab renormalised, mixture
+           weight left at 0.45          spike 0.45000   P(theta<0) 0.14334
+        C) sub-probability measure,
+           no renormalisation           spike 0.45000   total mass 0.981219
+
+    This returns **A**: `p_V(theta) = p(theta | -0.15 <= theta <= 0.15)`. It
+    is the standard object -- EVSI is defined as an expectation under a
+    probability distribution, and C is a measure of mass 0.9812, which would
+    put every dollar figure ~1.88% low for a reason that is bookkeeping
+    rather than decision theory.
+
+    **The atom stays an atom, but its weight is no longer 0.45.** Under
+    conditioning it is `0.45 / 0.981219 = 0.45861`. Saying "pi_0 is exactly
+    0.45 at any resolution" is true of the declared prior and false of the
+    one the EVSI is computed on; both sentences were in an earlier draft.
 
     `kind` is 0 for the atom, -1 for slab mass below zero, +1 for slab mass
-    at or above zero. The atom and the slab point at theta = 0 are the same
-    state of the world and behave identically in the decision; they are kept
-    apart only so the decomposition can attribute to them separately.
+    at or above zero.
     """
     lo, hi = SUPPORT
     grid = np.linspace(lo, hi, n_slab)
@@ -112,12 +132,17 @@ def build_prior(n_slab: int = 241) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     w[1:-1] = (grid[2:] - grid[:-2]) / 2.0
     w[0] = (grid[1] - grid[0]) / 2.0
     w[-1] = (grid[-1] - grid[-2]) / 2.0
-    slab = dens * w
-    inside = slab.sum()
-    slab = slab / inside
+    shape = dens * w
+    shape = shape / shape.sum()                   # shape only; mass set below
+
+    # Analytic, not quadrature: the slab's share of itself that lies inside.
+    s_in = float(norm.cdf(hi, SLAB_MU, SLAB_SIGMA)
+                 - norm.cdf(lo, SLAB_MU, SLAB_SIGMA))
+    inside = PI_NULL + (1.0 - PI_NULL) * s_in     # total declared mass inside
 
     theta = np.concatenate([[0.0], grid])
-    prior = np.concatenate([[PI_NULL], (1.0 - PI_NULL) * slab])
+    prior = np.concatenate([[PI_NULL / inside],
+                            (1.0 - PI_NULL) * s_in / inside * shape])
     kind = np.concatenate([[0], np.where(grid < 0, -1, 1)])
     return theta, prior, kind
 
@@ -186,17 +211,62 @@ def main() -> None:
     print(f"   the spike is an ATOM, not a normal of width 0.005 evaluated on")
     print(f"   a grid -- so its weight is exactly {PI_NULL} however fine the")
     print(f"   grid gets, instead of depending on the spacing near zero.")
-    print(f"\n   support: [{100*SUPPORT[0]:+.0f}%, {100*SUPPORT[1]:+.0f}%], "
+    lo_t, hi_t = SUPPORT
+    s_in = float(norm.cdf(hi_t, SLAB_MU, SLAB_SIGMA)
+                 - norm.cdf(lo_t, SLAB_MU, SLAB_SIGMA))
+    inside = PI_NULL + (1.0 - PI_NULL) * s_in
+    print(f"\n   support: [{100*lo_t:+.0f}%, {100*hi_t:+.0f}%], "
           f"{len(theta)} points (1 atom + {len(theta)-1} slab)")
-    print(f"   slab mass excluded by that restriction: "
-          f"{100*below:.2f}% below, {100*above:.2f}% above")
-    print(f"   = {100*(1-PI_NULL)*(below+above):.2f}% of total prior mass, "
-          f"dropped because the gate validated")
-    print(f"     INTERPOLATION and says nothing about extrapolation.")
+    print(f"   mass outside, as a share of TOTAL prior mass:")
+    print(f"      below {100*lo_t:+.0f}%: {100*(1-PI_NULL)*below:.4f}%"
+          f"      above {100*hi_t:+.0f}%: {100*(1-PI_NULL)*above:.4f}%")
+    print(f"      total {100*(1-inside):.4f}% -- almost all of it the RIGHT "
+          f"tail; the left tail is\n      0.04%, and quoting the total as "
+          f"though it were the upper tail was wrong.")
+    print(f"\n   EVSI is computed on the prior CONDITIONED on that support:")
+    print(f"      p_V(theta) = p(theta | {100*lo_t:+.0f}% <= theta <= "
+          f"{100*hi_t:+.0f}%)")
+    print(f"   so the atom stays an atom but its weight is NOT 0.45:")
+    print(f"      declared   pi_0 = {PI_NULL:.5f}")
+    print(f"      condition  pi_0 = {PI_NULL:.2f}/{inside:.6f} = "
+          f"{PI_NULL/inside:.5f}   <- what the EVSI uses")
+    print(f"   The alternative -- integrating over the validated region "
+          f"without\n   renormalising -- is a measure of mass "
+          f"{inside:.6f}, not a probability\n   distribution, and would put "
+          f"every figure {100*(1-inside):.2f}% low for a reason that\n   is "
+          f"bookkeeping rather than decision theory.")
     neg = float(prior[theta < 0].sum())
-    print(f"\n   prior mass below zero: {neg:.3f}")
-    print(f"   (the seven-point surrogate carried 0.071; the 'sensitivity "
-          f"prior\n    matched on negative mass' can now retire)")
+    # ANALYTIC on both columns. An earlier version printed the declared
+    # masses analytically and the conditioned ones by quadrature, which is
+    # the same apples-to-oranges move as F19 one level down: the grid cell
+    # AT theta = 0 straddles the sign boundary, so its whole trapezoid
+    # weight lands in the >= 0 bucket and negative mass reads ~0.0023 low.
+    # Both columns are closed form; the quadrature realisation is printed
+    # underneath with its error, rather than presented as the exact value.
+    nd = (1 - PI_NULL) * float(norm.cdf(0, SLAB_MU, SLAB_SIGMA))
+    nd_below = (1 - PI_NULL) * float(norm.cdf(SUPPORT[0], SLAB_MU, SLAB_SIGMA))
+    c_spike = PI_NULL / inside
+    c_neg = (nd - nd_below) / inside
+    c_pos = 1.0 - c_spike - c_neg
+    print(f"\n   exact prior masses (closed form, both columns):")
+    print(f"      {'':22s} {'declared':>10s} {'conditioned':>12s}")
+    print(f"      {'spike (theta = 0)':22s} {PI_NULL:10.5f} {c_spike:12.5f}")
+    print(f"      {'slab < 0':22s} {nd:10.5f} {c_neg:12.5f}")
+    print(f"      {'slab > 0':22s} {1-PI_NULL-nd:10.5f} {c_pos:12.5f}")
+    print(f"\n   quadrature realisation on the {len(theta)}-point grid:")
+    print(f"      slab < 0 reads {neg:.5f} against the exact {c_neg:.5f} "
+          f"({neg-c_neg:+.5f})")
+    print(f"      because the cell AT theta = 0 straddles the sign boundary "
+          f"and its\n      whole weight is assigned above it. Reported, not "
+          f"absorbed: the\n      decomposition below inherits this, and it "
+          f"is smaller than the\n      credible intervals by two orders of "
+          f"magnitude.")
+    print(f"\n   NOT 0.267. That was the n=81 value of a discretisation")
+    print(f"   artefact (F19), and it grows with resolution -- 0.267, 0.344,")
+    print(f"   0.359 at n=81, 401, 1601 -- because the gridded spike is")
+    print(f"   centred AT zero and half of p_null leaks below it. The")
+    print(f"   'sensitivity prior matched on negative mass' retires, and its")
+    print(f"   label was describing a property the prior never had.")
     print(f"\n   actions: {', '.join(DEFAULT_ACTIONS)}")
     print(f"   boundaries: {['%+.4f%%' % (100*b) for b in action_boundaries()]}")
     print(f"   prior-optimal action: {problem.best_action_no_experiment()!r}")
