@@ -1,6 +1,6 @@
 {
-  "freeze_commit": "6cfe31a78a20cc8376d3b4cb4acdca25ba95d61f",
-  "analysis_commit": "578c069c43fc8c9a0511a7442cba5df496b498c2",
+  "freeze_commit": "470c9c006285cce60016eec489c07cf69a95ebb8",
+  "analysis_commit": "18c5d9f7fe292b7af59e6a021cbedb1006b931b4",
   "what": "the commit that added the current m8-pilot-freeze.json",
   "why_a_separate_file": "a file cannot record the hash of the commit containing it; this pointer is written one commit later, so it can",
   "tag": "none -- this remote refuses tag pushes",
