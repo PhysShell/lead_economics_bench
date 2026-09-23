@@ -469,3 +469,66 @@ panel, which is cheap; estimation still runs on the slice.
 
 Uncertainty remains upward: CausalPy dominates and scales with panel size,
 and `G_c=40` is larger than anything M8 ran.
+
+## The estimand, stated narrowly
+
+From the decision that authorised M9-B — recorded here verbatim because it
+**predates the freeze** and is therefore what the freeze was taken *of*, not
+a reading applied to results afterwards:
+
+> M9-B defines a fixed treated unit within each maximal simulated world and
+> varies only the amount of donor and temporal information exposed to the
+> estimators.
+
+The question is
+
+    holding the treated world fixed, what is the marginal value of
+    additional observations?
+
+and it is **not** the question A1/A3 answer, which is closer to
+
+    what happens under a different simulated market universe whose treated
+    median is reselected?
+
+Both are legitimate. Only the first is M9-B, and that is the whole reason
+A1/A3 cannot be reused — not compute hygiene, and not a preference for
+common random numbers as a technique. CRN earns its place here specifically
+because the comparison is between simulated *alternatives*: sharing the
+world makes a paired difference reflect the changed factor rather than two
+independent Monte Carlo draws.
+
+**A1 becomes prior evidence; M9-B is a new controlled experiment.** The
+surface no longer has to pretend that `(T=15, G_c=20)` is A1. It is not.
+
+This also matches what the methods themselves do: GeoLift-style estimators
+distinguish the treated/test market set from the remaining donor pool, so
+holding the treated object fixed while varying donor availability is a
+closer analogue of the real methodological question than re-electing a new
+treated geography every time `G_c` moves.
+
+### Two properties of the donor permutation, both deliberate
+
+| | |
+|---|---|
+| **within** a replication | `D5 ⊂ D9 ⊂ D20 ⊂ D40`. The permutation is drawn once per replication and every pool is its prefix. |
+| **across** replications | the permutation changes. Small donor sets are therefore not systematically the smallest, largest or closest-baseline geos — the design integrates over *which donor subset happened to be available*. |
+
+The second is a feature, not drift: `perm_seed = panel_seed + 900000` and
+`panel_seed` carries the iteration index, so the order moves with the
+replication and with nothing else. It is invariant in θ, T, `G_c` and tool,
+which is what W3b, W3d and W7 check.
+
+A note on "stable latent IDs before sorting": the concern that motivated it
+— that `sort()` makes geo identity depend on pool size — cannot arise here,
+because the world is *always* drawn at 41 geos. The sort is over a fixed
+set, so the post-sort names `City 1 … City 41` are themselves the stable
+latent IDs, and the slices carry them through unchanged (a `G_c=5` cell
+holds, for replication 1, `City 21` treated and donors `City 1, 38, 22, 18,
+13` — non-contiguous, and visibly not a size prefix).
+
+### Nothing computational changed with this section
+
+It clarifies what the frozen design means. The five things
+`m9b-freeze.json` forbids changing — `generate_panels.R`, `run_tools.py`,
+the patch stack, the grid and the seeds — are untouched, and the run was
+already in flight when it was written.
