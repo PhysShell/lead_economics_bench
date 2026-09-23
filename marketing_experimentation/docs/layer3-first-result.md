@@ -241,6 +241,79 @@ it is worth anything.
 
 ---
 
+# Addendum 2: M7 — seven truths, five actions
+
+**Reproduce:** `python marketing_experimentation/scripts/continuous_ladder.py
+--results /tmp/results_atlas.jsonl --pool-scenarios`
+
+2,800 rows, θ ∈ {−10, −5, 0, +2, +5, +7.5, +15}%, 25 iterations × 4
+scenarios, 0 duplicated identities. Pooled across scenarios for ~100 rows per
+(tool, θ) — at 25 a 3-d density has no chance, and the A1-only run showed it:
+`causalimpact`'s INTERVAL EVSI was $11,985 there and is $5,273 pooled.
+
+| tool | BIT | POINT | INTERVAL | **BIT keeps** |
+|---|---|---|---|---|
+| `causalimpact` | $626 | $5,058 | $5,273 | **11.9%** |
+| `causalpy` | $0 | $4,644 | $4,435 | **0.0%** |
+| `geolift` | $0 | $4,778 | $6,207 | **0.0%** |
+| `google_mm` | $0 | $4,712 | $6,322 | **0.0%** |
+
+## The preregistered claim is not falsified
+
+§3a said the claim dies if the S0 gap *narrows* once θ is continuous and the
+action set realistic. It widened:
+
+> **BIT keeps 0–11.9% of INTERVAL** under seven truths and five actions,
+> against **7.2–34.1%** under two truths and two actions.
+
+Three of four tools have a significance channel worth **exactly $0** — the
+bit never changes the optimal action at any point of the seven-truth grid.
+That is not a small ratio; it is inertness, and it should be said that way.
+
+## What this does **not** settle, and it is the same question twice
+
+Addendum 0 retracted "the interval adds nothing" because on the two-point
+data with the full bounds it added a great deal (held-out AUC 0.77 → 0.92).
+Here, pooled:
+
+| tool | INTERVAL − POINT | |
+|---|---|---|
+| `google_mm` | +$1,610 (±1,210) | undetectable |
+| `geolift` | +$1,429 (±1,541) | undetectable |
+| `causalimpact` | +$215 (±1,070) | undetectable |
+| `causalpy` | −$209 (±732) | undetectable |
+
+**All four undetectable.** That is not a second retraction, because the two
+measurements are not comparable: different decision problem, different number
+of truths, and 1,000 rows per arm there against ~100 here. **The seven-truth
+run is too thin to adjudicate it**, and the AUC evidence at n=1,000 remains
+the strongest thing available on that question.
+
+Blackwell does not order POINT against INTERVAL, so `causalpy`'s −$209 is
+permitted and is not a harness failure. The guaranteed inequality —
+INTERVAL ≥ BIT — holds for all four.
+
+## Two limitations of this run, both structural
+
+1. **The seven-point grid loses the negative half.** Carrying the
+   spike-and-slab prior onto the simulated truths by Voronoi bins puts
+   **0.071** of the mass below zero against **0.267** in the continuous
+   prior, because the bin nearest zero spans (−2.50%, +1.00%] and absorbs
+   everything on either side. The decision problem being solved is not the
+   one the prior describes, and it is under-exercised on exactly the half the
+   brief cares about most. The script now prints this as a warning rather
+   than leaving it to be discovered.
+2. **25 iterations per cell.** Enough for the atlas questions — bias,
+   variance, power — and not enough for a 3-d density. Pooling buys 4× at the
+   cost of making `p(y|θ)` a mixture over the donor's four regimes, which is
+   arguably the right likelihood for someone who does not know their regime
+   and the wrong one for someone who does.
+
+**The next move is more iterations and a finer grid near zero, not a louder
+claim.**
+
+---
+
 # Addendum 0: the ladder was not a ladder — a structural retraction
 
 **Everything in Addendum 1 below was computed on a representation graph that

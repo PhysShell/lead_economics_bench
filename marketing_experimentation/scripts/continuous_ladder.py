@@ -277,6 +277,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="/tmp/results_atlas.jsonl")
     ap.add_argument("--scenario", default="A1")
+    ap.add_argument("--pool-scenarios", action="store_true",
+                    help="pool all scenarios: 4x the sample per (tool, theta), "
+                         "at the cost of mixing data regimes")
     ap.add_argument("--seeds", type=int, default=8)
     ap.add_argument("--mode", choices=("discrete", "smooth", "both"),
                     default="both")
@@ -284,12 +287,23 @@ def main() -> None:
 
     d = load(args.results)
     guard_unique(d)
-    d = d[d.scenario == args.scenario]
+    if args.pool_scenarios:
+        # p(y | theta) becomes a MIXTURE over the donor's four regimes. For a
+        # decision-maker who does not know which regime they are in that is
+        # arguably the right likelihood; for one who does, it is the wrong
+        # one. Offered because at 25 iterations per cell a 3-d density has
+        # no chance, and 4x the sample is available at no compute cost.
+        scen = sorted(d.scenario.unique())
+        print(f"POOLING scenarios {scen} -- p(y|theta) is now a mixture over "
+              f"regimes.\n")
+    else:
+        d = d[d.scenario == args.scenario]
     thetas = sorted(float(t) for t in d.effect_pct.unique())
     tools = sorted(d.tool_label.unique())
 
-    print(f"scenario {args.scenario} | {len(d):,} rows | "
-          f"{len(thetas)} simulated truths")
+    where = ("pooled " + ",".join(sorted(d.scenario.unique()))
+             if args.pool_scenarios else f"scenario {args.scenario}")
+    print(f"{where} | {len(d):,} rows | {len(thetas)} simulated truths")
     print(f"theta: {[round(100*t, 1) for t in thetas]} (%)\n")
     if len(thetas) < 3:
         print("!! This script exists to escape the two-point world. With "
@@ -309,8 +323,26 @@ def main() -> None:
     print(f"   spend multipliers: {DEFAULT_MULTIPLIERS}")
     print(f"   prior-optimal action with no experiment: "
           f"{problem.best_action_no_experiment()!r}")
-    print(f"   prior mass on theta < 0: "
-          f"{problem.prior[problem.theta < 0].sum():.3f}")
+    neg_disc = float(problem.prior[problem.theta < 0].sum())
+    neg_cont = float(pri[grid < 0].sum())
+    print(f"   prior mass on theta < 0: {neg_disc:.3f} on the "
+          f"{len(thetas)}-point grid")
+    print(f"                            {neg_cont:.3f} in the continuous prior")
+    if abs(neg_disc - neg_cont) > 0.05:
+        edges = np.concatenate(
+            ([-np.inf], (problem.theta[:-1] + problem.theta[1:]) / 2,
+             [np.inf]))
+        zbin = int(np.digitize([0.0], edges)[0]) - 1
+        print(f"   !! THE DISCRETISATION MOVES THE PRIOR. The bin nearest "
+              f"zero spans\n"
+              f"      ({100*edges[zbin]:+.2f}%, {100*edges[zbin+1]:+.2f}%] "
+              f"and absorbs the mass on either side of it.\n"
+              f"      The decision problem being solved is NOT the one the "
+              f"prior describes,\n"
+              f"      and it is under-exercised on the negative half. Read "
+              f"the discrete\n"
+              f"      columns with that in mind; the smooth column uses the "
+              f"full grid.")
     print(f"   EVPI ${problem.evpi():,.0f}")
 
     tp = two_point_problem(0.4, 500_000.0, 500_000.0)

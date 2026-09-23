@@ -125,8 +125,8 @@ Only after G4 does an effect-size sweep begin.
 | M5b | R2 — golden estimator replay against published rows | **PASS** — 160 rows/tool, clears the preregistered count (§4d.1) |
 | M6a | θ mutation +2% (six PASS criteria, §5) | **PASS 6/6** (§5c); figure fix verified separately |
 | M6b | θ mutation −5% (sign mutation) | **PASS 6/6** (§5b.1); 65.9% of estimates negative |
-| M7 | coarse θ likelihood atlas | running: θ ∈ {−10,−5,0,+2,+5,+7.5,+15}%, N=25, 4 scenarios |
-| M8 | continuous prior + richer action set | blocked on M7 |
+| M7 | coarse θ likelihood atlas | **PASS** — 2,800 rows, 7 truths; see layer3 Addendum 2 |
+| M8 | continuous prior + richer action set | **first pass done**; limited by grid resolution near zero and N=25 |
 | M9 | business VOI / RUN–DON'T-RUN | blocked on M8 |
 | M10 | regime map / method selection | blocked on M9 |
 
