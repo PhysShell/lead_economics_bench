@@ -1,0 +1,95 @@
+{
+  "schema": "leadbench-mx artifact manifest v1",
+  "created_at": "2026-09-23T18:49:00+00:00",
+  "distribution_status": "PRIVATE - donor-derived. NOT to be committed to this or any public repository.",
+  "rationale": "The donor repository carries no licence, so its SOURCE stays out of this repo (D5) and travels only as a verified diff. These artifacts are numeric program OUTPUT -- estimates, intervals, seeds, timings -- not donor expression, and output is not automatically covered by the licence of the program that produced it. That is a reason to archive them privately rather than discard ~10 CPU-hours of evidence; it is NOT a judgement that the donor use is licensed, and it would not extend to any artifact carrying donor source text, templates or graphics. None of these do: every one is numeric rows and identifiers.",
+  "archive": {
+    "name": "leadbench-mx-artifacts.tar.gz",
+    "sha256": "37a1f298e39503ed6974fade58752b18340aba468252688eb8c66840d7b761ab",
+    "bytes": 941474,
+    "reproducible_tar": "--sort=name --owner=0 --group=0 --numeric-owner --mtime=@0",
+    "roundtrip_verified": true
+  },
+  "files": [
+    {
+      "name": "panel_seeds_m8_full.csv",
+      "sha256": "b2e92de08df4ced51f93c4f78790b6bb2dfee6882f04a9e55985f61b4a1fae89",
+      "bytes": 34653,
+      "rows": 901,
+      "what": "seed manifest, 900 panels"
+    },
+    {
+      "name": "panel_seeds_m8_pilot.csv",
+      "sha256": "496e1d8b582c862ce26be6b713afad886ffcd83728d05ddb5cda3ff862ace8eb",
+      "bytes": 13713,
+      "rows": 361,
+      "what": "seed manifest, 360 panels"
+    },
+    {
+      "name": "results_atlas.jsonl",
+      "sha256": "6bdd5f19021aa40578761cbf3b0fba72e49bbfa84e4efed979c1144e8dd02469",
+      "bytes": 1424528,
+      "rows": 2800,
+      "what": "M7 atlas: 7 truths x 4 scenarios x 4 tools x 25 iterations"
+    },
+    {
+      "name": "results_m8_full.jsonl",
+      "sha256": "dae20a5e8ded11d27796b7465398e6bbff676363365d7b9af316d88de8f331b8",
+      "bytes": 1939116,
+      "rows": 3600,
+      "what": "M8: the 9 new truths x 4 scenarios x 4 tools x 25 iterations"
+    },
+    {
+      "name": "results_m8_pilot.jsonl",
+      "sha256": "c4da43b0589bf72f7449985a780f81d273a99580c0669569492e9a80ad2a4de3",
+      "bytes": 774468,
+      "rows": 1440,
+      "what": "M8 pilot at 10 iterations, post-F17-fix"
+    },
+    {
+      "name": "results_m8_pilot_rounded.jsonl",
+      "sha256": "cdf9ea7406116436fd10c95135e123bfb516b1eec378f8b878b20e5c2b5c620a",
+      "bytes": 773675,
+      "rows": 1440,
+      "what": "M8 pilot PRE-fix; the F17 control. Keep both or the control is gone"
+    },
+    {
+      "name": "results_pre_m8_backup.jsonl",
+      "sha256": "84974dde6368ce6102235c7f9495d57ebf1f2143f1087cbf452869eafa4ae03b",
+      "bytes": 131321,
+      "rows": 255,
+      "what": "F8 posterior-type run (mu vs y_hat), 255 rows"
+    },
+    {
+      "name": "results_theta_M6a.jsonl",
+      "sha256": "a14d7608468704f7db748424ed99ae6cd36238e9b2789cefb6552687119912ae",
+      "bytes": 317179,
+      "rows": 640,
+      "what": "M6a theta mutation at +2%"
+    },
+    {
+      "name": "results_theta_M6b.jsonl",
+      "sha256": "3e463daaaf9ead69bf4616419bd807afc34833347deeed93d8e1bf87fa093732",
+      "bytes": 318829,
+      "rows": 640,
+      "what": "M6b theta mutation at -5%"
+    }
+  ],
+  "provenance": {
+    "producing_repo": "physshell/lead_economics_bench",
+    "producing_commit": "9744007587d14799ae54f747c21b1f93a78dc634",
+    "branch": "claude/lead-economics-benchmark-wiw8qo",
+    "donor_base_commit": "5133d372558957e67cf66ce9b5f3af71fc62f4ea",
+    "donor_patches": [
+      "theta-mutation.patch",
+      "m8-seed-log.patch"
+    ],
+    "m8_freeze_pointer": "marketing_experimentation/docs/m8-pilot-freeze.commit",
+    "toolchain": {
+      "R": "4.5.1 (built from source in-container)",
+      "lane": "/opt/R/4.5.1/bin"
+    }
+  },
+  "regenerability": "All of it is deterministically regenerable from the committed seed manifest, the patches and the donor base commit -- that is what R1/R2 established. What the archive protects is CPU time (~10 hours), not reproducibility. Losing it costs a rerun, not a result.",
+  "verification": "sha256sum -c against the files list after extracting. The archive was extracted to a clean directory in-container and every member re-hashed to its staged value before transfer; the copy on the recipient's disk has NOT been verified from here and should be checked there."
+}
