@@ -1,6 +1,6 @@
 {
   "schema": "leadbench-mx M9-B cell manifest v1",
-  "updated_at": "2026-09-24T15:22:30+00:00",
+  "updated_at": "2026-09-24T19:25:02+00:00",
   "distribution_status": "The CELLS are PRIVATE donor-derived output and are NOT in this repository. This file is their provenance record only -- hashes, row counts and wall clock. See docs/artifact-manifest.json.",
   "purpose": "A container restart on 2026-09-24 killed the run mid-cell. /tmp survived that one. This file is what lets a regenerated cell be checked for IDENTITY against the cell it replaces, rather than assumed equal to it.",
   "freeze": {
@@ -18,11 +18,9 @@
     "seed_records_per_cell": 400
   },
   "progress": {
-    "complete": 11,
+    "complete": 13,
     "of": 16,
     "missing": [
-      "M9B_T28_G40",
-      "M9B_T42_G05",
       "M9B_T42_G09",
       "M9B_T42_G20",
       "M9B_T42_G40"
@@ -147,6 +145,28 @@
       "seed_log_sha256": "dd29dbfd497cc8f3193a95e0d634b4727de3146ff2f655d7e85eabff5be80c3e",
       "seed_log_records": 400,
       "estimate_minutes": 107.5,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
+    },
+    "M9B_T28_G40": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "3afb147be919400bc70b548c1bbafaea83e7c3d1adb7d5d306cb636982cdaded",
+      "results_bytes": 841164,
+      "seed_log_sha256": "3e57bd52b78342a701512ed5ed17879e5c6454a7141d02ee9b9cf59d2dfc1e4e",
+      "seed_log_records": 400,
+      "estimate_minutes": 128.3,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
+    },
+    "M9B_T42_G05": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "fae33bd8c12d78ffb6d13f26441e1d66059369a868d1ab7c36dbebc204f4e4e8",
+      "results_bytes": 840877,
+      "seed_log_sha256": "e63816870be1bcb84fb20ddfee0c5e2567244548b98cc74e02532096aec8ea93",
+      "seed_log_records": 400,
+      "estimate_minutes": 56.1,
       "estimate_minutes_is_a_clean_measurement": true,
       "timing_caveat": null
     }
