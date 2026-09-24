@@ -1,6 +1,6 @@
 {
   "schema": "leadbench-mx M9-B cell manifest v1",
-  "updated_at": "2026-09-24T12:44:08+00:00",
+  "updated_at": "2026-09-24T15:22:30+00:00",
   "distribution_status": "The CELLS are PRIVATE donor-derived output and are NOT in this repository. This file is their provenance record only -- hashes, row counts and wall clock. See docs/artifact-manifest.json.",
   "purpose": "A container restart on 2026-09-24 killed the run mid-cell. /tmp survived that one. This file is what lets a regenerated cell be checked for IDENTITY against the cell it replaces, rather than assumed equal to it.",
   "freeze": {
@@ -18,11 +18,9 @@
     "seed_records_per_cell": 400
   },
   "progress": {
-    "complete": 9,
+    "complete": 11,
     "of": 16,
     "missing": [
-      "M9B_T28_G09",
-      "M9B_T28_G20",
       "M9B_T28_G40",
       "M9B_T42_G05",
       "M9B_T42_G09",
@@ -38,7 +36,9 @@
       "results_bytes": 840786,
       "seed_log_sha256": "372d3bba48517114a53db052af6159f79bd12fc41ff3d258f0b5de2d30c25a1e",
       "seed_log_records": 400,
-      "estimate_minutes": 48.2
+      "estimate_minutes": 48.2,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
     },
     "M9B_T15_G09": {
       "rows": 1600,
@@ -47,7 +47,9 @@
       "results_bytes": 840794,
       "seed_log_sha256": "700bc332cccb92e5753f43ad5f628bf20f7150725cb720a683d49e524d49bdc2",
       "seed_log_records": 400,
-      "estimate_minutes": 69.7
+      "estimate_minutes": 69.7,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
     },
     "M9B_T15_G20": {
       "rows": 1600,
@@ -56,7 +58,9 @@
       "results_bytes": 841342,
       "seed_log_sha256": "2bf546db612a7bd48561f2ccfdd44bfafcbffa8bcd1bcabe13ac58954c7db3cd",
       "seed_log_records": 400,
-      "estimate_minutes": 99.9
+      "estimate_minutes": 99.9,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
     },
     "M9B_T15_G40": {
       "rows": 1600,
@@ -65,7 +69,9 @@
       "results_bytes": 840978,
       "seed_log_sha256": "345af8f3dce095be57a225dd66d7d44895359afb71918bcfbbae0d8ea1e39ecd",
       "seed_log_records": 400,
-      "estimate_minutes": 121.9
+      "estimate_minutes": 121.9,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
     },
     "M9B_T21_G05": {
       "rows": 1600,
@@ -74,7 +80,9 @@
       "results_bytes": 840356,
       "seed_log_sha256": "b2711973f21aac903171e91332354d9297309d0d4b4bbb099f6cf02392abe3fb",
       "seed_log_records": 400,
-      "estimate_minutes": 53.1
+      "estimate_minutes": 53.1,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
     },
     "M9B_T21_G09": {
       "rows": 1600,
@@ -83,7 +91,9 @@
       "results_bytes": 840530,
       "seed_log_sha256": "71ed27d79f34abebc6068a543a78c476428656ee2b348be33c62345f217667d3",
       "seed_log_records": 400,
-      "estimate_minutes": 70.3
+      "estimate_minutes": 70.3,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
     },
     "M9B_T21_G20": {
       "rows": 1600,
@@ -92,7 +102,9 @@
       "results_bytes": 840950,
       "seed_log_sha256": "32a88c1a556b1ecca737060f4d3bb2be0a3ee909c9cfb26d79fc717a40294d6f",
       "seed_log_records": 400,
-      "estimate_minutes": 101.3
+      "estimate_minutes": 101.3,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
     },
     "M9B_T21_G40": {
       "rows": 1600,
@@ -101,7 +113,9 @@
       "results_bytes": 840636,
       "seed_log_sha256": "d8a2e804978c4d9bfbe6f1049ec8c687042cf5f360f541dc478203a2c9273a71",
       "seed_log_records": 400,
-      "estimate_minutes": 125.4
+      "estimate_minutes": 125.4,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
     },
     "M9B_T28_G05": {
       "rows": 1600,
@@ -110,8 +124,35 @@
       "results_bytes": 840763,
       "seed_log_sha256": "28577b5e10e6087e0cd1f6276a23606f53f2b0b77918be0ff2e9c47f6f8ee313",
       "seed_log_records": 400,
-      "estimate_minutes": 55.3
+      "estimate_minutes": 55.3,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
+    },
+    "M9B_T28_G09": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "8b20cdcb6935a9f17a45432cd5d253ae668aeb5085a948d212b3b2daaf55992b",
+      "results_bytes": 840954,
+      "seed_log_sha256": "13ba2ee11eb169a89033a314ce85696b8e547421487620a6272c7b0e36c52c2c",
+      "seed_log_records": 400,
+      "estimate_minutes": 44.3,
+      "estimate_minutes_is_a_clean_measurement": false,
+      "timing_caveat": "RESUMED after a runner restart: this wall clock covers only the panels that were still outstanding, not the cell. Do not use it to fit a cost model."
+    },
+    "M9B_T28_G20": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "0c7492275bdfdb2a48f658e4dc70ad782949c9657cd23ea1278820e0ea8b2e5c",
+      "results_bytes": 841344,
+      "seed_log_sha256": "dd29dbfd497cc8f3193a95e0d634b4727de3146ff2f655d7e85eabff5be80c3e",
+      "seed_log_records": 400,
+      "estimate_minutes": 107.5,
+      "estimate_minutes_is_a_clean_measurement": true,
+      "timing_caveat": null
     }
   },
+  "resumed_cells": [
+    "M9B_T28_G09"
+  ],
   "blinding_note": "Produced by hashing bytes and counting lines. No results row was parsed, so nothing here is a function of an estimate."
 }

@@ -43,6 +43,9 @@ def sha256(p: Path) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cells", default="/tmp/m9b_cells")
+    ap.add_argument("--subprocess-log", default=None,
+                    help="defaults to <cells>/run.log; read only to find "
+                         "recorded restarts")
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--runner-log", default="/tmp/m9b_run.out",
                     help="the RUNNER's stdout, which carries the [N/16] and "
@@ -64,6 +67,17 @@ def main() -> None:
             if m and cur:
                 timings[cur] = float(m.group(1))
 
+    # Cells that were in flight when the runner was killed have a wall
+    # clock covering only the UNFINISHED part, because run_tools.py resumed
+    # the rest by key. Unmarked, that number sits in a provenance record
+    # looking exactly like a measurement of what the cell costs. Mark it.
+    resumed = set()
+    sub = Path(a.subprocess_log or (d / "run.log"))
+    if sub.exists():
+        for m in re.finditer(r"mid-cell\s+\d+\s+\((M9B_\S+?)\)",
+                             sub.read_text(errors="replace")):
+            resumed.add(m.group(1))
+
     cells = {}
     for f in sorted(d.glob("M9B_*.jsonl")):
         c = f.stem
@@ -78,6 +92,11 @@ def main() -> None:
             "seed_log_records": (sum(1 for _ in s.open("rb")) - 1)
                                 if s.exists() else None,
             "estimate_minutes": timings.get(c),
+            "estimate_minutes_is_a_clean_measurement": c not in resumed,
+            "timing_caveat": (
+                "RESUMED after a runner restart: this wall clock covers only "
+                "the panels that were still outstanding, not the cell. Do not "
+                "use it to fit a cost model." if c in resumed else None),
         }
 
     fz = json.loads((REPO / "marketing_experimentation/docs/m9b-freeze.json"
@@ -107,6 +126,7 @@ def main() -> None:
                      "missing": [c for c in fz["design"]["cells"]
                                  if c not in done]},
         "cells": cells,
+        "resumed_cells": sorted(resumed),
         "blinding_note":
             "Produced by hashing bytes and counting lines. No results row was "
             "parsed, so nothing here is a function of an estimate.",
@@ -115,6 +135,8 @@ def main() -> None:
     print(f"{len(done)}/16 complete -> {a.out}")
     for c, v in cells.items():
         flag = "" if v["complete"] else f"  <-- {v['rows']} rows, INCOMPLETE"
+        if not v["estimate_minutes_is_a_clean_measurement"]:
+            flag += "  <-- RESUMED; partial wall clock, not a cell cost"
         t = f"{v['estimate_minutes']:6.1f} min" if v["estimate_minutes"] else "    -    "
         print(f"   {c}  {t}  {v['results_sha256'][:16]}{flag}")
 
