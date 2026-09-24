@@ -95,13 +95,28 @@ def theta_flag(grid: list[float]) -> str:
     return ",".join(repr(t) for t in grid)
 
 
+def child_env() -> dict:
+    """Environment for every subprocess.
+
+    R_LIBS_SITE alone is NOT enough, and getting that wrong cost this run
+    half its payload (F21). `run_tools.py` shells out to a BARE `Rscript`
+    for GeoLift and CausalImpact; bare resolves to /usr/bin/Rscript, which
+    is R 4.6.1, which cannot load packages built for the R 4.5 library that
+    R_LIBS_SITE points at. Both tools failed instantly and run_tools wrote
+    all-null rows. So the matched R must lead PATH as well.
+    """
+    return {**os.environ,
+            "R_LIBS_SITE": str(R_LIBS),
+            "PATH": f"{Path(R_BIN).parent}:{os.environ.get('PATH', '')}"}
+
+
 def sh(cmd: list[str], cwd: Path, log: Path) -> tuple[int, float]:
     t0 = time.time()
     with log.open("ab") as f:
         f.write(f"\n$ {' '.join(cmd)}\n".encode())
         f.flush()
         p = subprocess.run(cmd, cwd=cwd, stdout=f, stderr=subprocess.STDOUT,
-                           env={**os.environ, "R_LIBS_SITE": str(R_LIBS)})
+                           env=child_env())
     return p.returncode, time.time() - t0
 
 
@@ -125,14 +140,33 @@ def cell_rows(path: Path, cell: str) -> int:
     return n
 
 
-def extract(src: Path, cell: str, dst: Path) -> int:
+def extract(src: Path, cell: str, dst: Path) -> tuple[int, dict]:
+    """Write the cell's rows out, and count USABLE rows per tool.
+
+    A row-count gate passes 1,600 rows whether or not any of them carries an
+    estimate. That is how this run produced 16 cells of "1,600 rows (OK)"
+    with two of four tools empty in every one -- absence normalised into a
+    value, the same class as C10. `att_pct is None` is the only field read
+    here, and only for presence: no value is compared, ordered or summarised,
+    so blinding holds.
+    """
     n = 0
+    usable: dict = {}
     with src.open() as fin, dst.open("w") as fout:
         for line in fin:
-            if f'"scenario": "{cell}"' in line or f'"scenario":"{cell}"' in line:
-                fout.write(line)
-                n += 1
-    return n
+            if f'"scenario": "{cell}"' not in line and \
+               f'"scenario":"{cell}"' not in line:
+                continue
+            fout.write(line)
+            n += 1
+            r = json.loads(line)
+            t = r["tool"] + (f"[{r['posterior_type']}]"
+                             if r.get("posterior_type") else "")
+            e = usable.setdefault(t, [0, 0])
+            e[0] += 1
+            if r.get("att_pct") is not None:
+                e[1] += 1
+    return n, usable
 
 
 def check_seed_log(path: Path, cell: str, t: int, g: int,
@@ -267,13 +301,25 @@ def main() -> int:
             print(f"   run_tools FAILED (exit {rc}). See {log}. Stopping.")
             return 2
 
-        n = extract(results, c, persist / f"{c}.jsonl")
+        n, usable = extract(results, c, persist / f"{c}.jsonl")
+        dead = sorted(t for t, (_, u) in usable.items() if u == 0)
+        thin = sorted(t for t, (tot, u) in usable.items() if 0 < u < tot)
         print(f"   estimated in {dt/60:.1f} min -> {n:,} rows "
-              f"({'OK' if n == expect else f'EXPECTED {expect:,}'})")
+              f"({'OK' if n == expect else f'EXPECTED {expect:,}'}), "
+              f"{len(usable)} tools, "
+              + ", ".join(f"{t} {u}/{tot}" for t, (tot, u) in sorted(usable.items())))
         if n != expect:
             print("   row count gate FAILED. Stopping; the partial cell is "
                   "kept for inspection but is not complete.")
             return 2
+        if dead:
+            print(f"   USABLE-ROW GATE FAILED: {dead} produced 0 estimates in "
+                  f"{n:,} rows. That is a tool that did not run, not a tool "
+                  f"that found nothing. Stopping.")
+            return 2
+        if thin:
+            print(f"   note: partial coverage in {thin} -- not fatal, but "
+                  f"recorded.")
 
         done.append(c)
         clear_panels()

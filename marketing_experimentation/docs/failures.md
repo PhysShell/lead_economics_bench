@@ -903,3 +903,72 @@ the defect they are supposed to catch, and require the suite to refuse it.
 **Near-miss, not an error in a result.** No M9-B cell had been generated for
 analysis. The cost was one hour, not a withdrawn finding — which is the only
 reason it reads as a method note rather than as F15 did.
+
+## F21. Two of four tools never ran, and a gate that counted rows said OK sixteen times
+
+**What happened.** The M9-B run completed all 16 cells, 25,600 rows, every
+gate green. Half of it was empty. `geolift` and `causalimpact` produced
+**zero** estimates in **all sixteen cells** — 12,800 rows of
+
+    "att_pct": null, "ci_lower": null, "ci_upper": null,
+    "significant": false, "runtime_seconds": 0
+
+**The mechanism.** `run_tools.py` shells out to a **bare** `Rscript` for its
+two R-based tools. Bare resolves to `/usr/bin/Rscript`, which is R 4.6.1.
+The runner I wrote set `R_LIBS_SITE` to the version-matched **R-4.5** renv
+library but left `PATH` alone, so R 4.6 was pointed at a library built for
+R 4.5, `library(GeoLift)` failed, and `run_tools`' error branch wrote a
+fully-null row rather than raising.
+
+Verified rather than inferred:
+
+| invocation | result |
+|---|---|
+| bare `Rscript` + `R_LIBS_SITE`(R-4.5) | `there is no package called 'GeoLift'` |
+| `/opt/R/4.5.1/bin/Rscript` + same | `GeoLift OK`, `CausalImpact OK` |
+
+The split is clean and diagnostic in itself: the two **Python** tools
+(`causalpy`, `google_mm`) have 6,400 usable rows each; the two **R** tools
+have none. A failure that respects the language boundary exactly is an
+environment failure, not a statistical one.
+
+**Why it survived every gate, which is the worse half.** The runner's
+completion gate counted rows. It saw 1,600 and printed `1,600 rows (OK)`,
+sixteen times, because `run_tools` faithfully emitted one row per
+(panel, tool) whether or not the tool ran. The row was present. The estimate
+was not. And `significant: false` is not a missing value — it is a
+**fabricated** one: the row asserts "this tool looked and found no
+significant effect" when the tool never executed.
+
+That is C10 from the other side. C10 says a comparison instrument must not
+normalise away the thing compared; here the *producer* normalised absence
+into a value, and the *gate* counted the normalised form. An error branch
+that returns a well-formed row of nulls converts a crash into a datum.
+
+**The two fixes, because the bug and its survival are different bugs.**
+
+1. `child_env()` puts the matched R first on `PATH` as well as setting
+   `R_LIBS_SITE`. `R_LIBS_SITE` alone says *where* to look, not *who* looks.
+2. A **usable-row gate**: the runner now refuses any cell in which a tool
+   produced 0 estimates across 1,600 rows. Zero estimates is a tool that did
+   not run, not a tool that found nothing, and the two must never again
+   produce the same green tick.
+
+**What it cost.** ~24 CPU-hours of the run were spent on `causalpy` and
+`google_mm`, which are fine and are kept. The two R tools re-run against the
+same panels — deterministic from the frozen seeds, regenerated in 8s per
+cell — so nothing generated is lost and no world is disturbed. The 12,800
+empty rows are preserved in `/tmp/m9b_dead/` rather than deleted: the
+evidence that this happened does not go away with the payload.
+
+**What it did not touch.** Nothing frozen. `m9b_run.py` is the runner, not
+one of the five things `m9b-freeze.json` protects, and the generator ran
+under an explicit `/opt/R/4.5.1/bin/Rscript` throughout — which is why every
+world-contract check passed and stays valid.
+
+**The general form.** *A gate must count the thing it is protecting, not a
+proxy that is cheaper to count.* Rows were the proxy; estimates were the
+thing. Sixteen consecutive green ticks were not weak evidence that the run
+was healthy — for the property that mattered, they were no evidence at all.
+Which is F20's lesson arriving a second time, four days later, in a gate
+rather than in a test suite.
