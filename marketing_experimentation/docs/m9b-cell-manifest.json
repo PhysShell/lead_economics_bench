@@ -1,0 +1,117 @@
+{
+  "schema": "leadbench-mx M9-B cell manifest v1",
+  "updated_at": "2026-09-24T12:44:08+00:00",
+  "distribution_status": "The CELLS are PRIVATE donor-derived output and are NOT in this repository. This file is their provenance record only -- hashes, row counts and wall clock. See docs/artifact-manifest.json.",
+  "purpose": "A container restart on 2026-09-24 killed the run mid-cell. /tmp survived that one. This file is what lets a regenerated cell be checked for IDENTITY against the cell it replaces, rather than assumed equal to it.",
+  "freeze": {
+    "analysis_commit": "a5b3be4508ee877daa17eebc90b2356e726130ec",
+    "generator_sha256": "fac70c97b310e81958d99bec6fc5647463bfbf5c82d58285420d3e113ede1ef2",
+    "patch_stack": [
+      "theta-mutation.patch",
+      "m8-seed-log.patch",
+      "m9b-axes.patch"
+    ]
+  },
+  "expected": {
+    "cells": 16,
+    "rows_per_cell": 1600,
+    "seed_records_per_cell": 400
+  },
+  "progress": {
+    "complete": 9,
+    "of": 16,
+    "missing": [
+      "M9B_T28_G09",
+      "M9B_T28_G20",
+      "M9B_T28_G40",
+      "M9B_T42_G05",
+      "M9B_T42_G09",
+      "M9B_T42_G20",
+      "M9B_T42_G40"
+    ]
+  },
+  "cells": {
+    "M9B_T15_G05": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "124b41572bfbb03c3f233f96d0a1c7bd2cf10b35b3ce3214984188875203b2f1",
+      "results_bytes": 840786,
+      "seed_log_sha256": "372d3bba48517114a53db052af6159f79bd12fc41ff3d258f0b5de2d30c25a1e",
+      "seed_log_records": 400,
+      "estimate_minutes": 48.2
+    },
+    "M9B_T15_G09": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "ecfabc0baac1db3b060ee9212a29f08b113218272ec817a158f14305b59269bf",
+      "results_bytes": 840794,
+      "seed_log_sha256": "700bc332cccb92e5753f43ad5f628bf20f7150725cb720a683d49e524d49bdc2",
+      "seed_log_records": 400,
+      "estimate_minutes": 69.7
+    },
+    "M9B_T15_G20": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "51de5b25516a07bf4a9a762af0188ea8f781a6e236fedd0dfb3ac6e4fa4948ad",
+      "results_bytes": 841342,
+      "seed_log_sha256": "2bf546db612a7bd48561f2ccfdd44bfafcbffa8bcd1bcabe13ac58954c7db3cd",
+      "seed_log_records": 400,
+      "estimate_minutes": 99.9
+    },
+    "M9B_T15_G40": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "9fe145c79489e6a6e8e13b987fa810fa1ee58ef5f071ba3deedfa9707b6a88c8",
+      "results_bytes": 840978,
+      "seed_log_sha256": "345af8f3dce095be57a225dd66d7d44895359afb71918bcfbbae0d8ea1e39ecd",
+      "seed_log_records": 400,
+      "estimate_minutes": 121.9
+    },
+    "M9B_T21_G05": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "eff413f9ca4234db2324c29fbe1ed5ac59dc2d7b358f7fe837933adbfa2eba37",
+      "results_bytes": 840356,
+      "seed_log_sha256": "b2711973f21aac903171e91332354d9297309d0d4b4bbb099f6cf02392abe3fb",
+      "seed_log_records": 400,
+      "estimate_minutes": 53.1
+    },
+    "M9B_T21_G09": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "bab725859d6870a30582cb04228f97aa59cb8516b2a225d3e5b18d4976ccaae1",
+      "results_bytes": 840530,
+      "seed_log_sha256": "71ed27d79f34abebc6068a543a78c476428656ee2b348be33c62345f217667d3",
+      "seed_log_records": 400,
+      "estimate_minutes": 70.3
+    },
+    "M9B_T21_G20": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "f8a4e2d3856714eaec21685369d3b6101ad8cf3f6f7fc355e3a9cfda103c1bcb",
+      "results_bytes": 840950,
+      "seed_log_sha256": "32a88c1a556b1ecca737060f4d3bb2be0a3ee909c9cfb26d79fc717a40294d6f",
+      "seed_log_records": 400,
+      "estimate_minutes": 101.3
+    },
+    "M9B_T21_G40": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "cd958caea7894b7f3c31b9d56f05cd3e6b2bfb1a2dfb7b7f8ff310f7d7b5ab6a",
+      "results_bytes": 840636,
+      "seed_log_sha256": "d8a2e804978c4d9bfbe6f1049ec8c687042cf5f360f541dc478203a2c9273a71",
+      "seed_log_records": 400,
+      "estimate_minutes": 125.4
+    },
+    "M9B_T28_G05": {
+      "rows": 1600,
+      "complete": true,
+      "results_sha256": "a5da8890ce3df6334b8ebe4ad2f6cb9a067624ed19a0e1f0e23497f741e3b8d0",
+      "results_bytes": 840763,
+      "seed_log_sha256": "28577b5e10e6087e0cd1f6276a23606f53f2b0b77918be0ff2e9c47f6f8ee313",
+      "seed_log_records": 400,
+      "estimate_minutes": 55.3
+    }
+  },
+  "blinding_note": "Produced by hashing bytes and counting lines. No results row was parsed, so nothing here is a function of an estimate."
+}
