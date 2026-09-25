@@ -51,7 +51,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
 FREEZE = REPO / "marketing_experimentation/docs/m9b-freeze.json"
-DONOR = Path("/home/user/donor-smoke")
+DONOR = Path("/home/user/donor-smoke")   # overridden by --donor
 R_BIN = "/opt/R/4.5.1/bin/Rscript"
 R_LIBS = DONOR / "renv/library/linux-ubuntu-noble/R-4.5/x86_64-pc-linux-gnu"
 #: run_tools.py needs the donor's own deps (causalpy 0.8.0, pymc 5.28.1),
@@ -201,7 +201,21 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--only", default=None, help="one cell id")
     ap.add_argument("--persist", default=str(PERSIST))
+    ap.add_argument("--donor", default=None,
+                    help="worker tree. Several workers may run disjoint cell "
+                         "subsets in separate checkouts of the SAME frozen "
+                         "files; verified not to change the R tools' output "
+                         "(see F21 and the concurrency probe).")
+    ap.add_argument("--cells", default=None,
+                    help="comma-separated subset of cell ids for this worker")
+    ap.add_argument("--tag", default="", help="suffix for this worker's log")
     a = ap.parse_args()
+
+    global DONOR, DONOR_PY, R_LIBS
+    if a.donor:
+        DONOR = Path(a.donor)
+        DONOR_PY = DONOR / ".venv-repro/bin/python"
+        R_LIBS = DONOR / "renv/library/linux-ubuntu-noble/R-4.5/x86_64-pc-linux-gnu"
 
     fz = load_freeze()
     grid = fz["design"]["theta_grid"]
@@ -211,7 +225,7 @@ def main() -> int:
 
     persist = Path(a.persist)
     persist.mkdir(parents=True, exist_ok=True)
-    log = persist / "run.log"
+    log = persist / f"run{a.tag}.log"
     results = DONOR / "results/raw/results.jsonl"
 
     print("=" * 72)
@@ -222,6 +236,7 @@ def main() -> int:
     print(f"generator   : {fz['donor']['patched_files_sha256']['src/R/generate_panels.R'][:16]}")
     print(f"grid        : {len(grid)} truths x {iters} iterations x "
           f"{ROWS_PER_PANEL} tools = {expect:,} rows/cell")
+    print(f"donor tree  : {DONOR}")
     print(f"persist to  : {persist}")
     print(f"permitted   : {fz['permitted_change_after_this_point'][:60]}...")
     print()
@@ -243,7 +258,10 @@ def main() -> int:
             print(f"parked pre-M9B rows -> {parked} "
                   f"(M8's are already archived and hash-verified)")
 
-    todo = [c for c in cells if (a.only is None or c == a.only)]
+    subset = set(a.cells.split(",")) if a.cells else None
+    todo = [c for c in cells
+            if (a.only is None or c == a.only)
+            and (subset is None or c in subset)]
     done, skipped = [], []
     for c in todo:
         p = persist / f"{c}.jsonl"
