@@ -154,6 +154,10 @@ def main() -> int:
     ap.add_argument("--draws", type=int, default=2000)
     ap.add_argument("--alpha", type=float, default=ALPHA)
     ap.add_argument("--out", default=None, help="optional JSON dump")
+    ap.add_argument("--save-draws", default=None,
+                    help="npz of the full bootstrap draw arrays. Medians "
+                         "alone cannot answer a contrast nobody thought to "
+                         "print, and recomputing costs ~80 minutes.")
     a = ap.parse_args()
 
     base = Path(a.cells)
@@ -245,6 +249,49 @@ def main() -> int:
               "significance test:\n     no alpha was preregistered for "
               "these steps and none is claimed.")
 
+    # -- 2b. END-TO-END spans -------------------------------------------
+    # Adjacent steps are small and mostly unresolved at 25 clusters. The
+    # span from the cheapest to the richest design along each axis is the
+    # contrast with enough separation to be worth an interval, and it is
+    # the one a practitioner actually faces: not "is 21 days better than
+    # 15" but "is six weeks better than two".
+    print("\n" + "=" * 78)
+    print("END-TO-END spans, paired across the shared world")
+    for t in tools:
+        print(f"\n{t}")
+        print(f"   {'span':34s} {'delta r_EVSI':>14s} {'95% credible':>26s}")
+        for G in N_CONTROL:
+            a0 = surf[t].get(f"M9B_T{POST_DAYS[0]:02d}_G{G:02d}")
+            a1 = surf[t].get(f"M9B_T{POST_DAYS[-1]:02d}_G{G:02d}")
+            if not (a0 and a1):
+                continue
+            dd = a1["verdict"] - a0["verdict"]
+            lo, hi = np.quantile(dd, [.025, .975])
+            mark = "" if lo <= 0 <= hi else "  *"
+            print(f"   G_c={G:<3} T {POST_DAYS[0]} -> {POST_DAYS[-1]} "
+                  f"{'(2wk -> 6wk)':16s} {pct(float(np.median(dd))):>14s} "
+                  f"{'[' + pct(lo) + ', ' + pct(hi) + ']':>26s}{mark}")
+        for T in POST_DAYS:
+            a0 = surf[t].get(f"M9B_T{T:02d}_G{N_CONTROL[0]:02d}")
+            a1 = surf[t].get(f"M9B_T{T:02d}_G{N_CONTROL[-1]:02d}")
+            if not (a0 and a1):
+                continue
+            dd = a1["verdict"] - a0["verdict"]
+            lo, hi = np.quantile(dd, [.025, .975])
+            mark = "" if lo <= 0 <= hi else "  *"
+            print(f"   T={T:<3}  G_c {N_CONTROL[0]} -> {N_CONTROL[-1]} "
+                  f"{'(8x the pool)':16s} {pct(float(np.median(dd))):>14s} "
+                  f"{'[' + pct(lo) + ', ' + pct(hi) + ']':>26s}{mark}")
+        c0 = f"M9B_T{POST_DAYS[0]:02d}_G{N_CONTROL[0]:02d}"
+        c1 = f"M9B_T{POST_DAYS[-1]:02d}_G{N_CONTROL[-1]:02d}"
+        a0, a1 = surf[t].get(c0), surf[t].get(c1)
+        if a0 and a1:
+            dd = a1["verdict"] - a0["verdict"]
+            lo, hi = np.quantile(dd, [.025, .975])
+            mark = "" if lo <= 0 <= hi else "  *"
+            print(f"   {'corner to corner':34s} {pct(float(np.median(dd))):>14s} "
+                  f"{'[' + pct(lo) + ', ' + pct(hi) + ']':>26s}{mark}")
+
     # -- 3. monotonicity, descriptive ------------------------------------
     print("\n" + "=" * 78)
     print("monotonicity [DESCRIPTIVE -- no threshold, per m9b-freeze.json]")
@@ -275,6 +322,13 @@ def main() -> int:
         f = lambda m: pct(float(np.median(m["gap"]))) if m else "--"
         print(f"   {t:18s} {f(a0):>16s} {f(a1):>16s}")
     print(f"   ({lo_c} vs {hi_c})")
+
+    if a.save_draws:
+        np.savez_compressed(a.save_draws, **{
+            f"{t}|{c}|{k}": v
+            for t in tools for c, m in surf[t].items()
+            for k, v in m.items()})
+        print(f"\nwrote {a.save_draws} (full draw arrays)")
 
     if a.out:
         dump = {t: {c: {k: float(np.median(v)) for k, v in m.items()}
