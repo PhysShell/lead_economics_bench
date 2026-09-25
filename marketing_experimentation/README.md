@@ -91,6 +91,26 @@ The current claim, stated as narrowly as the evidence allows:
   governs, per decision**. M9 asks whether any experiment design clears that
   bar; see `docs/m9-preregistration.md`.
 
+### Which design axis is worth paying for — Addendum 5
+
+- **Test duration buys decision value; donor pool size does not.** 16 cells,
+  25,600 rows, every cell a slice of the **same maximal latent world**, so a
+  cell-to-cell difference is a design effect and not two Monte Carlo draws.
+  Going from a 2-week to a 6-week window: **8 of 12 spans established
+  positive** across the tools with signal, none negative, CausalImpact
+  +0.31 to +0.40 percentage points. Multiplying the donor pool **eightfold**:
+  **1 of 16 spans** excludes zero, and Google MM's point estimate moves the
+  *wrong way* in three of four.
+- **That is the opposite of where the intuition points.** The donor pool is
+  the cheap knob — the one you can turn without waiting — and it is the one
+  that does not pay.
+- **GeoLift is inert across the entire surface**, 0.0000% in five of sixteen
+  cells. Consistent with M9-A: its verdict is nearly mute at every truth, and
+  more information cannot sharpen a signal that is not listening.
+- **The sign loss grows with design richness** — CausalPy 0.2975% → 0.4758%
+  from the cheapest cell to the richest. The better the evidence, the more an
+  unsigned `significant` destroys.
+
 ### The donor reproduces — `docs/donor-repro.md`
 
 An independent end-to-end reproduction of the Recast study, on a different
@@ -173,7 +193,9 @@ refusing to overclaim:
 | `repro/recast/extend_from_freeze.py` | refuses to extend the run unless exactly one thing changed since the freeze |
 | `scripts/theta_interpolation.py` | can `q(θ)` be interpolated between simulated truths? leave-one-θ-out against bootstrap noise |
 | `src/leadbench_mx/clusters.py` | the common-random-numbers gate: refuses any analysis whose truths rest on different latent panels |
+| `scripts/m9b_surface.py` | what is a longer test, or a bigger donor pool, worth? `r_EVSI(T, G_c)`, every difference paired across the shared world. Refuses to read the surface until all 16 cells are complete |
 | `repro/recast/m9b_world_check.py` | do the M9-B design axes move the design without moving the world? 11 metamorphic relations, plus the five generator mutations they must refuse |
+| `repro/recast/m9b_run_invariants.py` | does the run that actually happened obey the world contract? Same invariants, on the seed logs the run emitted, at full scale |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
@@ -187,11 +209,14 @@ Tests: `pytest tests/` from this directory (232 invariants).
   before any replay ran — and revised once *before* seeing output, with the
   evidence for the revision recorded so it cannot later be mistaken for a
   tolerance widened to fit.
-- **`docs/failures.md` is not decoration.** Twenty entries, seven of them
-  errors the reader caught rather than me. F20 is the one caught by
-  attacking the checker rather than the code: a metamorphic suite that
-  passed 11/11 also passed the exact shortcut it was written to forbid, and
-  only mutation testing found the hole. Four of them — F13–F16 — are one
+- **`docs/failures.md` is not decoration.** Twenty-two entries, seven of them
+  errors the reader caught rather than me. F22 is the sharpest: **the same
+  defect three times in one milestone** — a metamorphic suite that counted
+  *nesting* while guarding *randomness*, a completion gate that counted
+  *rows* while guarding *whether tools ran*, and a blinding seal that counted
+  *files* while guarding *completeness*. Writing the general form down after
+  the first two did not prevent the third. The rule that would have is
+  C12: **every gate ships with the failing input it must reject.** Four of them — F13–F16 — are one
   class, **conceptual-model contract failure**: correct arithmetic under a
   structural assumption that was never checked. `docs/assumption-contracts.md`
   is the response: every load-bearing claim carries a source and an

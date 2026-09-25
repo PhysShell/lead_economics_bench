@@ -972,3 +972,58 @@ thing. Sixteen consecutive green ticks were not weak evidence that the run
 was healthy — for the property that mattered, they were no evidence at all.
 Which is F20's lesson arriving a second time, four days later, in a gate
 rather than in a test suite.
+
+## F22. The same defect three times in one milestone: a gate that counts a proxy
+
+F20, F21 and the M9-B blinding seal are not three lessons. They are one
+mistake made three times inside a single milestone, by someone who had
+written the lesson down after the first time.
+
+| | the gate | what it counted | what it was guarding |
+|---|---|---|---|
+| **F20** | metamorphic suite | *nesting holds* | the pool is a **random** permutation |
+| **F21** | completion gate | *rows exist* | the tools **ran** |
+| **F22c** | blinding seal | *cell files exist* | the cells are **complete** |
+
+Each check was individually correct. Each passed on data that violated the
+property it existed to protect. And each was caught by something other than
+reading it: F20 by mutating the generator, F21 by the complete-cluster gate
+reporting two tools where there should be four, F22c by running the script.
+
+**Why the proxy is always the one that gets counted.** The proxy is
+available at the moment the gate is written. Nesting is visible in the
+output; whether the permutation was random is not. Rows are in the file;
+whether a tool ran is not. Files are on disk; whether they are finished is
+not. In each case the honest check required going somewhere else — to a
+separate R process to re-derive the permutation, to a per-tool usable-row
+count, to the row count inside each file — and the cheap check was sitting
+right there.
+
+**F20's own general form, written four days before F21:**
+
+> A verification suite that has never failed on a real defect is an
+> assertion, not evidence.
+
+**F21's, written two days before the seal:**
+
+> A gate must count the thing it is protecting, not a proxy that is cheaper
+> to count.
+
+Both correct. Both mine. Neither prevented the next instance. Writing the
+general form is not a control; it is a note about a control that does not
+exist yet. **The only thing that actually caught any of these was executing
+the gate against a state that should fail it.**
+
+So the operational rule is not "remember the pattern". It is:
+
+> **Every gate ships with the failing input it must reject, and that
+> rejection is recorded next to the pass.**
+
+`m9b_mutations.sh` does this for the world contract — five mutations, all
+refused, output hashed into the freeze. Nothing did it for the completion
+gate or the seal, which is exactly why both shipped broken. The contract is
+C12, now restated to cover gates and seals and not only metamorphic suites.
+
+**Cost.** F20: an hour, caught before any cell existed. F21: ~26 CPU-hours
+of re-run, half the grid. F22c: minutes, caught on first execution. The
+cheapest of the three was the one where the failing input was written first.

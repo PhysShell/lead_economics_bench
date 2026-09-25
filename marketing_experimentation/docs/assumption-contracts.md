@@ -233,19 +233,29 @@ about which one it was.
                  from perm_seed in a separate R process. Five generator
                  mutations are required to be refused -- see F20.
 
-### C12 — a metamorphic suite is not evidence until it has refused a real defect
+### C12 — no gate is evidence until it has rejected a failing input
 
-    SOURCE       F20: the first M9-B suite passed 10/10 while accepting the
-                 sorted-baseline-prefix shortcut it existed to forbid
-    CLAIM        Passing checks bound nothing on their own. What bounds
-                 something is a check that fails when the property does.
-    CONSEQUENCE  A green suite may be silent rather than reassuring, and it
-                 is silent exactly where the relations happen to be
-                 satisfied by the defect too.
-    CHECK        every new metamorphic suite in this track ships with the
-                 mutations it must refuse, and the refusal is recorded
-                 alongside the pass. For M9-B: M-a..M-e in the addendum's
-                 mutation table.
+    SOURCE       F22: the same defect three times in one milestone. F20's
+                 metamorphic suite passed the sorted-baseline shortcut it
+                 forbade; F21's completion gate passed 16 cells with two of
+                 four tools empty; the M9-B blinding seal passed 16 cell
+                 FILES that were half-written.
+    CLAIM        A gate that has never rejected anything bounds nothing. It
+                 is silent exactly where its cheap proxy happens to be
+                 satisfied by the defect -- which is the case the gate was
+                 built for.
+    CONSEQUENCE  Green is not reassurance. Sixteen consecutive passes were,
+                 for the property that mattered, no evidence at all.
+    CHECK        every gate, seal and metamorphic suite in this track ships
+                 with the failing input it must reject, and the rejection is
+                 recorded next to the pass. m9b_mutations.sh does this for
+                 the world contract (five mutations, all refused, output
+                 hashed into the freeze). Nothing did it for the completion
+                 gate or the seal, and both shipped broken.
+    NOTE         writing the general form down is not a control. F20's
+                 lesson predates F21 by four days and F21's predates the
+                 seal by two. Only executing the gate against a state that
+                 should fail it has ever caught one.
 
 ## Metamorphic relations
 

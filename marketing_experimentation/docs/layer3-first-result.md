@@ -1149,3 +1149,119 @@ Finding B — `INTERVAL → VERDICT` — was deliberately not scaled. A
 one-dimensional `q(θ)` surviving interpolation says nothing about a 3-d
 density; the curse of dimensionality is not impressed by a neighbouring
 result.
+
+---
+
+# Addendum 5 — M9-B: duration is worth paying for, donor pool is not
+
+*16 cells, 25,600 rows, every cell a slice of the same maximal latent world.
+Computed on the conditioned documented prior, against an EVPI ceiling of
+**2.2120%** of governed spend — the same ceiling M9-A reports, as it must,
+since it is a property of the prior and the decision problem and not of any
+experiment.*
+
+## The surface
+
+`r_EVSI(VERDICT)`, share of governed spend per decision, `L = 1`:
+
+| tool | T=15 G=5 | T=42 G=40 | T steps up | G_c steps up |
+|---|---|---|---|---|
+| `causalimpact` | 0.1721% | 0.5820% | **12 / 12** | 6 / 12 |
+| `causalpy[y_hat]` | 0.3182% | 0.4883% | 11 / 12 | 8 / 12 |
+| `google_mm` | 0.1150% | 0.3153% | 11 / 12 | **4 / 12** |
+| `geolift` | 0.0096% | 0.0168% | 3 / 12 | 5 / 12 |
+
+Across the three tools with any signal, **34 of 36 duration steps move up**
+and donor-pool steps are a coin flip — for Google MM they move *down* twice
+as often as up.
+
+## The contrast that has the separation to carry an interval
+
+Adjacent steps are small and mostly unresolved at 25 clusters, so the
+reportable contrast is the **span**: not "is 21 days better than 15" but "is
+six weeks better than two", which is also the question a practitioner faces.
+Every difference below is **paired** cluster-by-cluster across the shared
+world — the variance reduction the nesting contract exists to create. `*`
+marks a 95% credible interval excluding zero.
+
+**Duration, 2 weeks → 6 weeks** (16 spans, 4 per tool):
+
+| tool | median Δ range | spans excluding 0 |
+|---|---|---|
+| `causalimpact` | +0.311% to +0.396% | **4 / 4** |
+| `causalpy` | +0.060% to +0.224% | 2 / 4 |
+| `google_mm` | +0.139% to +0.353% | 2 / 4 |
+| `geolift` | −0.032% to +0.000% | 0 / 4 |
+
+**Eight of twelve duration spans are established positive across the tools
+with signal. None is negative.**
+
+**Donor pool, 5 → 40 (eight times the pool)** (16 spans):
+
+| tool | median Δ range | spans excluding 0 |
+|---|---|---|
+| `causalimpact` | −0.042% to +0.040% | 0 / 4 |
+| `causalpy` | −0.055% to +0.107% | 1 / 4 |
+| `google_mm` | −0.186% to +0.061% | 0 / 4 |
+| `geolift` | +0.000% to +0.039% | 0 / 4 |
+
+**One of sixteen.** And Google MM's median is *negative* in three of four.
+
+Corner to corner (`T15_G05 → T42_G40`): `causalimpact` **+0.4018%
+[0.1679, 0.7534]** and `google_mm` **+0.1899% [0.0013, 0.5104]** exclude
+zero; `causalpy` +0.1712% and `geolift` +0.0004% do not.
+
+## What this says, stated as narrowly as the evidence allows
+
+> In this simulation world, **test duration buys decision value and donor
+> pool size does not.** Tripling the test window roughly triples
+> CausalImpact's information value; multiplying the donor pool eightfold
+> does nothing detectable for any tool, and for one tool the point estimate
+> moves the wrong way.
+
+This is a statement about **where to spend design effort**, and it is the
+opposite of where the axis intuition points: a bigger donor pool is the
+cheap knob, the one a practitioner can turn without waiting, and it is the
+one that does not pay.
+
+## What it does not say
+
+- **Not a monotonicity finding.** `m9b-freeze.json` attached no threshold to
+  monotonicity before the run and none is invented now. The direction counts
+  above are descriptive; the spans are what carry intervals.
+- **Not a significance test.** No alpha was preregistered for these steps.
+  `*` means the paired 95% interval excludes zero, nothing more.
+- **Not external validity.** The DGP is synthetic and contains no spend, no
+  budget and no intervention. See M9-A §1.
+- **Not an ENBS.** No cost model, deliberately.
+- **Not a comparison with A1/A3.** `M9B_T15_G20` has 21 geos drawn as 41 and
+  sliced; A1 has 21 drawn as 21. Different worlds. The M9-A figure for
+  CausalImpact (0.2579%) and this grid's A1-shaped cell (0.1925%) are not
+  the same quantity and their difference is not a finding.
+
+## GeoLift is inert across the entire surface
+
+0.0000% in five of sixteen cells and never above 0.0571%, with no span
+excluding zero on either axis. That is consistent with M9-A, where its sign
+loss was `$214 [0–749]`, not established: its `P(significant)` sits at
+0.05–0.19 at *every* truth, so the verdict is nearly mute and there is
+nothing for more data to sharpen. **More information cannot help a signal
+that is not listening.**
+
+## The sign loss grows with design richness
+
+`V − B`, what the unsigned bit throws away, cheapest cell → richest:
+CausalPy 0.2975% → 0.4758%, Google MM 0.0906% → 0.2094%. A better experiment
+makes an unsigned `significant` destroy **more**, not less — the better the
+evidence, the more the sign is worth, and the more it costs to discard.
+
+## Provenance
+
+Generator `fac70c97`, patch stack `theta-mutation → m8-seed-log → m9b-axes`,
+freeze `docs/m9b-freeze.json` taken before the first cell. Complete-cluster
+gate: 16/16 PASS, **100% retention**, 16 truths and 4 tools in every cell.
+World contract verified on the executed run (`m9b_run_invariants.py`): one
+identical world set across all 16 cells, pools nesting by prefix in all 25
+replications, 25 distinct donor permutations, `City 21` treated throughout.
+Cells are private donor-derived output; only their hashes are in Git
+(`docs/m9b-cell-manifest.json`).
