@@ -327,8 +327,13 @@ def main() -> int:
               f"{len(usable)} tools, "
               + ", ".join(f"{t} {u}/{tot}" for t, (tot, u) in sorted(usable.items())))
         if n != expect:
-            print("   row count gate FAILED. Stopping; the partial cell is "
-                  "kept for inspection but is not complete.")
+            print(f"   row count gate FAILED ({n:,} vs {expect:,}). Stopping; "
+                  f"the cell is kept for inspection but is not complete.")
+            if n > expect:
+                print("   MORE rows than expected means duplicate keys, not "
+                      "extra work: dedupe the donor results file before "
+                      "resuming. A cell cannot legitimately exceed "
+                      "iterations x truths x tools.")
             return 2
         if dead:
             print(f"   USABLE-ROW GATE FAILED: {dead} produced 0 estimates in "
