@@ -95,12 +95,13 @@
   "archives": {
     "m9b_cells": {
       "name": "leadbench-mx-m9b-cells.tar.gz",
-      "sha256": "f5781ca47debd0d232eb1d2b009510f4c2324a8b64641926387e1e3a70676a8b",
-      "bytes": 1933235,
-      "contents": "16 M9-B cells (1,600 rows each = 25,600 rows), their 16 seed logs (400 records each), the subprocess log and the runner stdout",
+      "sha256": "e7fe78ddc850124a2b6aa1e52bd0a1f5ce945df0e00f309568a9348af4f75142",
+      "bytes": 2434768,
+      "contents": "16 M9-B cells (1,600 rows each = 25,600 rows, four tools producing in every one), 16 seed logs (400 records each), the subprocess logs and all three worker stdouts",
       "reproducible_tar": "--sort=name --owner=0 --group=0 --numeric-owner --mtime=@0",
       "roundtrip_verified": true,
-      "per_cell_record": "docs/m9b-cell-manifest.json carries each cell's own sha256, row count, seed-log hash and wall clock, so a single lost cell can be regenerated and checked for identity without unpacking the archive.",
+      "supersedes": "an earlier tarball of the same name whose geolift and causalimpact rows were all empty -- see F21. That archive is NOT a usable fallback and is deliberately overwritten.",
+      "per_cell_record": "docs/m9b-cell-manifest.json carries each cell's own sha256, row count, seed-log hash and wall clock.",
       "distribution_status": "PRIVATE - donor-derived. NOT to be committed to this or any public repository."
     }
   }

@@ -47,31 +47,41 @@ def main() -> None:
                     help="defaults to <cells>/run.log; read only to find "
                          "recorded restarts")
     ap.add_argument("--out", default=str(OUT))
-    ap.add_argument("--runner-log", default="/tmp/m9b_run.out",
-                    help="the RUNNER's stdout, which carries the [N/16] and "
-                         "'estimated in' lines. run.log holds the R and "
-                         "run_tools subprocess output instead.")
+    ap.add_argument("--runner-logs", nargs="*",
+                    default=["/tmp/m9b_run.out", "/tmp/m9b_w1.out",
+                             "/tmp/m9b_w2.out", "/tmp/m9b_w3.out"],
+                    help="every runner stdout. ALL of them, because a cell's "
+                         "rows were produced across more than one pass and "
+                         "more than one worker.")
     a = ap.parse_args()
     d = Path(a.cells)
 
     # wall clock per cell, from the runner's own log lines
-    timings = {}
-    log = Path(a.runner_log)
-    if log.exists():
+    # Every cell's rows were produced in at least two passes -- the Python
+    # tools first, then the R tools after F21 -- across three workers and
+    # three container restarts. There is therefore NO single wall clock per
+    # cell, and recording one would be a number that means a different thing
+    # in different rows. Collect them all instead.
+    timings: dict = {}
+    for lp in a.runner_logs:
+        log = Path(lp)
+        if not log.exists():
+            continue
         cur = None
         for ln in log.read_text(errors="replace").splitlines():
-            m = re.match(r"\[(\d+)/16\] (M9B_\S+)", ln.strip())
+            m = re.match(r"\[(\d+)/\d+\] (M9B_\S+)", ln.strip())
             if m:
                 cur = m.group(2)
             m = re.search(r"estimated in ([\d.]+) min", ln)
             if m and cur:
-                timings[cur] = float(m.group(1))
+                timings.setdefault(cur, []).append(
+                    {"minutes": float(m.group(1)), "log": log.name})
 
     # Cells that were in flight when the runner was killed have a wall
     # clock covering only the UNFINISHED part, because run_tools.py resumed
     # the rest by key. Unmarked, that number sits in a provenance record
     # looking exactly like a measurement of what the cell costs. Mark it.
-    resumed = set()
+    resumed: set = set()
     sub = Path(a.subprocess_log or (d / "run.log"))
     if sub.exists():
         for m in re.finditer(r"mid-cell\s+\d+\s+\((M9B_\S+?)\)",
@@ -91,12 +101,18 @@ def main() -> None:
             "seed_log_sha256": sha256(s) if s.exists() else None,
             "seed_log_records": (sum(1 for _ in s.open("rb")) - 1)
                                 if s.exists() else None,
-            "estimate_minutes": timings.get(c),
-            "estimate_minutes_is_a_clean_measurement": c not in resumed,
-            "timing_caveat": (
-                "RESUMED after a runner restart: this wall clock covers only "
-                "the panels that were still outstanding, not the cell. Do not "
-                "use it to fit a cost model." if c in resumed else None),
+            "estimate_passes": timings.get(c, []),
+            "estimate_minutes_total": (
+                round(sum(x["minutes"] for x in timings[c]), 1)
+                if c in timings else None),
+            "timing_caveat":
+                "estimate_minutes_total is the SUM over passes, and several "
+                "passes were resumed mid-cell after a restart or ran "
+                "alongside two other workers. It is an accounting of spent "
+                "wall clock, NOT a measurement of what this cell costs to "
+                "run. Do not fit a cost model to it."
+                + (" This cell was additionally in flight at a container "
+                   "restart." if c in resumed else ""),
         }
 
     fz = json.loads((REPO / "marketing_experimentation/docs/m9b-freeze.json"
@@ -135,9 +151,11 @@ def main() -> None:
     print(f"{len(done)}/16 complete -> {a.out}")
     for c, v in cells.items():
         flag = "" if v["complete"] else f"  <-- {v['rows']} rows, INCOMPLETE"
-        if not v["estimate_minutes_is_a_clean_measurement"]:
-            flag += "  <-- RESUMED; partial wall clock, not a cell cost"
-        t = f"{v['estimate_minutes']:6.1f} min" if v["estimate_minutes"] else "    -    "
+        if c in resumed:
+            flag += "  <-- also in flight at a container restart"
+        t = (f"{v['estimate_minutes_total']:6.1f} min over "
+             f"{len(v['estimate_passes'])}p"
+             if v["estimate_minutes_total"] else "      -       ")
         print(f"   {c}  {t}  {v['results_sha256'][:16]}{flag}")
 
 

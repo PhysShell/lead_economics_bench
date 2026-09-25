@@ -1,6 +1,6 @@
 {
   "schema": "leadbench-mx M9-B cell manifest v1",
-  "updated_at": "2026-09-24T23:24:24+00:00",
+  "updated_at": "2026-09-25T19:37:07+00:00",
   "distribution_status": "The CELLS are PRIVATE donor-derived output and are NOT in this repository. This file is their provenance record only -- hashes, row counts and wall clock. See docs/artifact-manifest.json.",
   "purpose": "A container restart on 2026-09-24 killed the run mid-cell. /tmp survived that one. This file is what lets a regenerated cell be checked for IDENTITY against the cell it replaces, rather than assumed equal to it.",
   "freeze": {
@@ -26,178 +26,322 @@
     "M9B_T15_G05": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "124b41572bfbb03c3f233f96d0a1c7bd2cf10b35b3ce3214984188875203b2f1",
-      "results_bytes": 840786,
+      "results_sha256": "7e7123dd2a152cbdbac4d50b6eba91edfc5b995e74c51075eddd66d82daf2df1",
+      "results_bytes": 870445,
       "seed_log_sha256": "372d3bba48517114a53db052af6159f79bd12fc41ff3d258f0b5de2d30c25a1e",
       "seed_log_records": 400,
-      "estimate_minutes": 48.2,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 48.2,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 87.4,
+          "log": "m9b_run.out"
+        }
+      ],
+      "estimate_minutes_total": 135.6,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T15_G09": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "ecfabc0baac1db3b060ee9212a29f08b113218272ec817a158f14305b59269bf",
-      "results_bytes": 840794,
+      "results_sha256": "beef81fee5ac87656ddf6d3be1e4b9c9bc3162d21cf50124172607fc1d754bb5",
+      "results_bytes": 870531,
       "seed_log_sha256": "700bc332cccb92e5753f43ad5f628bf20f7150725cb720a683d49e524d49bdc2",
       "seed_log_records": 400,
-      "estimate_minutes": 69.7,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 69.7,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 64.8,
+          "log": "m9b_w1.out"
+        }
+      ],
+      "estimate_minutes_total": 134.5,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T15_G20": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "51de5b25516a07bf4a9a762af0188ea8f781a6e236fedd0dfb3ac6e4fa4948ad",
-      "results_bytes": 841342,
+      "results_sha256": "e0523509bb8f6b85a3a312ecd43c7ada8655d090297350360b8d3222fd93816b",
+      "results_bytes": 871454,
       "seed_log_sha256": "2bf546db612a7bd48561f2ccfdd44bfafcbffa8bcd1bcabe13ac58954c7db3cd",
       "seed_log_records": 400,
-      "estimate_minutes": 99.9,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 99.9,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 36.2,
+          "log": "m9b_w1.out"
+        }
+      ],
+      "estimate_minutes_total": 136.1,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T15_G40": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "9fe145c79489e6a6e8e13b987fa810fa1ee58ef5f071ba3deedfa9707b6a88c8",
-      "results_bytes": 840978,
+      "results_sha256": "7590f05dde4a718068993dcc5716757f8dc569d7a2e18a672cc6d253f24aa342",
+      "results_bytes": 871178,
       "seed_log_sha256": "345af8f3dce095be57a225dd66d7d44895359afb71918bcfbbae0d8ea1e39ecd",
       "seed_log_records": 400,
-      "estimate_minutes": 121.9,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 121.9,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 135.6,
+          "log": "m9b_w1.out"
+        }
+      ],
+      "estimate_minutes_total": 257.5,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T21_G05": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "eff413f9ca4234db2324c29fbe1ed5ac59dc2d7b358f7fe837933adbfa2eba37",
-      "results_bytes": 840356,
+      "results_sha256": "8745e20e88176e22f1980eb29130ed59aecd631ac9cbf1bda8e9c95b36bc57c6",
+      "results_bytes": 870316,
       "seed_log_sha256": "b2711973f21aac903171e91332354d9297309d0d4b4bbb099f6cf02392abe3fb",
       "seed_log_records": 400,
-      "estimate_minutes": 53.1,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 53.1,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 128.6,
+          "log": "m9b_w1.out"
+        }
+      ],
+      "estimate_minutes_total": 181.7,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T21_G09": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "bab725859d6870a30582cb04228f97aa59cb8516b2a225d3e5b18d4976ccaae1",
-      "results_bytes": 840530,
+      "results_sha256": "a7ca365b53ee2d08e1e04f0f445cfc7a4417ae727de05437d4ad68ca9a44da22",
+      "results_bytes": 870521,
       "seed_log_sha256": "71ed27d79f34abebc6068a543a78c476428656ee2b348be33c62345f217667d3",
       "seed_log_records": 400,
-      "estimate_minutes": 70.3,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 70.3,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 127.3,
+          "log": "m9b_w1.out"
+        }
+      ],
+      "estimate_minutes_total": 197.6,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T21_G20": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "f8a4e2d3856714eaec21685369d3b6101ad8cf3f6f7fc355e3a9cfda103c1bcb",
-      "results_bytes": 840950,
+      "results_sha256": "42047ad91130239b3027cdf4793b904c54c0b15845d524043522e54128cd7910",
+      "results_bytes": 870889,
       "seed_log_sha256": "32a88c1a556b1ecca737060f4d3bb2be0a3ee909c9cfb26d79fc717a40294d6f",
       "seed_log_records": 400,
-      "estimate_minutes": 101.3,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 101.3,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 237.2,
+          "log": "m9b_w2.out"
+        }
+      ],
+      "estimate_minutes_total": 338.5,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T21_G40": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "cd958caea7894b7f3c31b9d56f05cd3e6b2bfb1a2dfb7b7f8ff310f7d7b5ab6a",
-      "results_bytes": 840636,
+      "results_sha256": "da387a68d8e84e0f6d4671822979051e2d15a1c6d07ecc5473b1646d28fd5c24",
+      "results_bytes": 870641,
       "seed_log_sha256": "d8a2e804978c4d9bfbe6f1049ec8c687042cf5f360f541dc478203a2c9273a71",
       "seed_log_records": 400,
-      "estimate_minutes": 125.4,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 125.4,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 275.7,
+          "log": "m9b_w2.out"
+        }
+      ],
+      "estimate_minutes_total": 401.1,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T28_G05": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "a5da8890ce3df6334b8ebe4ad2f6cb9a067624ed19a0e1f0e23497f741e3b8d0",
-      "results_bytes": 840763,
+      "results_sha256": "c50c9b7bbd34cf9a7f318460b65f27eb53d65e477d82132547ea9b9dcdd8ce7e",
+      "results_bytes": 871055,
       "seed_log_sha256": "28577b5e10e6087e0cd1f6276a23606f53f2b0b77918be0ff2e9c47f6f8ee313",
       "seed_log_records": 400,
-      "estimate_minutes": 55.3,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 55.3,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 112.2,
+          "log": "m9b_w2.out"
+        }
+      ],
+      "estimate_minutes_total": 167.5,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T28_G09": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "8b20cdcb6935a9f17a45432cd5d253ae668aeb5085a948d212b3b2daaf55992b",
-      "results_bytes": 840954,
+      "results_sha256": "ef54e56e7a52dc07ecfa096b5cfa786f3c38cb1c07f1545153d1844c688232f1",
+      "results_bytes": 870904,
       "seed_log_sha256": "13ba2ee11eb169a89033a314ce85696b8e547421487620a6272c7b0e36c52c2c",
       "seed_log_records": 400,
-      "estimate_minutes": 44.3,
-      "estimate_minutes_is_a_clean_measurement": false,
-      "timing_caveat": "RESUMED after a runner restart: this wall clock covers only the panels that were still outstanding, not the cell. Do not use it to fit a cost model."
+      "estimate_passes": [
+        {
+          "minutes": 44.3,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 148.9,
+          "log": "m9b_w1.out"
+        }
+      ],
+      "estimate_minutes_total": 193.2,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it. This cell was additionally in flight at a container restart."
     },
     "M9B_T28_G20": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "0c7492275bdfdb2a48f658e4dc70ad782949c9657cd23ea1278820e0ea8b2e5c",
-      "results_bytes": 841344,
+      "results_sha256": "a32803a7edbc8057da8b85c343fc3a5da2391f1d908e7ec635ef638611739cd4",
+      "results_bytes": 871451,
       "seed_log_sha256": "dd29dbfd497cc8f3193a95e0d634b4727de3146ff2f655d7e85eabff5be80c3e",
       "seed_log_records": 400,
-      "estimate_minutes": 107.5,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 107.5,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 159.6,
+          "log": "m9b_w1.out"
+        }
+      ],
+      "estimate_minutes_total": 267.1,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T28_G40": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "3afb147be919400bc70b548c1bbafaea83e7c3d1adb7d5d306cb636982cdaded",
-      "results_bytes": 841164,
+      "results_sha256": "80c3cdd83e0c041cae976745d54c9a5d474c672ba26b6b35048230f599746418",
+      "results_bytes": 871092,
       "seed_log_sha256": "3e57bd52b78342a701512ed5ed17879e5c6454a7141d02ee9b9cf59d2dfc1e4e",
       "seed_log_records": 400,
-      "estimate_minutes": 128.3,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 128.3,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 155.7,
+          "log": "m9b_w3.out"
+        }
+      ],
+      "estimate_minutes_total": 284.0,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T42_G05": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "fae33bd8c12d78ffb6d13f26441e1d66059369a868d1ab7c36dbebc204f4e4e8",
-      "results_bytes": 840877,
+      "results_sha256": "d07b1dd37273ee9f023bd2d1b9bead6bce55dcb62bbcdfb709e45b394eacc258",
+      "results_bytes": 871099,
       "seed_log_sha256": "e63816870be1bcb84fb20ddfee0c5e2567244548b98cc74e02532096aec8ea93",
       "seed_log_records": 400,
-      "estimate_minutes": 56.1,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 56.1,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 236.6,
+          "log": "m9b_w3.out"
+        }
+      ],
+      "estimate_minutes_total": 292.7,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T42_G09": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "f9078a97d687e1c78e0184bea09edc1156de18ead74b817f779bd43e4133b3ef",
-      "results_bytes": 841210,
+      "results_sha256": "2917e70a2907f4bebf17791a9caa6513914c360495000cccdd953c2ace400e25",
+      "results_bytes": 871240,
       "seed_log_sha256": "fae8861b5b90bddc6a420573c8bbd480e49e5aa7240a34cd29f1bac93f302d39",
       "seed_log_records": 400,
-      "estimate_minutes": 73.5,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 73.5,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 200.2,
+          "log": "m9b_w3.out"
+        }
+      ],
+      "estimate_minutes_total": 273.7,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T42_G20": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "20bb4f54f71a175751f4c4e46c3d8347887ac6343b171c805bfebd40dcb0d875",
-      "results_bytes": 841497,
+      "results_sha256": "416c5a05c383184b75e89e2a5e5872f364a2aa94fa1ad65897bd82980fdd9d13",
+      "results_bytes": 871376,
       "seed_log_sha256": "66ecc54b9cc825a4cc2433f61cc1b653836f0eae9c2a8aa0605ca5f08151d22a",
       "seed_log_records": 400,
-      "estimate_minutes": 103.9,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 103.9,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 137.8,
+          "log": "m9b_w1.out"
+        }
+      ],
+      "estimate_minutes_total": 241.7,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     },
     "M9B_T42_G40": {
       "rows": 1600,
       "complete": true,
-      "results_sha256": "d2d0a542130218ce84bb0aab084281636890160d655d95614cb1d2b215029c24",
-      "results_bytes": 841213,
+      "results_sha256": "1768e087f2a939269f1981118a4a7d4f5dd7810c034448f9c0fe6eeaf0550068",
+      "results_bytes": 871179,
       "seed_log_sha256": "7b3e1a1b62ba8bfd7dc89747c280b7625e2970b7f5ad77460ef9fe8bd6d3aa0c",
       "seed_log_records": 400,
-      "estimate_minutes": 125.6,
-      "estimate_minutes_is_a_clean_measurement": true,
-      "timing_caveat": null
+      "estimate_passes": [
+        {
+          "minutes": 125.6,
+          "log": "m9b_run.out"
+        },
+        {
+          "minutes": 261.8,
+          "log": "m9b_w2.out"
+        }
+      ],
+      "estimate_minutes_total": 387.4,
+      "timing_caveat": "estimate_minutes_total is the SUM over passes, and several passes were resumed mid-cell after a restart or ran alongside two other workers. It is an accounting of spent wall clock, NOT a measurement of what this cell costs to run. Do not fit a cost model to it."
     }
   },
   "resumed_cells": [
