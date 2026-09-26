@@ -95,6 +95,78 @@ direction is not dead. It does **not** establish that a rich-output channel
 would have high EVSI, and it is not a finding about GeoLift's calibration.
 The next step is bounded, not expensive.
 
+## Gate 2: does the richer channel carry more DECISION value?
+
+`rho` is not decision value, and a wide interval may be an honest report of
+uncertainty rather than a lossy interface. So the same downstream framework
+was given progressively richer channels — `scripts/channel_ladder.py`, zero
+new simulation.
+
+**Kill criterion, written before looking:** if the rich channels give only a
+small increment over BIT/VERDICT, `rho = 0.69` was a correlation carrying no
+decision-relevant information and the GeoLift direction dies.
+
+### The result that needs no discretisation at all
+
+VERDICT and SIGN are both natural discrete channels — **neither is binned**,
+so the comparison between them is free of every binning concern. Across all
+nine configurations (K ∈ {4, 8, 16} × α ∈ {0.1, 0.5, 1.0}):
+
+| tool | VERDICT | SIGN of the point estimate | spread over 9 configs |
+|---|---|---|---|
+| `causalimpact` | 0.4224–0.4414% | 0.4118–0.4157% | ≤0.019pp |
+| `causalpy` | 0.4042–0.4168% | 0.4620–0.4659% | ≤0.013pp |
+| **`geolift`** | **0.0066–0.0135%** | **0.4252–0.4286%** | **≤0.007pp** |
+| `google_mm` | 0.2710–0.2818% | 0.4558–0.4602% | ≤0.011pp |
+
+**GeoLift's `B → C` gap is 0.412–0.422 percentage points across every
+configuration.** The sign of its point estimate is worth roughly **35×** its
+verdict, and — the sharper comparison — GeoLift's SIGN channel
+(0.4252–0.4286%) is **indistinguishable from CausalImpact's**
+(0.4118–0.4157%).
+
+**The gate is passed.** On the sign channel GeoLift is an ordinary tool. The
+loss is localised between estimator output and exposed verdict, and against
+the decomposition it is the `B → C` step specifically: the
+significance/inconclusive threshold discarding a direction signal the
+estimator demonstrably has. `P(verdict ≠ inconclusive) = 0.082` for GeoLift
+against 0.39–0.47 for the others.
+
+### What the gate does NOT support
+
+- **`D → E` is not trustworthy here.** The Blackwell self-test failed 7 of
+  36 times, always on `POINT+CI ≥ POINT`, never on the other two relations
+  — see the note below. No claim is made about whether the CI adds value.
+- **`C → D` magnitudes are lower bounds** and grow with K (GeoLift
+  0.4988→0.6608 from K=4 to K=16), exactly as a discretised lower bound
+  should. That magnitude beyond sign is worth something is stable in
+  direction; how much is not quantified here.
+- Nothing about GeoLift's calibration, and nothing that transports outside
+  this DGP.
+
+### The methodological trap the self-test caught
+
+A fixed Dirichlet α adds `n_state × α` total pseudo-mass, so a 3K-state
+channel is smoothed **three times as hard** as a K-state one. That biases
+the comparison *against* the richer channel. Failures are monotone in both
+knobs, which is the signature:
+
+| | α=0.1 | α=0.5 | α=1.0 |
+|---|---|---|---|
+| **K=4** | 0 | 0 | 0 |
+| **K=8** | 0 | 1 | 2 |
+| **K=16** | 0 | 1 | 3 |
+
+At α=0.1 the relation never fails. The fix, for any future channel
+comparison, is to hold the **total** pseudo-mass constant (α/n_state) rather
+than the per-state α — otherwise richer channels are penalised by
+construction. Recorded as F23.
+
+### Cost
+
+Two gates, both on cached rows. No new simulation, and the direction is now
+a specific mechanism claim rather than "something is wrong with GeoLift".
+
 ## Kill-plans for the two remaining M9-B directions
 
 Written before any work, per the prohibition above. **Neither is scheduled.**

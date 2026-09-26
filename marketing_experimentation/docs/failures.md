@@ -1051,3 +1051,40 @@ C12, now restated to cover gates and seals and not only metamorphic suites.
 **Cost.** F20: an hour, caught before any cell existed. F21: ~26 CPU-hours
 of re-run, half the grid. F22c: minutes, caught on first execution. The
 cheapest of the three was the one where the failing input was written first.
+
+## F23. A fixed Dirichlet alpha penalises the richer channel by construction
+
+Caught by a self-test, before publication, in the channel ladder built for
+the GeoLift kill-gate.
+
+`POINT+CI` is a strict refinement of `POINT` — the point bin is recoverable
+from the (point, width) pair — so Blackwell requires
+`EVSI(POINT+CI) >= EVSI(POINT)`. It failed **7 of 36** times.
+
+The cause is not the channels. A `Dirichlet(alpha)` prior over `n_state`
+categories adds `n_state * alpha` of total pseudo-mass, so at fixed `alpha` a
+3K-state channel is pulled toward uniform **three times as hard** as a
+K-state one. A small genuine information gain is then swamped by a larger
+smoothing penalty, and a refinement measures *worse* than the thing it
+refines.
+
+The failure pattern is monotone in both knobs, which is what identifies it as
+an artefact rather than a finding:
+
+| | α=0.1 | α=0.5 | α=1.0 |
+|---|---|---|---|
+| K=4 | 0 | 0 | 0 |
+| K=8 | 0 | 1 | 2 |
+| K=16 | 0 | 1 | 3 |
+
+**The rule.** When comparing channels with different state counts, hold the
+TOTAL pseudo-mass constant (`alpha / n_state`), not the per-state `alpha`.
+Otherwise the comparison is rigged against the richer channel, in the
+direction that would make "the interface loses nothing" look true.
+
+**Why this one was cheap.** The Blackwell relation was already in the harness
+as a self-test, from the original information ladder. It cost nothing to
+evaluate and it caught a bias that would have produced a confidently wrong
+answer to the exact question the gate was asked. The near-miss is the same
+shape as F20/F21/F22 seen from the other side: this time the invariant, not
+a proxy for it, was what got checked — and so the defect surfaced.
