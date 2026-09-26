@@ -1,0 +1,84 @@
+{
+  "schema": "leadbench-mx M9-B closure record v1",
+  "closed_at": "2026-09-26T11:57:06+00:00",
+  "status": "CLOSED",
+  "what_is_closed": "M9-B: the 16-cell (T, G_c) design surface. The grid is complete, the claims are fixed at the width the evidence supports, and the artifacts are hashed. Reopening it means a new freeze, not an edit.",
+  "claim": "In the investigated grid, increasing test duration systematically raised r_EVSI for the tools that had an informative VERDICT at all, while increasing the donor pool from 5 to 40 showed no comparable stable gain. The donor result is 'no convincing evidence of appreciable benefit over this range', NOT a demonstrated null.",
+  "inference_status": {
+    "reportable": "paired contrasts with the OTHER axis held fixed, and their 95% credible intervals",
+    "descriptive_only": [
+      "monotonicity direction counts",
+      "r_EVSI levels (density-dependent)",
+      "sign-loss growth with design richness",
+      "geolift inertness"
+    ],
+    "excluded_from_axis_claims": "the T15_G05 -> T42_G40 span, which moves both axes and characterises a change of design rather than either axis",
+    "no_alpha_preregistered": true
+  },
+  "result": {
+    "evpi_rate_of_governed_spend": 0.02212,
+    "duration_T15_to_T42_at_fixed_G": {
+      "spans": 16,
+      "excluding_zero": 8,
+      "negative_established": 0,
+      "note": "8 of 12 among tools with an informative verdict; geolift 0/4 flat"
+    },
+    "donor_G5_to_G40_at_fixed_T": {
+      "spans": 16,
+      "excluding_zero": 1
+    }
+  },
+  "code_sha256": {
+    "repro/recast/m9b-axes.patch": "80b899cc57f0578c62fb62bcb77457b15b4db50294ea0374ff3356629861fa66",
+    "repro/recast/m9b_world_check.py": "7e9ba39166ac2a66651d1e922c336646bc790cc3aaea2709196f174db26f0892",
+    "repro/recast/m9b_mutations.sh": "0c59b21f858e01d28a5feafbbc72be547d6bb042de260f1d9db81693b531dd80",
+    "repro/recast/m9b_run.py": "b5407f68ffd2b326d697a3c9f22d0156523a8e331c1ba02c0cd123db0fd6e25f",
+    "repro/recast/m9b_run_invariants.py": "75dc3e2df778eb346bb59ae25810b5685c220922d7387e36dd98b9db8825ad2b",
+    "repro/recast/m9b_cell_manifest.py": "1163c1a9d96a0d98a049bf55cced78849351465ce3bd9e1148ca769c69512fb4",
+    "repro/recast/gate_witnesses.py": "d2e7ace4fdffa0513dfb568ce5da51a84ae372621c681243ec654ebfb01f2574",
+    "scripts/m9b_surface.py": "041146dc001704573cbf13ac911d3d21f1700f4a8f1dac10707318a7f875aa5b"
+  },
+  "docs_sha256": {
+    "docs/m9b-freeze.json": "355de6ff1851371092c1f84c902fc78d1a3808878be712a293531a84e6ad1360",
+    "docs/m9b-cell-manifest.json": "af4c01ddebb37020c220c9966b201d675dbc189d7319a954a77b9e499252db90",
+    "docs/m9b-mutation-verdict.txt": "9ca041290991680b8504090fd639681e0fbc19ff1fea6f3ab947e64464961e5e",
+    "docs/m9-preregistration.md": "b894f4a7076eac8e67fea5f6333812bf8ff3b574cb57ebf9012df1e8704a489c",
+    "docs/layer3-first-result.md": "b801f7cd8cb21be78521c5327486c0850b80d4e936f9842cb6fad5cc592a5075",
+    "docs/failures.md": "b712961687521f53004a073889938a8c00f3cdd6b6d63acea9ce607d99bc4b5b",
+    "docs/assumption-contracts.md": "cde1976a60656208fcf1376b35d2fe3a6f252703bc0e70f255d4028fd0697f3e",
+    "docs/artifact-manifest.json": "42cc09c4c2d961de2f245bb2a144e5de8f1f1de80bc8ce96a408fcd6f9e5e299"
+  },
+  "private_artifact": {
+    "name": "leadbench-mx-m9b-cells.tar.gz",
+    "sha256": "e7fe78ddc850124a2b6aa1e52bd0a1f5ce945df0e00f309568a9348af4f75142",
+    "bytes": 2434768,
+    "contents": "16 M9-B cells (1,600 rows each = 25,600 rows, four tools producing in every one), 16 seed logs (400 records each), the subprocess logs and all three worker stdouts",
+    "reproducible_tar": "--sort=name --owner=0 --group=0 --numeric-owner --mtime=@0",
+    "roundtrip_verified": true,
+    "supersedes": "an earlier tarball of the same name whose geolift and causalimpact rows were all empty -- see F21. That archive is NOT a usable fallback and is deliberately overwritten.",
+    "per_cell_record": "docs/m9b-cell-manifest.json carries each cell's own sha256, row count, seed-log hash and wall clock.",
+    "distribution_status": "PRIVATE - donor-derived. NOT to be committed to this or any public repository."
+  },
+  "verification": {
+    "world_contract_on_executed_run": "7/7 PASS (m9b_run_invariants.py)",
+    "complete_cluster_gate": "16/16 PASS, 100% retention, 16 truths x 4 tools",
+    "generator_mutations_refused": "5/5 (m9b_mutations.sh)",
+    "adversarial_gate_witnesses": "3/3 rejected (gate_witnesses.py)"
+  },
+  "compute": {
+    "preregistered_cpu_hours": 13.7,
+    "aggregate_process_hours_pass1_python_sequential": 24.5,
+    "aggregate_process_hours_pass2_r_rerun_3_workers": 40.3,
+    "aggregate_process_hours_total": 64.8,
+    "elapsed_calendar_hours": 43.8,
+    "units_warning": "three DIFFERENT quantities. Pass 2's 40.3 process-hours occupied ~13 h of clock on an oversubscribed 4-core box, so none is a CPU-hour in the sense the estimate used and none is comparable to another.",
+    "attributable_to_F21": "all of pass 2 (40.3 process-hours), avoidable: a PATH bug in the runner meant the two R tools never executed on pass 1"
+  },
+  "analysis_commit": "e745bac628ab630a00706faa77150dcfda6f1469",
+  "not_established": [
+    "that any of this transports outside a synthetic DGP containing no spend, no budget and no intervention",
+    "that donor pool size is irrelevant to geo experiments",
+    "that the monotonicity direction counts would survive a preregistered test",
+    "that M9-B cells are comparable to the donor's A1/A3 -- 21 geos drawn as 41 and sliced is a different world from 21 drawn as 21"
+  ]
+}

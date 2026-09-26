@@ -532,3 +532,45 @@ It clarifies what the frozen design means. The five things
 `m9b-freeze.json` forbids changing — `generate_panels.R`, `run_tools.py`,
 the patch stack, the grid and the seeds — are untouched, and the run was
 already in flight when it was written.
+
+---
+
+# M9-B — CLOSED
+
+`docs/m9b-closure.json` is the closure record: hashes of the eight code files
+and eight documents, the private artifact's hash, the verification results
+and the compute accounting. Reopening M9-B means a **new freeze**, not an
+edit to this one.
+
+## The result, at the width the evidence supports
+
+> In the investigated grid, increasing test duration systematically raised
+> `r_EVSI` for the tools that had an informative VERDICT at all, while
+> increasing the donor pool from 5 to 40 showed no comparable stable gain.
+
+Duration (T=15 → T=42, `G_c` fixed): 8 of 12 spans established positive
+among tools with signal, none negative. Donor pool (5 → 40, T fixed): 1 of
+16 spans excludes zero — **no convincing evidence of appreciable benefit
+over this range, not a demonstrated null.** Full tables in
+`docs/layer3-first-result.md` Addendum 5.
+
+## Verification at closure
+
+| | |
+|---|---|
+| world contract on the executed run | 7/7 PASS |
+| complete-cluster gate | 16/16 PASS, 100% retention |
+| generator mutations refused | 5/5 |
+| adversarial gate witnesses rejected | 3/3 |
+
+## What M9-B narrows for the next experiment
+
+Not a proof that donors are irrelevant. A reallocation of priority: 5 → 40
+donors consumed a large share of this milestone's compute and produced no
+gradient comparable to 15 → 42 days. So **duration, the decision interface,
+and the sign-information loss are better candidates for the next experiment
+than a wider donor pool** — on observed yield per unit of compute, not on a
+demonstrated null.
+
+**M9-C (the spend → lift → revenue response model) remains explicitly NOT
+scheduled.** It requires an economic object this DGP does not contain.
