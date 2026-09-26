@@ -233,7 +233,7 @@ about which one it was.
                  from perm_seed in a separate R process. Five generator
                  mutations are required to be refused -- see F20.
 
-### C12 — Adversarial gate witness
+### C12 — Proxy-preserving adversarial witness
 
     SOURCE       F22: the same defect three times in one milestone. F20's
                  metamorphic suite counted NESTING while guarding
@@ -245,6 +245,15 @@ about which one it was.
                  conveniently visible. The proxy is the shortcut the author
                  will take. A generic negative test does not catch this,
                  because a generic negative fails the proxy too.
+    PATTERN      A *proxy-preserving adversarial witness*. This is a
+                 variant of the test-oracle problem: where no cheap correct
+                 answer exists, one checks necessary relations instead --
+                 and the failure mode is that the relation chosen is a
+                 SURROGATE the defect also satisfies. A generic negative
+                 fixture does not help, because it fails the surrogate too
+                 and so exercises nothing. The witness must PRESERVE every
+                 surrogate signal of correctness and break only the
+                 invariant.
     REQUIREMENT  For every gate there must exist a STORED ARTIFACT that
                    (a) satisfies every cheap proxy signal the gate is
                        tempted to count, AND

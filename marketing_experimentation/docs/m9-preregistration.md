@@ -542,6 +542,14 @@ and eight documents, the private artifact's hash, the verification results
 and the compute accounting. Reopening M9-B means a **new freeze**, not an
 edit to this one.
 
+Corrections that change no data, claim or artifact are recorded in the
+record's own `amendments` array, carrying the superseded hashes — never
+applied silently. There is one, and it includes a defect in the record
+itself: its first generation hashed this very file *before* the section you
+are reading was appended, so it shipped certifying a state that had already
+moved. Hashes must be taken as the last act, or the generator must refuse on
+a dirty tree.
+
 ## The result, at the width the evidence supports
 
 > In the investigated grid, increasing test duration systematically raised

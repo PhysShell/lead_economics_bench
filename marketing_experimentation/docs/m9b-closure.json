@@ -42,10 +42,10 @@
     "docs/m9b-freeze.json": "355de6ff1851371092c1f84c902fc78d1a3808878be712a293531a84e6ad1360",
     "docs/m9b-cell-manifest.json": "af4c01ddebb37020c220c9966b201d675dbc189d7319a954a77b9e499252db90",
     "docs/m9b-mutation-verdict.txt": "9ca041290991680b8504090fd639681e0fbc19ff1fea6f3ab947e64464961e5e",
-    "docs/m9-preregistration.md": "b894f4a7076eac8e67fea5f6333812bf8ff3b574cb57ebf9012df1e8704a489c",
-    "docs/layer3-first-result.md": "b801f7cd8cb21be78521c5327486c0850b80d4e936f9842cb6fad5cc592a5075",
-    "docs/failures.md": "b712961687521f53004a073889938a8c00f3cdd6b6d63acea9ce607d99bc4b5b",
-    "docs/assumption-contracts.md": "cde1976a60656208fcf1376b35d2fe3a6f252703bc0e70f255d4028fd0697f3e",
+    "docs/m9-preregistration.md": "6f1dc48e926620f77e5d3ad52108cf0b10fa82ebe3c7d47209f84ddd03b949cf",
+    "docs/layer3-first-result.md": "e1be731200da414d0703803ea3a42addb3ddbc2dbeb01700edd9b6f880698eb9",
+    "docs/failures.md": "961bbd97c5b37ef61ecc8fe9f73a159509475eeadbeeaa9487d3a1d099929b41",
+    "docs/assumption-contracts.md": "099bc02041cffd5c32db55624372b428b36d2c85a840e83ab8c91ad8aff63442",
     "docs/artifact-manifest.json": "42cc09c4c2d961de2f245bb2a144e5de8f1f1de80bc8ce96a408fcd6f9e5e299"
   },
   "private_artifact": {
@@ -72,13 +72,45 @@
     "aggregate_process_hours_total": 64.8,
     "elapsed_calendar_hours": 43.8,
     "units_warning": "three DIFFERENT quantities. Pass 2's 40.3 process-hours occupied ~13 h of clock on an oversubscribed 4-core box, so none is a CPU-hour in the sense the estimate used and none is comparable to another.",
-    "attributable_to_F21": "all of pass 2 (40.3 process-hours), avoidable: a PATH bug in the runner meant the two R tools never executed on pass 1"
+    "attributable_to_F21": "pass 2 was NECESSITATED by F21 (a PATH bug meant the two R tools never executed on pass 1). Not all of its 40.3 process-hours were avoidable: the R-tool estimation was always required, and run_tools runs the three estimators in one thread pool, so on a correct first pass it would have been partly masked by CausalPy's MCMC. Measured per-panel: pass 1 13.8 s, pass 2 22.7 s. The avoidable portion is the unmasked remainder plus re-orchestration and is not separable from the executed figures."
   },
-  "analysis_commit": "e745bac628ab630a00706faa77150dcfda6f1469",
+  "analysis_commit": "e428ccf359bb1b2d6fa0a6c20d2e4da3ec86f0a0",
   "not_established": [
     "that any of this transports outside a synthetic DGP containing no spend, no budget and no intervention",
     "that donor pool size is irrelevant to geo experiments",
     "that the monotonicity direction counts would survive a preregistered test",
     "that M9-B cells are comparable to the donor's A1/A3 -- 21 geos drawn as 41 and sliced is a different world from 21 drawn as 21"
-  ]
+  ],
+  "amendments": [
+    {
+      "at": "2026-09-26T12:00:55+00:00",
+      "kind": "factual correction to the write-up, plus one defect in the closure record itself; NO data, claim or artifact changed",
+      "what": "The compute section said 'the whole of pass 2 is attributable to F21 and was avoidable'. The second half is false. run_tools.py submits causalpy, geolift and causalimpact to one ThreadPoolExecutor(max_workers=3), so on a correct first pass the R tools would have run CONCURRENTLY with CausalPy's MCMC. The 40.3 process-hours of R-tool estimation were always required by the design; F21 cost the portion concurrency would have masked plus re-orchestration, which cannot be cleanly separated from the executed figures. Corrected to 'pass 2 was necessitated by F21'.",
+      "why_not_a_reopening": "no cell, seed, estimate, claim or interval moved. The experiment is untouched; a sentence about accounting was wrong. Recorded as an amendment rather than edited silently, because a closure record that can be quietly rewritten is not a closure record.",
+      "also": [
+        "named the C12 pattern a PROXY-PRESERVING ADVERSARIAL WITNESS and related it to the test-oracle problem: the failure mode is choosing a surrogate relation the defect also satisfies, which a generic negative fixture cannot expose",
+        "recorded the three mechanism questions M9-B narrows to",
+        "CAUGHT BY THIS RE-HASH: docs/m9-preregistration.md was already stale in the committed closure record. The record was generated, and the 'M9-B - CLOSED' section was appended to the preregistration afterwards in the same turn, so the hash shipped describing a file that no longer existed in that form. A closure record whose own hashes are taken before the last write is a closure record that certifies nothing. The generator should hash as its final act, or refuse on a dirty tree -- noted here rather than fixed silently, and it is the same presence-vs-substance family as F22: I checked that hashes were RECORDED, not that they were CURRENT."
+      ],
+      "superseded_docs_sha256": {
+        "docs/m9b-freeze.json": "355de6ff1851371092c1f84c902fc78d1a3808878be712a293531a84e6ad1360",
+        "docs/m9b-cell-manifest.json": "af4c01ddebb37020c220c9966b201d675dbc189d7319a954a77b9e499252db90",
+        "docs/m9b-mutation-verdict.txt": "9ca041290991680b8504090fd639681e0fbc19ff1fea6f3ab947e64464961e5e",
+        "docs/m9-preregistration.md": "b894f4a7076eac8e67fea5f6333812bf8ff3b574cb57ebf9012df1e8704a489c",
+        "docs/layer3-first-result.md": "b801f7cd8cb21be78521c5327486c0850b80d4e936f9842cb6fad5cc592a5075",
+        "docs/failures.md": "b712961687521f53004a073889938a8c00f3cdd6b6d63acea9ce607d99bc4b5b",
+        "docs/assumption-contracts.md": "cde1976a60656208fcf1376b35d2fe3a6f252703bc0e70f255d4028fd0697f3e",
+        "docs/artifact-manifest.json": "42cc09c4c2d961de2f245bb2a144e5de8f1f1de80bc8ce96a408fcd6f9e5e299"
+      }
+    }
+  ],
+  "narrows_to": {
+    "note": "M9-B's value is that the next experiment is a mechanism question, not a wider grid. None of these is scheduled.",
+    "questions": [
+      "DURATION \u2014 by what mechanism does additional time reach decision value, and where does it saturate? The grid stops at 42 post-days and the duration gradient has not flattened inside it.",
+      "DECISION INTERFACE / SIGN LOSS \u2014 how much information is destroyed specifically by the transform estimator output -> VERDICT, as opposed to by the estimator? V-B rises with design richness by point estimate and has not had the paired-interval treatment.",
+      "GEOLIFT \u2014 why does a far richer design barely move r_EVSI(VERDICT)? Three candidates, not separated here: an estimator limitation, a verdict-representation artefact, or a property of this DGP."
+    ],
+    "deprioritised": "a wider donor pool. Not because donors are shown irrelevant -- see not_established -- but because 5 -> 40 has been paid for once and returned a weak signal."
+  }
 }

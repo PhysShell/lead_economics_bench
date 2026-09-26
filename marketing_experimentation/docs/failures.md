@@ -1022,8 +1022,14 @@ too, so it exercises nothing. It is:
 > cheap proxy signal AND violates the guarded invariant, and the gate must
 > reject it.**
 
-An *adversarial gate witness*: a counterexample built specifically against
-the shortcut the author was tempted to take. `repro/recast/gate_witnesses.py`
+A *proxy-preserving adversarial witness*: a counterexample built specifically
+against the shortcut the author was tempted to take. It is a variant of the
+test-oracle problem — where no cheap correct answer exists you check
+necessary relations instead, and the failure mode is that the relation you
+picked is a **surrogate the defect also satisfies**. A generic negative
+fixture is no help: it fails the surrogate too, so it never exercises the
+gap. The witness has to keep every surrogate signal intact and break only
+the invariant. `repro/recast/gate_witnesses.py`
 holds one per gate, as deterministic fixtures —
 
 | gate | the witness |

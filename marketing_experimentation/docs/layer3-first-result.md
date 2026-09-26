@@ -1325,7 +1325,22 @@ process-hours occupied roughly 13 hours of clock and the box was
 oversubscribed for much of it — none of these is a CPU-hour in the sense the
 estimate used.
 
-**The whole of pass 2 is attributable to F21** and was avoidable: a `PATH`
-bug in the runner meant GeoLift and CausalImpact never executed on the first
-pass. Overrun against the estimate is ~4.7× in aggregate process time and
-~3.2× in elapsed time.
+**Pass 2 was necessitated by F21**, a `PATH` bug in the runner that meant
+GeoLift and CausalImpact never executed on the first pass. It is *not* true
+that all 40.3 hours were avoidable, and an earlier version of this table
+said so. The R-tool estimation was **always required by the design**;
+`run_tools.py` submits CausalPy, GeoLift and CausalImpact to one
+`ThreadPoolExecutor(max_workers=3)`, so on a correct first pass those tools
+would have run **concurrently with CausalPy's MCMC**, not after it. What F21
+actually cost is the portion that concurrency would have masked, plus panel
+regeneration and re-orchestration — and that portion cannot be cleanly
+separated from the executed figures, so no number is invented for it.
+
+Measured per-panel: pass 1 (CausalPy + Google MM) 13.8 s, pass 2 (GeoLift +
+CausalImpact) 22.7 s. The R tools are the slower pair, so concurrency would
+have masked some but not all of their cost.
+
+Overrun against the 13.7 CPU-h estimate is ~4.7× in aggregate process time
+and ~3.2× in elapsed time. Both ratios compare quantities that are not
+commensurable with the estimate and are given only to show the order of the
+miss, not as a measurement of it.
