@@ -279,6 +279,53 @@ about which one it was.
                  seal by two. Only executing a gate against an artifact
                  built to defeat its shortcut has ever caught one.
 
+### C13 — Kill-first: no expensive work without a written kill criterion
+
+    SOURCE       the M9 sequence. M9-B cost 64.8 aggregate process-hours;
+                 two of its three follow-on questions turned out to be
+                 premise-testable against cached data in under a minute,
+                 and nobody checked, because the reflex after a grid is
+                 another grid.
+    CLAIM        A question worth spending on is a question whose refutation
+                 can be described in advance.
+    REQUIREMENT  Before substantial work: hypothesis -> necessary condition
+                 -> cheapest falsifier -> kill criterion -> stop-loss, all
+                 written down first. If the specific result that would
+                 CANCEL the work cannot be named, the work is not launched
+                 and sharpening the question is the work instead.
+    CHECK        docs/kill-first.md carries the template and the worked
+                 example: the GeoLift interface hypothesis, kept rather than
+                 killed by two queries against existing rows -- rho(att_pct,
+                 theta) = 0.691 against rho(verdict, theta) = 0.156, with a
+                 median CI 6x its own estimate dispersion collapsing 92% of
+                 outputs to `inconclusive`.
+    NOTE         the protocol is symmetric. It is not an argument for doing
+                 less; it is an argument for finding out which work is real
+                 before paying for it. The GeoLift direction SURVIVED its
+                 falsifier and is now better specified than it was.
+
+### C14 — Attestation is a statement about a frozen subject set, not a member of it
+
+    SOURCE       the M9-B closure record hashed a document and then that
+                 document was appended to in the same turn, so it shipped
+                 certifying a state that had already moved. F20/F21/F22 at
+                 the meta level of the closure process.
+    CLAIM        "digests are recorded" is a surrogate for "the record
+                 describes the current artifacts". Another check does not
+                 fix the class; the structure does.
+    REQUIREMENT  Separate SUBJECTS (identified by digest) from the
+                 ATTESTATION about them, as in-toto and SLSA do. Order:
+                 finalize artifacts -> commit -> compute digests -> attest
+                 -> immutable tag. After finalize, no subject is edited. The
+                 attestation is NOT a subject of itself -- nothing can hold
+                 an accurate digest of the envelope it is sealed inside, and
+                 there is no reason to volunteer for that recursion.
+    CHECK        repro/recast/closure_attest.py REFUSES on a dirty tree,
+                 excludes its own output from the subject set, and computes
+                 digests as its final act. --print-release-plan gives the
+                 draft -> attach -> publish sequence, with the constraint
+                 that donor-derived payload never enters a public release.
+
 ## Metamorphic relations
 
 Where no oracle exists — and for a simulator there usually is none — the

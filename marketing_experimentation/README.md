@@ -207,6 +207,7 @@ refusing to overclaim:
 | `repro/recast/m9b_world_check.py` | do the M9-B design axes move the design without moving the world? 11 metamorphic relations, plus the five generator mutations they must refuse |
 | `repro/recast/m9b_run_invariants.py` | does the run that actually happened obey the world contract? Same invariants, on the seed logs the run emitted, at full scale |
 | `repro/recast/gate_witnesses.py` | C12: for each gate, an artifact that passes every cheap proxy and violates the invariant. Asserts the proxy passes AND the gate rejects |
+| `repro/recast/closure_attest.py` | C14: an attestation *about* a frozen subject set. Refuses on a dirty tree, excludes itself from its own subjects, hashes last |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
@@ -230,6 +231,15 @@ Tests: `pytest tests/` from this directory (232 invariants).
   witness**: for every gate, a stored artifact that satisfies every cheap
   proxy signal *and* violates the invariant, which the gate must reject.
   `repro/recast/gate_witnesses.py` holds one per gate; currently 3/3.
+- **Kill-first** (`docs/kill-first.md`, C13). Before substantial work:
+  hypothesis → necessary condition → cheapest falsifier → kill criterion →
+  stop-loss. **If the result that would cancel the work cannot be named in
+  advance, the work is not launched.** M9-B cost 64.8 aggregate
+  process-hours; two of its three follow-on questions turned out to be
+  premise-testable against cached data in under a minute. The GeoLift
+  direction *survived* its falsifier and is better specified for it — the
+  protocol is not an argument for doing less, but for finding out which work
+  is real before paying for it.
 - **No web app, no ad spend** (§76, §77).
 - **Licence hygiene** (§70): the donor has no licence. Nothing of theirs is
   vendored here — the reproduction works through an external wrapper and a
