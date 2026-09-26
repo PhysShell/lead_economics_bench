@@ -163,12 +163,19 @@ hold.** Not F24.
 | `google_mm` | 0.2611–0.2822% | 0.4727–0.5033% | +0.212…+0.221pp | **1.78×** |
 | **`geolift`** | 0.0766–0.0966% | 0.4605–0.4909% | **+0.384…+0.394pp** | **5.1–6.0×** |
 
-**The same refinement buys GeoLift five to six times what it buys
-CausalImpact**, and every ratio is stable to the second decimal across a
-16-fold change in prior strength.
+**The result is the absolute gain: +0.384 to +0.394 percentage points of
+governed spend for GeoLift, against +0.037 to +0.042 for CausalImpact** —
+an order of magnitude apart in what the same refinement recovers.
 
-For GeoLift, `V+S ≈ SIGN >> VERDICT`: per the decomposition, almost all of
-the loss is `inconclusive` erasing direction. Significance does add something
+The ratio column is **descriptive only**. GeoLift's VERDICT denominator is
+tiny and prior-sensitive, and dividing by nearly zero is a reliable way to
+manufacture an impressive number. The gain is the quantity that survives;
+the multiplier is a way of reading it, not a measurement.
+
+For GeoLift, `V+S ≈ SIGN >> VERDICT`: adding significance to SIGN buys
+relatively little, while adding SIGN to VERDICT buys a great deal, so the
+decision-relevant piece the current representation discards sits in the
+distinction between `inconclusive-negative` and `inconclusive-positive`. Significance does add something
 of its own beyond sign for every tool (+0.028…+0.094pp), so the flag is not
 worthless — it is just far less valuable than the direction it suppresses.
 
@@ -253,3 +260,58 @@ Copy this into the preregistration before any substantial work.
     COST IF IT SURVIVES
 
 An entry with an empty KILL CRITERION is not a plan and does not get run.
+
+---
+
+# The GeoLift mechanism branch — CLOSED / HOLD
+
+## The claim, at the width the evidence supports
+
+> **For the investigated decision problem and the M9-B surface**, GeoLift's
+> thresholded VERDICT discards substantial decision-relevant *directional*
+> information. Adding the point-estimate sign while preserving the existing
+> verdict — a strict refinement — raises `r_EVSI` by **0.384 to 0.394
+> percentage points** of governed spend, and the resulting channel has value
+> close to the sign-only channel.
+
+The qualifier is load-bearing and is not throat-clearing. Blackwell's
+ordering is universal: a refinement is worth at least as much as its
+garbling for *any* prior and *any* loss. The **size** of the gain is not
+universal — it is a property of this decision problem, this prior and this
+surface. A different loss function would preserve the ordering and could
+change the magnitude to anything.
+
+## Why it stops here
+
+Every question that was *necessary for a decision* is answered:
+
+| question | answer |
+|---|---|
+| does the estimator carry a direction signal? | yes — within-cell ρ 0.71, comparable to peers |
+| does the current VERDICT preserve it? | largely no — `P(≠inconclusive)` 0.082 vs 0.39–0.47 |
+| can the loss be shown through a *real* refinement? | yes — VERDICT+SIGN, 16/16 Blackwell checks hold |
+| is it an artefact of smoothing strength? | no — survives a 16-fold prior sweep |
+| does the measurement framework check the required information ordering? | yes — and it caught F23 by failing |
+| **is a new expensive experiment needed to locate the bottleneck?** | **no** |
+
+The remaining questions — continuous channels, alternative decision rules,
+conditional mutual information, calibration curves — are *interesting*. None
+of them changes a decision. That is the difference between a research
+programme and a series.
+
+**Further work on this branch requires a new reason, not curiosity.**
+
+## What the protocol actually bought
+
+The default next move after "GeoLift's EVSI is ~0" is more observations,
+more donors, more replications. That experiment would have been expensive
+and would have produced a worse answer: `T=90` might well have shown GeoLift
+still inert, and it would not have said **why**.
+
+Three gates on cached rows located the bottleneck instead, and turned up a
+measurement artefact (F23) that would have biased the very comparison being
+made — in the direction that makes "the interface loses nothing" look true.
+
+Kill-first did not kill the hypothesis. **It killed the necessity of the
+large experiment**, which is the better outcome and the one worth designing
+for.

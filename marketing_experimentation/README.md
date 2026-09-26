@@ -240,18 +240,27 @@ Tests: `pytest tests/` from this directory (232 invariants).
   process-hours; two of its three follow-on questions turned out to be
   premise-testable against cached data in under a minute.
 
-  Three gates run so far, all on cached rows, no new simulation. The GeoLift
-  direction **survived all three** and is now a mechanism claim that
-  Blackwell licenses. Bolting the point estimate's sign onto the *existing*
-  verdict is a strict refinement, so the comparison is required rather than
-  hoped for — and it buys **GeoLift 5–6× against CausalImpact's 1.09×**,
-  stable to the second decimal across a 16-fold change in prior strength.
-  The complaint is no longer "GeoLift performs poorly" but *the estimator
-  carries decision value comparable to its peers and the interface exposes
-  almost none of it*: `P(verdict ≠ inconclusive)` is 0.082 against
-  0.39–0.47. An earlier version localised the loss at `VERDICT → SIGN`,
-  which Blackwell does not license — those are sibling coarsenings, not a
-  chain — and gate 3 repaired it. See `docs/kill-first.md`.
+  Three gates run, all on cached rows, no new simulation. **The GeoLift
+  mechanism branch is now CLOSED/HOLD**, with this claim:
+
+  > For the investigated decision problem and the M9-B surface, GeoLift's
+  > thresholded VERDICT discards substantial decision-relevant *directional*
+  > information. Adding the point-estimate sign while preserving the existing
+  > verdict — a strict refinement, so Blackwell licenses the comparison —
+  > raises `r_EVSI` by **0.384–0.394 percentage points** of governed spend,
+  > against **0.037–0.042** for CausalImpact.
+
+  The qualifier is load-bearing: Blackwell's *ordering* is universal, the
+  *magnitude* is a property of this decision problem. The absolute gain is
+  the result; a ratio would divide by a tiny prior-sensitive denominator.
+  An earlier version localised the loss at `VERDICT → SIGN`, which Blackwell
+  does not license — those are sibling coarsenings, not a chain — and gate 3
+  repaired it.
+
+  **Kill-first did not kill the hypothesis; it killed the necessity of the
+  large experiment.** The default next move was more observations, more
+  donors, more replications — which would have cost a great deal and shown
+  GeoLift still inert without saying why. See `docs/kill-first.md`.
 
   The protocol is not an argument for doing less. It is an argument for
   finding out which work is real before paying for it.

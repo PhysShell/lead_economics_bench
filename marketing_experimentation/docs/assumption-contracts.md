@@ -326,6 +326,35 @@ about which one it was.
                  draft -> attach -> publish sequence, with the constraint
                  that donor-derived payload never enters a public release.
 
+### C15 — Prefer a representation in which the wrong state cannot be built
+
+    SOURCE       three instances in one week. C14: an attestation that
+                 hashed a file which then changed. F23: per-channel priors
+                 chosen independently, so two channels could be compared
+                 under different regularisers. F20/F21/F22: gates counting a
+                 surrogate for the property.
+    CLAIM        A check asserts that the bad state did not occur. A
+                 representation can make the bad state unconstructible.
+                 Where both are available, the second is strictly better,
+                 because it cannot be skipped, mis-scoped or run too early.
+    RULE         Not `check(correctness)` where a representation in which
+                 incorrect state cannot be constructed is available.
+    APPLIED      closure_attest.py  the attestation is not a subject of
+                                    itself, and refuses on a dirty tree, so
+                                    "hashed before the last write" cannot
+                                    happen rather than being detected
+                 nested_channel_gate.py
+                                    ONE prior on the finest channel, every
+                                    coarser prior DERIVED through the
+                                    aggregation map, so incompatible priors
+                                    across a refinement family cannot be
+                                    expressed
+    FALLBACK     when the bad state CANNOT be designed out, C12 applies
+                 instead: a stored proxy-preserving witness the gate must
+                 reject. The two are complements, not alternatives --
+                 unconstructible where possible, adversarially witnessed
+                 where not.
+
 ## Metamorphic relations
 
 Where no oracle exists — and for a simulator there usually is none — the
