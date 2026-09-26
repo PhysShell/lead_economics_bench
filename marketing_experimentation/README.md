@@ -93,23 +93,33 @@ The current claim, stated as narrowly as the evidence allows:
 
 ### Which design axis is worth paying for — Addendum 5
 
-- **Test duration buys decision value; donor pool size does not.** 16 cells,
-  25,600 rows, every cell a slice of the **same maximal latent world**, so a
-  cell-to-cell difference is a design effect and not two Monte Carlo draws.
-  Going from a 2-week to a 6-week window: **8 of 12 spans established
-  positive** across the tools with signal, none negative, CausalImpact
-  +0.31 to +0.40 percentage points. Multiplying the donor pool **eightfold**:
-  **1 of 16 spans** excludes zero, and Google MM's point estimate moves the
-  *wrong way* in three of four.
-- **That is the opposite of where the intuition points.** The donor pool is
-  the cheap knob — the one you can turn without waiting — and it is the one
-  that does not pay.
-- **GeoLift is inert across the entire surface**, 0.0000% in five of sixteen
-  cells. Consistent with M9-A: its verdict is nearly mute at every truth, and
-  more information cannot sharpen a signal that is not listening.
-- **The sign loss grows with design richness** — CausalPy 0.2975% → 0.4758%
-  from the cheapest cell to the richest. The better the evidence, the more an
-  unsigned `significant` destroys.
+16 cells, 25,600 rows, every cell a slice of the **same maximal latent
+world**, so a cell-to-cell difference is a design effect and not two
+independent Monte Carlo draws. Each axis contrast holds the other axis fixed.
+
+> **In the investigated grid, increasing test duration systematically raised
+> `r_EVSI` for the tools that had an informative VERDICT at all, while
+> increasing the donor pool from 5 to 40 showed no comparable stable gain.**
+
+- **Duration, T=15 → T=42 at fixed `G_c`:** 8 of 12 spans established
+  positive among the tools with signal, **none negative**. CausalImpact 4/4,
+  +0.31 to +0.40 percentage points of governed spend.
+- **Donor pool, 5 → 40 at fixed T:** **1 of 16** spans excludes zero. That
+  licenses *no convincing evidence of appreciable benefit over this range* —
+  **not** "donors do nothing". An effect that is not established is not an
+  effect of zero.
+- **A contrast that moves both axes is not evidence about either.** The
+  poorest → richest step (+0.402% for CausalImpact) characterises a change of
+  design and is excluded from the axis claims.
+- **GeoLift is inert on this surface** — median `r_EVSI` 0.0000%–0.0571%,
+  exactly zero in five of sixteen cells, no span excluding zero on either
+  axis. Descriptive, with the range attached.
+- **Sign loss is larger by point estimate on richer cells** (CausalPy 0.2975%
+  → 0.4758%). An observation, not yet a law: it has not had the
+  paired-interval treatment the axis contrasts received.
+- **What it narrows:** widening the donor pool further is a weaker candidate
+  for the next experiment than duration, the decision interface, or the sign
+  loss — on observed yield per unit of compute, not on a demonstrated null.
 
 ### The donor reproduces — `docs/donor-repro.md`
 
@@ -196,6 +206,7 @@ refusing to overclaim:
 | `scripts/m9b_surface.py` | what is a longer test, or a bigger donor pool, worth? `r_EVSI(T, G_c)`, every difference paired across the shared world. Refuses to read the surface until all 16 cells are complete |
 | `repro/recast/m9b_world_check.py` | do the M9-B design axes move the design without moving the world? 11 metamorphic relations, plus the five generator mutations they must refuse |
 | `repro/recast/m9b_run_invariants.py` | does the run that actually happened obey the world contract? Same invariants, on the seed logs the run emitted, at full scale |
+| `repro/recast/gate_witnesses.py` | C12: for each gate, an artifact that passes every cheap proxy and violates the invariant. Asserts the proxy passes AND the gate rejects |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
@@ -211,18 +222,14 @@ Tests: `pytest tests/` from this directory (232 invariants).
   tolerance widened to fit.
 - **`docs/failures.md` is not decoration.** Twenty-two entries, seven of them
   errors the reader caught rather than me. F22 is the sharpest: **the same
-  defect three times in one milestone** — a metamorphic suite that counted
-  *nesting* while guarding *randomness*, a completion gate that counted
-  *rows* while guarding *whether tools ran*, and a blinding seal that counted
-  *files* while guarding *completeness*. Writing the general form down after
-  the first two did not prevent the third. The rule that would have is
-  C12: **every gate ships with the failing input it must reject.** Four of them — F13–F16 — are one
-  class, **conceptual-model contract failure**: correct arithmetic under a
-  structural assumption that was never checked. `docs/assumption-contracts.md`
-  is the response: every load-bearing claim carries a source and an
-  executable check, and the check runs inside the analysis, not only in CI — including F13, which invalidated
-  the structure the main result was expressed in. History is not cleaned into a
-  heroic narrative (brief §75).
+  defect three times in one milestone** — a suite that counted *nesting*
+  while guarding *randomness*, a gate that counted *rows* while guarding
+  *whether tools ran*, a seal that counted *files* while guarding
+  *completeness*. Writing the general form down after the first two did not
+  prevent the third. What would have is C12, the **adversarial gate
+  witness**: for every gate, a stored artifact that satisfies every cheap
+  proxy signal *and* violates the invariant, which the gate must reject.
+  `repro/recast/gate_witnesses.py` holds one per gate; currently 3/3.
 - **No web app, no ad spend** (§76, §77).
 - **Licence hygiene** (§70): the donor has no licence. Nothing of theirs is
   vendored here — the reproduction works through an external wrapper and a

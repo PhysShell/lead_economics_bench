@@ -233,29 +233,42 @@ about which one it was.
                  from perm_seed in a separate R process. Five generator
                  mutations are required to be refused -- see F20.
 
-### C12 — no gate is evidence until it has rejected a failing input
+### C12 — Adversarial gate witness
 
     SOURCE       F22: the same defect three times in one milestone. F20's
-                 metamorphic suite passed the sorted-baseline shortcut it
-                 forbade; F21's completion gate passed 16 cells with two of
-                 four tools empty; the M9-B blinding seal passed 16 cell
-                 FILES that were half-written.
-    CLAIM        A gate that has never rejected anything bounds nothing. It
-                 is silent exactly where its cheap proxy happens to be
-                 satisfied by the defect -- which is the case the gate was
-                 built for.
-    CONSEQUENCE  Green is not reassurance. Sixteen consecutive passes were,
-                 for the property that mattered, no evidence at all.
-    CHECK        every gate, seal and metamorphic suite in this track ships
-                 with the failing input it must reject, and the rejection is
-                 recorded next to the pass. m9b_mutations.sh does this for
-                 the world contract (five mutations, all refused, output
-                 hashed into the freeze). Nothing did it for the completion
-                 gate or the seal, and both shipped broken.
+                 metamorphic suite counted NESTING while guarding
+                 RANDOMNESS; F21's completion gate counted ROWS while
+                 guarding WHETHER TOOLS RAN; the M9-B blinding seal counted
+                 FILES while guarding COMPLETENESS.
+    CLAIM        Every gate protects an invariant, and every gate is
+                 written where some cheaper PROXY for that invariant is
+                 conveniently visible. The proxy is the shortcut the author
+                 will take. A generic negative test does not catch this,
+                 because a generic negative fails the proxy too.
+    REQUIREMENT  For every gate there must exist a STORED ARTIFACT that
+                   (a) satisfies every cheap proxy signal the gate is
+                       tempted to count, AND
+                   (b) violates the invariant the gate exists to protect,
+                 and the gate must REJECT it. Both halves are asserted: a
+                 witness that fails its own proxy proves nothing.
+    WITNESSES    repro/recast/gate_witnesses.py, deterministic fixtures:
+                   nesting      pools genuinely nest, D5 subset D9 subset
+                                D20 subset D40, every recorded field
+                                self-consistent -- donor order is the
+                                SORTED geo index, not a substream draw
+                   completeness exactly 1,600 well-formed rows, every key
+                                present, `significant` populated -- one
+                                tool's att_pct is null throughout
+                   seal         all 16 cell files present at exactly the
+                                right row count -- half carry two tools
+                                with no estimates at all
+    CHECK        `python repro/recast/gate_witnesses.py` -- for each
+                 witness it asserts the proxy PASSES and the gate REJECTS.
+                 Currently 3/3.
     NOTE         writing the general form down is not a control. F20's
                  lesson predates F21 by four days and F21's predates the
-                 seal by two. Only executing the gate against a state that
-                 should fail it has ever caught one.
+                 seal by two. Only executing a gate against an artifact
+                 built to defeat its shortcut has ever caught one.
 
 ## Metamorphic relations
 

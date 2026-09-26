@@ -1152,116 +1152,180 @@ result.
 
 ---
 
-# Addendum 5 — M9-B: duration is worth paying for, donor pool is not
+# Addendum 5 — M9-B: the design surface, and what it does and does not license
 
 *16 cells, 25,600 rows, every cell a slice of the same maximal latent world.
-Computed on the conditioned documented prior, against an EVPI ceiling of
-**2.2120%** of governed spend — the same ceiling M9-A reports, as it must,
-since it is a property of the prior and the decision problem and not of any
-experiment.*
+Conditioned documented prior; EVPI ceiling **2.2120%** of governed spend —
+the same ceiling M9-A reports, as it must, being a property of the prior and
+the decision problem rather than of any experiment.*
 
-## The surface
+## The claim, at the width the evidence supports
 
-`r_EVSI(VERDICT)`, share of governed spend per decision, `L = 1`:
+> **In the investigated grid, increasing test duration systematically raised
+> `r_EVSI` for the tools that had an informative VERDICT at all, while
+> increasing the donor pool from 5 to 40 showed no comparable stable gain.**
 
-| tool | T=15 G=5 | T=42 G=40 | T steps up | G_c steps up |
+Two things that claim deliberately does **not** say:
+
+- It does not say duration "buys value" as a property of geo experiments.
+  It says what happened on this grid, in this synthetic world.
+- It does not say the donor pool is worthless. **An effect that is not
+  established is not an effect of zero.** The defensible reading is *no
+  convincing evidence of appreciable benefit over 5 → 40 here*, and that is
+  a statement about this range and this power, not about donors.
+
+## The full surface
+
+`r_EVSI(VERDICT)`, share of governed spend per decision, `L = 1`, median of
+2,000 paired cluster-bootstrap draws with 95% credible interval:
+
+### `causalimpact`
+
+| T \ G_c | 5 | 9 | 20 | 40 |
 |---|---|---|---|---|
-| `causalimpact` | 0.1721% | 0.5820% | **12 / 12** | 6 / 12 |
-| `causalpy[y_hat]` | 0.3182% | 0.4883% | 11 / 12 | 8 / 12 |
-| `google_mm` | 0.1150% | 0.3153% | 11 / 12 | **4 / 12** |
-| `geolift` | 0.0096% | 0.0168% | 3 / 12 | 5 / 12 |
+| **15** | 0.1721 [0.080, 0.375] | 0.1926 [0.087, 0.393] | 0.1925 [0.100, 0.386] | 0.1804 [0.095, 0.382] |
+| **21** | 0.3550 [0.192, 0.579] | 0.3257 [0.180, 0.512] | 0.2614 [0.145, 0.424] | 0.3102 [0.158, 0.511] |
+| **28** | 0.4521 [0.285, 0.761] | 0.4901 [0.313, 0.859] | 0.4243 [0.268, 0.723] | 0.4157 [0.259, 0.715] |
+| **42** | 0.5390 [0.377, 0.772] | 0.5392 [0.376, 0.773] | 0.5109 [0.355, 0.739] | 0.5820 [0.403, 0.929] |
 
-Across the three tools with any signal, **34 of 36 duration steps move up**
-and donor-pool steps are a coin flip — for Google MM they move *down* twice
-as often as up.
+### `causalpy[y_hat]`
 
-## The contrast that has the separation to carry an interval
+| T \ G_c | 5 | 9 | 20 | 40 |
+|---|---|---|---|---|
+| **15** | 0.3182 [0.178, 0.491] | 0.2389 [0.127, 0.404] | 0.2804 [0.160, 0.441] | 0.2578 [0.155, 0.407] |
+| **21** | 0.4077 [0.167, 0.620] | 0.3562 [0.170, 0.614] | 0.3794 [0.204, 0.580] | 0.3502 [0.199, 0.532] |
+| **28** | 0.3142 [0.185, 0.532] | 0.3485 [0.214, 0.560] | 0.4120 [0.228, 0.602] | 0.4480 [0.256, 0.647] |
+| **42** | 0.3660 [0.253, 0.624] | 0.4579 [0.276, 0.750] | 0.4642 [0.283, 0.732] | 0.4883 [0.298, 0.757] |
 
-Adjacent steps are small and mostly unresolved at 25 clusters, so the
-reportable contrast is the **span**: not "is 21 days better than 15" but "is
-six weeks better than two", which is also the question a practitioner faces.
-Every difference below is **paired** cluster-by-cluster across the shared
-world — the variance reduction the nesting contract exists to create. `*`
+### `google_mm`
+
+| T \ G_c | 5 | 9 | 20 | 40 |
+|---|---|---|---|---|
+| **15** | 0.1150 [0.052, 0.320] | 0.1313 [0.068, 0.339] | 0.1655 [0.077, 0.323] | 0.1712 [0.082, 0.331] |
+| **21** | 0.3025 [0.128, 0.653] | 0.2709 [0.122, 0.606] | 0.2236 [0.107, 0.520] | 0.2158 [0.123, 0.437] |
+| **28** | 0.3720 [0.168, 0.739] | 0.3579 [0.159, 0.702] | 0.2570 [0.144, 0.549] | 0.2012 [0.120, 0.395] |
+| **42** | 0.4727 [0.291, 0.799] | 0.4626 [0.283, 0.803] | 0.3788 [0.203, 0.740] | 0.3153 [0.179, 0.629] |
+
+### `geolift`
+
+| T \ G_c | 5 | 9 | 20 | 40 |
+|---|---|---|---|---|
+| **15** | 0.0096 [0.000, 0.102] | 0.0000 [0.000, 0.081] | 0.0292 [0.000, 0.141] | 0.0571 [0.000, 0.189] |
+| **21** | 0.0020 [0.000, 0.072] | 0.0316 [0.000, 0.129] | 0.0054 [0.000, 0.063] | 0.0230 [0.000, 0.131] |
+| **28** | 0.0000 [0.000, 0.052] | 0.0009 [0.000, 0.045] | 0.0000 [0.000, 0.000] | 0.0000 [0.000, 0.031] |
+| **42** | 0.0025 [0.000, 0.113] | 0.0000 [0.000, 0.024] | 0.0000 [0.000, 0.039] | 0.0168 [0.000, 0.135] |
+
+## Axis contrasts, each with the OTHER axis held fixed
+
+This separation is the point. A contrast that moves both axes at once
+characterises a change of design; it is **not** evidence about either axis.
+All differences are paired cluster-by-cluster across the shared world. `*`
 marks a 95% credible interval excluding zero.
 
-**Duration, 2 weeks → 6 weeks** (16 spans, 4 per tool):
+### Duration: T=15 → T=42, at fixed `G_c`
 
-| tool | median Δ range | spans excluding 0 |
-|---|---|---|
-| `causalimpact` | +0.311% to +0.396% | **4 / 4** |
-| `causalpy` | +0.060% to +0.224% | 2 / 4 |
-| `google_mm` | +0.139% to +0.353% | 2 / 4 |
-| `geolift` | −0.032% to +0.000% | 0 / 4 |
+| tool | G=5 | G=9 | G=20 | G=40 | spans excl. 0 |
+|---|---|---|---|---|---|
+| `causalimpact` | +0.358 [+0.135, +0.588] `*` | +0.339 [+0.111, +0.572] `*` | +0.311 [+0.088, +0.541] `*` | +0.396 [+0.147, +0.739] `*` | **4/4** |
+| `causalpy` | +0.060 [−0.125, +0.272] | +0.213 [+0.005, +0.485] `*` | +0.176 [−0.019, +0.460] | +0.224 [+0.011, +0.494] `*` | 2/4 |
+| `google_mm` | +0.353 [+0.077, +0.675] `*` | +0.325 [+0.057, +0.664] `*` | +0.219 [−0.050, +0.601] | +0.139 [−0.051, +0.470] | 2/4 |
+| `geolift` | −0.001 [−0.090, +0.099] | +0.000 [−0.081, +0.016] | −0.025 [−0.121, +0.007] | −0.032 [−0.172, +0.093] | 0/4 |
 
-**Eight of twelve duration spans are established positive across the tools
-with signal. None is negative.**
+**8 of 12 spans established positive among the tools with an informative
+verdict; none negative.** GeoLift's four are flat.
 
-**Donor pool, 5 → 40 (eight times the pool)** (16 spans):
+### Donor pool: G_c=5 → G_c=40 (eight times the pool), at fixed T
 
-| tool | median Δ range | spans excluding 0 |
-|---|---|---|
-| `causalimpact` | −0.042% to +0.040% | 0 / 4 |
-| `causalpy` | −0.055% to +0.107% | 1 / 4 |
-| `google_mm` | −0.186% to +0.061% | 0 / 4 |
-| `geolift` | +0.000% to +0.039% | 0 / 4 |
+| tool | T=15 | T=21 | T=28 | T=42 | spans excl. 0 |
+|---|---|---|---|---|---|
+| `causalimpact` | +0.012 [−0.056, +0.067] | −0.042 [−0.157, +0.019] | −0.028 [−0.139, +0.003] | +0.040 [−0.013, +0.249] | 0/4 |
+| `causalpy` | −0.055 [−0.195, +0.044] | −0.034 [−0.292, +0.132] | +0.107 [+0.010, +0.292] `*` | +0.101 [−0.050, +0.318] | 1/4 |
+| `google_mm` | +0.061 [−0.121, +0.159] | −0.090 [−0.325, +0.112] | −0.186 [−0.478, +0.092] | −0.161 [−0.324, +0.079] | 0/4 |
+| `geolift` | +0.039 [−0.058, +0.182] | +0.012 [−0.026, +0.112] | +0.000 [−0.050, +0.027] | +0.000 [−0.089, +0.123] | 0/4 |
 
-**One of sixteen.** And Google MM's median is *negative* in three of four.
+**1 of 16 spans excludes zero**, at a single duration for a single tool.
+Google MM's point estimates are negative at three of four durations, with
+every interval covering zero — suggestive of nothing, and reported so that
+the one positive result is not read without its neighbours.
 
-Corner to corner (`T15_G05 → T42_G40`): `causalimpact` **+0.4018%
-[0.1679, 0.7534]** and `google_mm` **+0.1899% [0.0013, 0.5104]** exclude
-zero; `causalpy` +0.1712% and `geolift` +0.0004% do not.
+### Both axes moved at once — reported, and excluded from the axis claims
 
-## What this says, stated as narrowly as the evidence allows
+`T15_G05 → T42_G40`: `causalimpact` +0.402 [+0.168, +0.753] `*`,
+`google_mm` +0.190 [+0.001, +0.510] `*`, `causalpy` +0.171 [−0.061, +0.428],
+`geolift` +0.000 [−0.076, +0.115].
 
-> In this simulation world, **test duration buys decision value and donor
-> pool size does not.** Tripling the test window roughly triples
-> CausalImpact's information value; multiplying the donor pool eightfold
-> does nothing detectable for any tool, and for one tool the point estimate
-> moves the wrong way.
+This characterises the step from the poorest to the richest design in the
+grid. **It is not an argument about duration**, because the donor pool moved
+too. An earlier draft of this addendum cited it under the duration claim;
+that was wrong and is corrected here.
 
-This is a statement about **where to spend design effort**, and it is the
-opposite of where the axis intuition points: a bigger donor pool is the
-cheap knob, the one a practitioner can turn without waiting, and it is the
-one that does not pay.
+## Preregistered inference versus descriptive observation
 
-## What it does not say
+| | status |
+|---|---|
+| the paired contrasts above, with their intervals | the **reportable** quantities |
+| `*` markers | the paired 95% credible interval excludes zero. **No alpha was preregistered for these contrasts**, so this is not a test and no multiplicity correction is claimed |
+| direction counts (34 of 36 adjacent T-steps up; G_c steps a coin flip) | **descriptive**. `m9b-freeze.json` attached no threshold to monotonicity before the run and none is invented now |
+| `r_EVSI` levels | density-dependent, as established earlier in this document. Orderings and paired differences are the robust objects |
 
-- **Not a monotonicity finding.** `m9b-freeze.json` attached no threshold to
-  monotonicity before the run and none is invented now. The direction counts
-  above are descriptive; the spans are what carry intervals.
-- **Not a significance test.** No alpha was preregistered for these steps.
-  `*` means the paired 95% interval excludes zero, nothing more.
-- **Not external validity.** The DGP is synthetic and contains no spend, no
-  budget and no intervention. See M9-A §1.
-- **Not an ENBS.** No cost model, deliberately.
-- **Not a comparison with A1/A3.** `M9B_T15_G20` has 21 geos drawn as 41 and
-  sliced; A1 has 21 drawn as 21. Different worlds. The M9-A figure for
-  CausalImpact (0.2579%) and this grid's A1-shaped cell (0.1925%) are not
-  the same quantity and their difference is not a finding.
+## GeoLift on this surface
 
-## GeoLift is inert across the entire surface
+Descriptively **inert across the grid**: median `r_EVSI` from 0.0000% to
+0.0571%, exactly 0.0000% in five of sixteen cells, and no span excluding
+zero on either axis. Consistent with M9-A, where its sign loss was
+`$214 [0–749]`, not established: `P(significant)` sits at 0.05–0.19 at
+*every* truth, so the verdict is close to mute and there is little for
+additional data to sharpen. Stated as a description of this surface, with
+the range attached, not as a general claim about the tool.
 
-0.0000% in five of sixteen cells and never above 0.0571%, with no span
-excluding zero on either axis. That is consistent with M9-A, where its sign
-loss was `$214 [0–749]`, not established: its `P(significant)` sits at
-0.05–0.19 at *every* truth, so the verdict is nearly mute and there is
-nothing for more data to sharpen. **More information cannot help a signal
-that is not listening.**
+## Sign loss, by point estimate
 
-## The sign loss grows with design richness
+`V − B` — what the unsigned bit discards — is **larger by point estimate on
+the richer cells**: CausalPy 0.2975% → 0.4758% and Google MM 0.0906% →
+0.2094% from `T15_G05` to `T42_G40`. Offered as an observation on this
+surface. It has not been given the paired-interval treatment the axis
+contrasts received, and is not yet a claim that better evidence makes the
+sign systematically more valuable.
 
-`V − B`, what the unsigned bit throws away, cheapest cell → richest:
-CausalPy 0.2975% → 0.4758%, Google MM 0.0906% → 0.2094%. A better experiment
-makes an unsigned `significant` destroy **more**, not less — the better the
-evidence, the more the sign is worth, and the more it costs to discard.
+## What this narrows for the next experiment
+
+Not a proof that donors do not matter. A **reallocation of priority**: 5 → 40
+donors has now consumed a substantial share of this milestone's compute and
+produced no gradient comparable to 15 → 42 days. Widening the donor pool
+further is therefore a weaker candidate for the next experiment than
+duration, the decision interface, or the sign-information loss — on grounds
+of observed yield per unit of compute, not on grounds of a demonstrated null.
 
 ## Provenance
 
-Generator `fac70c97`, patch stack `theta-mutation → m8-seed-log → m9b-axes`,
-freeze `docs/m9b-freeze.json` taken before the first cell. Complete-cluster
-gate: 16/16 PASS, **100% retention**, 16 truths and 4 tools in every cell.
-World contract verified on the executed run (`m9b_run_invariants.py`): one
+Generator `fac70c97`; patch stack `theta-mutation → m8-seed-log → m9b-axes`;
+freeze `docs/m9b-freeze.json`, taken before the first cell. Complete-cluster
+gate 16/16 PASS at **100% retention**, 16 truths and 4 tools per cell. World
+contract verified on the executed run (`m9b_run_invariants.py`): one
 identical world set across all 16 cells, pools nesting by prefix in all 25
 replications, 25 distinct donor permutations, `City 21` treated throughout.
 Cells are private donor-derived output; only their hashes are in Git
-(`docs/m9b-cell-manifest.json`).
+(`docs/m9b-cell-manifest.json`). Full bootstrap draws cached so any later
+contrast costs nothing to compute.
+
+## Compute
+
+| quantity | value |
+|---|---|
+| preregistered estimated compute (`m9b-freeze.json`) | **13.7 CPU-h** |
+| aggregate observed process time, pass 1 (Python tools, sequential) | 24.5 h |
+| aggregate observed process time, pass 2 (R re-run, 3 concurrent workers) | 40.3 h |
+| aggregate observed process time, both passes | **64.8 h** |
+| elapsed calendar time, first cell to last | **43.8 h** |
+
+These are three different quantities and must not be compared to each other
+casually. Pass 1 was sequential, so its process time approximates its wall
+time. Pass 2 ran three concurrent workers on a 4-core box, so its 40.3
+process-hours occupied roughly 13 hours of clock and the box was
+oversubscribed for much of it — none of these is a CPU-hour in the sense the
+estimate used.
+
+**The whole of pass 2 is attributable to F21** and was avoidable: a `PATH`
+bug in the runner meant GeoLift and CausalImpact never executed on the first
+pass. Overrun against the estimate is ~4.7× in aggregate process time and
+~3.2× in elapsed time.

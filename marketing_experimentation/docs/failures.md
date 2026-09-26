@@ -1014,10 +1014,28 @@ general form is not a control; it is a note about a control that does not
 exist yet. **The only thing that actually caught any of these was executing
 the gate against a state that should fail it.**
 
-So the operational rule is not "remember the pattern". It is:
+So the operational rule is not "remember the pattern", and it is not the
+weaker "ship a negative test" either — a generic negative fails the proxy
+too, so it exercises nothing. It is:
 
-> **Every gate ships with the failing input it must reject, and that
-> rejection is recorded next to the pass.**
+> **For every gate there must exist a stored artifact that satisfies every
+> cheap proxy signal AND violates the guarded invariant, and the gate must
+> reject it.**
+
+An *adversarial gate witness*: a counterexample built specifically against
+the shortcut the author was tempted to take. `repro/recast/gate_witnesses.py`
+holds one per gate, as deterministic fixtures —
+
+| gate | the witness |
+|---|---|
+| nesting | pools genuinely nest, every recorded field self-consistent, donor order is the **sorted** geo index |
+| completeness | exactly 1,600 well-formed rows, `significant` populated, one tool's `att_pct` null throughout |
+| seal | all 16 files present at exactly the right row count, half carrying two tools with **no estimates** |
+
+— and asserts **both** halves for each: the proxy passes, and the gate
+rejects. A witness that fails its own proxy proves nothing, because the
+cheap check would have caught it and the point is that the cheap check waves
+it through. Currently 3/3.
 
 `m9b_mutations.sh` does this for the world contract — five mutations, all
 refused, output hashed into the freeze. Nothing did it for the completion
