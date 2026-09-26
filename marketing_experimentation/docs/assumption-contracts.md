@@ -377,6 +377,22 @@ about which one it was.
                  no observation, and --self-test is C12 applied to the gate
                  itself. KILL is written BEFORE the result, because after
                  one a human can justify continuing whatever happened.
+    STATE        CLOSED/HOLD -- the terminal state a direction reaches
+                 under this contract -- means precisely: THERE IS CURRENTLY
+                 NO DECISION-RELEVANT QUESTION THAT JUSTIFIES CONTINUING. It
+                 is deliberately weaker than "finished" and claims no
+                 completeness of knowledge. A new fact, a new use case or a
+                 new necessary condition reopens it under a new freeze.
+                 Curiosity alone does not draw a budget.
+    LIMIT        plan_gate.py reads KILL as prose and infers whether it
+                 terminates. Inferring a property from natural language is
+                 itself a proxy, and the gate made that mistake once on its
+                 own example. If it ever becomes a hard gate before an
+                 expensive runner, KILL should carry a structural field
+                 (`action: stop_direction`) with the sentence alongside as
+                 explanation. NOT built: no runner consumes a plan file yet,
+                 and designing v2 of a validator for a consumer that does
+                 not exist would violate this very contract.
     NOTE         the protocol's success case is not "we did less". It is
                  that the GeoLift branch reached CLOSED/HOLD with a better
                  answer than the large experiment would have produced, for

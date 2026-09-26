@@ -19,12 +19,30 @@ So the gate is narrow and mostly about KILL:
 
 Honest about its own strength
 -----------------------------
-This is a CHECK, not a construction, so by C15 it is the weaker form. The
-strong form is for the next expensive runner to take `--plan` as a required
-argument, so a run cannot be started without a validated plan at all. That
-runner does not exist yet; building an enforcement mechanism for it now
-would be exactly the kind of speculative work the protocol exists to
-prevent. This is the piece that is useful today.
+This is a CHECK, not a construction, so by C15 it is the weaker form. It
+also remains HEURISTIC in the place that matters: it reads KILL as natural
+language and infers whether that text terminates a direction. Inferring a
+property from prose is itself a proxy, and this gate has already made that
+mistake once — see the WEASEL comment below.
+
+**The known limit, and the deferred fix.** If `plan_gate.py` ever becomes a
+hard gate in front of an expensive runner, its critical properties should be
+expressed STRUCTURALLY rather than guessed from prose:
+
+    kill:
+      observation: "rho(att_pct, theta) not materially above rho(verdict, ...)"
+      action: stop_direction
+
+`action: stop_direction` *is* a termination by construction; the human
+sentence stays alongside as explanation rather than as the thing being
+parsed. That is C15 applied to the defect this gate actually hit.
+
+**It is deliberately NOT built now.** No expensive runner consumes a plan
+file yet. Designing v2 of a validator for a consumer that does not exist
+would be a close-to-caricature violation of the protocol this gate enforces:
+introducing a rule against speculative work and immediately doing some. The
+note exists so the fix is obvious when a consumer appears, and so nobody
+mistakes the current heuristic for a decided design.
 
     python marketing_experimentation/repro/recast/plan_gate.py PLAN.md
     python marketing_experimentation/repro/recast/plan_gate.py --self-test
