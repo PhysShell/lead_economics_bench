@@ -355,6 +355,34 @@ about which one it was.
                  unconstructible where possible, adversarially witnessed
                  where not.
 
+### C16 — Expensive work requires a surviving necessary condition
+
+    SOURCE       the M9 sequence, and its first dogfood: three cheap gates
+                 on cached rows localised a bottleneck that the obvious
+                 expensive experiment would have missed. T=90 might well
+                 have shown GeoLift still inert and would not have said why.
+    CLAIM        "It would be interesting to check" does not earn an
+                 expensive run. A concrete cheap result does.
+    REQUIREMENT  Before expensive work there must exist:
+                   necessary condition identified
+                   -> cheapest falsifier EXECUTED
+                   -> condition SURVIVED
+                   -> bounded next question
+                 If no cheap falsifier exists at all, that is itself
+                 information: the expensive work must then be justified
+                 separately as the MINIMAL way to test the necessary
+                 condition, not merely as the obvious next step.
+    CHECK        docs/kill-first.md holds the nine-field template;
+                 repro/recast/plan_gate.py refuses a plan whose KILL names
+                 no observation, and --self-test is C12 applied to the gate
+                 itself. KILL is written BEFORE the result, because after
+                 one a human can justify continuing whatever happened.
+    NOTE         the protocol's success case is not "we did less". It is
+                 that the GeoLift branch reached CLOSED/HOLD with a better
+                 answer than the large experiment would have produced, for
+                 no new compute. Kill-first killed the NECESSITY of the
+                 experiment, not the hypothesis.
+
 ## Metamorphic relations
 
 Where no oracle exists — and for a simulator there usually is none — the

@@ -246,20 +246,43 @@ Written before any work, per the prohibition above. **Neither is scheduled.**
 | stop-loss | if the INTERVAL density estimate is again the binding uncertainty (it has been twice), stop and fix the estimator rather than buying more simulations |
 | cost of the falsifier | zero new compute |
 
-## Template
+## The template
 
-Copy this into the preregistration before any substantial work.
+Filled in **before any code**, and validated by
+`repro/recast/plan_gate.py`, which refuses a plan whose KILL names no
+observation.
 
-    HYPOTHESIS
-    NECESSARY CONDITION        what must hold for this to be worth pursuing
-    CHEAPEST FALSIFIER         smallest test that could show it does not
-    KILL CRITERION             the specific result that ends this, written
-                               BEFORE looking
-    STOP-LOSS                  the spend at which it ends regardless
-    COST OF THE FALSIFIER
-    COST IF IT SURVIVES
+| field | question |
+|---|---|
+| **CLAIM** | what are we trying to establish? |
+| **NECESSARY CONDITION** | what must be true for this to be worth pursuing? |
+| **CHEAPEST FALSIFIER** | how do we most cheaply refute that? |
+| **KILL** | the specific result that closes the direction |
+| **SURVIVE** | the minimum permitted next step if it survives |
+| **BUDGET** | max time / compute / money before the next decision |
+| **INVARIANT** | a mathematical or structural property that MUST hold |
+| **CONSTRUCTION** | can the violation be made unrepresentable? (C15) |
+| **WITNESS** | if not, which proxy-preserving counterexample is rejected? (C12) |
 
-An entry with an empty KILL CRITERION is not a plan and does not get run.
+**KILL is written before the result, and this is the field the gate is
+mostly about.** A human can explain, after any outcome whatsoever, why the
+thing is actually very interesting and deserves a little more looking. That
+is a remarkably reliable way to turn research into a hobby. An entry with no
+KILL is not a plan and does not get run.
+
+`--self-test` is C12 applied to the plan gate itself: a plan with all nine
+headings present and non-empty, which the gate must still reject because
+KILL defers rather than terminates.
+
+### The gate caught its own version of the defect
+
+Its first KILL check matched the substring `investigate`, and promptly
+rejected the real GeoLift plan — whose KILL reads *"GeoLift is not
+investigated further"*, a perfectly concrete termination. Matching a word
+where the property is *does KILL name a result that ends the direction*
+is this project's recurring defect in miniature, arriving inside the tool
+built to enforce the lesson. Now phrase-based and boundary-anchored, and
+the episode is left in the source comment rather than tidied away.
 
 ---
 

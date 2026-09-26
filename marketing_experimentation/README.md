@@ -208,6 +208,7 @@ refusing to overclaim:
 | `repro/recast/m9b_run_invariants.py` | does the run that actually happened obey the world contract? Same invariants, on the seed logs the run emitted, at full scale |
 | `repro/recast/gate_witnesses.py` | C12: for each gate, an artifact that passes every cheap proxy and violates the invariant. Asserts the proxy passes AND the gate rejects |
 | `repro/recast/closure_attest.py` | C14: an attestation *about* a frozen subject set. Refuses on a dirty tree, excludes itself from its own subjects, hashes last |
+| `repro/recast/plan_gate.py` | C16: refuses a research plan whose KILL names no observation. `--self-test` is C12 applied to the gate itself |
 | `scripts/channel_ladder.py` | the kill-gate: does a richer channel carry more *decision* value? BIT → VERDICT → SIGN → POINT → POINT+CI through one framework, clustered on the world |
 | `scripts/nested_channel_gate.py` | the same question where Blackwell actually applies: a real refinement family, with priors *derived* through the aggregation map so they cannot disagree |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
