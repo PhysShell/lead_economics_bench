@@ -125,12 +125,58 @@ verdict, and — the sharper comparison — GeoLift's SIGN channel
 (0.4252–0.4286%) is **indistinguishable from CausalImpact's**
 (0.4118–0.4157%).
 
-**The gate is passed.** On the sign channel GeoLift is an ordinary tool. The
-loss is localised between estimator output and exposed verdict, and against
-the decomposition it is the `B → C` step specifically: the
-significance/inconclusive threshold discarding a direction signal the
-estimator demonstrably has. `P(verdict ≠ inconclusive) = 0.082` for GeoLift
-against 0.39–0.47 for the others.
+**The gate is passed.** On the sign channel GeoLift is an ordinary tool, and
+`P(verdict ≠ inconclusive) = 0.082` for GeoLift against 0.39–0.47 for the
+others.
+
+**But `B → C` is not a Blackwell step, and an earlier version of this
+document said the loss was "localised at `B → C`".** That overstates.
+VERDICT and SIGN are two *different coarsenings of the same raw output*,
+neither a garbling of the other: `inconclusive` does not reveal the sign,
+and `positive` does not reveal whether it was significant. The comparison is
+legitimate and informative; calling it a step in a chain asserts an ordering
+Blackwell does not supply. Gate 3 repairs it.
+
+### Gate 3: the nested family, where Blackwell actually applies
+
+The common refinement of VERDICT and SIGN has four natural states —
+`significant-negative`, `inconclusive-negative`, `inconclusive-positive`,
+`significant-positive` — and every other channel is an aggregation of it:
+
+                          VERDICT+SIGN (4)
+                           /          \
+                  VERDICT (3)          SIGN (2)
+                      |
+                    BIT (2)
+
+Now Blackwell supplies **required** inequalities rather than empirical hopes.
+`scripts/nested_channel_gate.py`, three prior strengths, 16 checks: **all
+hold.** Not F24.
+
+**The licensed comparison** — bolting the point estimate's sign onto the
+*existing* verdict, a strict refinement:
+
+| tool | VERDICT | VERDICT+SIGN | gain | ratio |
+|---|---|---|---|---|
+| `causalimpact` | 0.4045–0.4416% | 0.4417–0.4834% | +0.037…+0.042pp | **1.09×** |
+| `causalpy` | 0.3905–0.4171% | 0.5285–0.5616% | +0.138…+0.144pp | **1.35×** |
+| `google_mm` | 0.2611–0.2822% | 0.4727–0.5033% | +0.212…+0.221pp | **1.78×** |
+| **`geolift`** | 0.0766–0.0966% | 0.4605–0.4909% | **+0.384…+0.394pp** | **5.1–6.0×** |
+
+**The same refinement buys GeoLift five to six times what it buys
+CausalImpact**, and every ratio is stable to the second decimal across a
+16-fold change in prior strength.
+
+For GeoLift, `V+S ≈ SIGN >> VERDICT`: per the decomposition, almost all of
+the loss is `inconclusive` erasing direction. Significance does add something
+of its own beyond sign for every tool (+0.028…+0.094pp), so the flag is not
+worthless — it is just far less valuable than the direction it suppresses.
+
+**Caveat on the denominator.** GeoLift's VERDICT *level* is prior-sensitive
+(0.0766–0.0966% here; 0.0066–0.0135% under the earlier inconsistent scheme)
+because the channel is nearly degenerate at 92% `inconclusive`, so the prior
+dominates. The **gain** is stable; the small denominator is not, and the
+"5–6×" should be read as "large", not as a measured multiplier.
 
 ### What the gate does NOT support
 

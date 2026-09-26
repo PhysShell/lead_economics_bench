@@ -1077,10 +1077,32 @@ an artefact rather than a finding:
 | K=8 | 0 | 1 | 2 |
 | K=16 | 0 | 1 | 3 |
 
-**The rule.** When comparing channels with different state counts, hold the
-TOTAL pseudo-mass constant (`alpha / n_state`), not the per-state `alpha`.
-Otherwise the comparison is rigged against the richer channel, in the
-direction that would make "the interface loses nothing" look true.
+**The rule, in its weak form.** When comparing channels with different state
+counts, hold the TOTAL pseudo-mass constant rather than the per-state
+`alpha`. Otherwise the comparison is rigged against the richer channel, in
+the direction that would make "the interface loses nothing" look true.
+
+**The rule, in the form that is actually correct.** `alpha_total / n_state`
+is right only when the refinement is *uniform*. The general property follows
+from the Dirichlet aggregation rule — merging categories adds their
+concentration parameters — and is:
+
+> **Smoothing priors must commute with the refinement map: aggregating the
+> fine channel's prior must reproduce the coarse channel's prior exactly.**
+
+If a coarse state with pseudo-mass 0.3 splits into three fine states, those
+three must sum to 0.3; under a non-uniform split, `alpha_total / n_state`
+does not deliver that. The visible difference: for the VERDICT family, the
+consistent prior on VERDICT is `[0.125, 0.25, 0.125]` — **non-uniform**,
+because `inconclusive` aggregates two fine states — where `alpha_total / K`
+would give `[0.167, 0.167, 0.167]`.
+
+**And it is enforceable structurally rather than checked.** Place one prior
+on the finest channel in the family and *derive* every coarser prior by
+summing through the aggregation map. Then the priors cannot disagree,
+uniform refinement or not. `scripts/nested_channel_gate.py` does exactly
+this; `--audit-prior` prints the derivation. This is C14's lesson applied to
+a prior: remove the possibility rather than add a check for it.
 
 **Why this one was cheap.** The Blackwell relation was already in the harness
 as a self-test, from the original information ladder. It cost nothing to

@@ -209,6 +209,7 @@ refusing to overclaim:
 | `repro/recast/gate_witnesses.py` | C12: for each gate, an artifact that passes every cheap proxy and violates the invariant. Asserts the proxy passes AND the gate rejects |
 | `repro/recast/closure_attest.py` | C14: an attestation *about* a frozen subject set. Refuses on a dirty tree, excludes itself from its own subjects, hashes last |
 | `scripts/channel_ladder.py` | the kill-gate: does a richer channel carry more *decision* value? BIT → VERDICT → SIGN → POINT → POINT+CI through one framework, clustered on the world |
+| `scripts/nested_channel_gate.py` | the same question where Blackwell actually applies: a real refinement family, with priors *derived* through the aggregation map so they cannot disagree |
 | `repro/recast/` | the reproduction gate: bootstrap, replay check, θ mutation, G4 criteria |
 | `scripts/significance_gate_v1.py` | **superseded.** Kept because the bug it contains is the finding |
 
@@ -239,16 +240,18 @@ Tests: `pytest tests/` from this directory (232 invariants).
   process-hours; two of its three follow-on questions turned out to be
   premise-testable against cached data in under a minute.
 
-  Two gates run so far, both on cached rows, no new simulation. The GeoLift
-  direction **survived both** and is now a specific mechanism claim: its
-  point-estimate SIGN is worth 0.4252–0.4286% of governed spend against its
-  VERDICT's 0.0066–0.0135% — stable across nine estimator configurations,
-  and **indistinguishable from CausalImpact's sign channel**. Neither of
-  those two channels is discretised, so the comparison is free of any
-  binning choice. The complaint is no longer "GeoLift performs poorly" but
-  *the estimator carries decision value comparable to its peers and the
-  interface exposes almost none of it* — `P(verdict ≠ inconclusive)` is
-  0.082 against 0.39–0.47. See `docs/kill-first.md`.
+  Three gates run so far, all on cached rows, no new simulation. The GeoLift
+  direction **survived all three** and is now a mechanism claim that
+  Blackwell licenses. Bolting the point estimate's sign onto the *existing*
+  verdict is a strict refinement, so the comparison is required rather than
+  hoped for — and it buys **GeoLift 5–6× against CausalImpact's 1.09×**,
+  stable to the second decimal across a 16-fold change in prior strength.
+  The complaint is no longer "GeoLift performs poorly" but *the estimator
+  carries decision value comparable to its peers and the interface exposes
+  almost none of it*: `P(verdict ≠ inconclusive)` is 0.082 against
+  0.39–0.47. An earlier version localised the loss at `VERDICT → SIGN`,
+  which Blackwell does not license — those are sibling coarsenings, not a
+  chain — and gate 3 repaired it. See `docs/kill-first.md`.
 
   The protocol is not an argument for doing less. It is an argument for
   finding out which work is real before paying for it.
